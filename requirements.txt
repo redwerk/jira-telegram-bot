@@ -1,0 +1,4 @@
+jira==1.0.10
+pymongo==3.4.0
+python-decouple==3.0
+python-telegram-bot==5.3.1
