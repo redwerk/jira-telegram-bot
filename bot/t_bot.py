@@ -130,10 +130,10 @@ class JiraBot(MongoBackend):
             pass
         except BadRequest as e:
             logging.error('{}'.format(e))
-        except TimedOut:
-            pass
-        except NetworkError:
-            pass
+        except TimedOut as e:
+            logging.error('{}'.format(e))
+        except NetworkError as e:
+            logging.error('{}'.format(e))
         except ChatMigrated as e:
             pass
         except TelegramError:
