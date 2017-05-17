@@ -1,11 +1,11 @@
+import logging
 from telegram.error import (BadRequest, ChatMigrated, NetworkError,
                             TelegramError, TimedOut, Unauthorized)
 from telegram.ext import CommandHandler, Filters, MessageHandler, Updater
 
 
 class JiraBot(object):
-    def __init__(self, logger, bot_token):
-        self.logger = logger
+    def __init__(self, bot_token):
         self.updater = Updater(bot_token)
 
         self.updater.dispatcher.add_handler(
@@ -31,6 +31,7 @@ class JiraBot(object):
                          text="I'm a bot, please talk to me!")
 
     def _echo(self, bot, update):
+        logging.info('Echo: {}'.format(update.message.text))
         bot.send_message(chat_id=update.message.chat_id,
                          text=update.message.text)
 
