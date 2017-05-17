@@ -1,3 +1,4 @@
+cryptography==1.8.1
 jira==1.0.10
 pymongo==3.4.0
 python-decouple==3.0

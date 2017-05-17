@@ -1,2 +1,2 @@
 from .db import MongoBackend
-from .jira_bot import JiraBot
+from .t_bot import JiraBot

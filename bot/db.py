@@ -1,7 +1,8 @@
 import logging
+
 import pymongo
-from pymongo.errors import ServerSelectionTimeoutError
 from decouple import config
+from pymongo.errors import ServerSelectionTimeoutError
 
 
 def get_db_connect(func):
@@ -44,7 +45,12 @@ class MongoBackend(object):
     """An interface that contains basic methods for working with the database"""
 
     @get_db_connect
-    def get_user_credential(self, user_id, *args, **kwargs):
+    def create_user(self, user_data, *args, **kwargs):
+        db = kwargs.get('db')
+        db.insert_one(user_data)
+
+    @get_db_connect
+    def get_user_data(self, user_id, *args, **kwargs):
         db = kwargs.get('db')
         user = db.find_one({'telegram_id': user_id})
 
@@ -52,3 +58,7 @@ class MongoBackend(object):
             return user
 
         return False
+
+    @get_db_connect
+    def update_user_credential(self, user_data, *args, **kwargs):
+        db = kwargs.get('db')
