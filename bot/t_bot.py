@@ -5,11 +5,12 @@ from telegram.error import (BadRequest, ChatMigrated, NetworkError,
                             TelegramError, TimedOut, Unauthorized)
 from telegram.ext import CommandHandler, Filters, MessageHandler, Updater
 
-from bot import MongoBackend
-import utils
+from bot import utils
+from bot.db import MongoBackend
+from bot.integration import JiraBackend
 
 
-class JiraBot(MongoBackend):
+class JiraBot(object):
     """
     Bot to integrate with the JIRA service.
     
@@ -37,6 +38,8 @@ class JiraBot(MongoBackend):
 
     def __init__(self):
         self.updater = Updater(config('BOT_TOKEN'))
+        self._db = MongoBackend()
+        self._jira = JiraBackend()
 
         self.updater.dispatcher.add_handler(
             CommandHandler('start', self._start_command)
@@ -74,7 +77,7 @@ class JiraBot(MongoBackend):
         password = None
         telegram_id = str(update.message.from_user.id)
 
-        if self.get_user_data(telegram_id):
+        if self._db.get_user_data(telegram_id):
             bot.send_message(
                 chat_id=update.message.chat_id,
                 text="You're already authorized. If you want to change "
@@ -92,12 +95,28 @@ class JiraBot(MongoBackend):
                      'and password separated by a space)'
             )
         else:
+            # Verification of credentials. The data will be stored only
+            # if there is confirmed authorization in Jira.
+            confirmed, status_code = self._jira.check_credentials(
+                username, password
+            )
+
+            if not confirmed:
+                message = self._jira.login_error.get(
+                    status_code, 'Unknown error'
+                )
+                bot.send_message(
+                    chat_id=update.message.chat_id,
+                    text=message
+                )
+                return
+
             encrypted_password = utils.encrypt_password(password)
 
             jira_cred = dict(username=username, password=encrypted_password)
             user_data = dict(telegram_id=telegram_id, jira=jira_cred)
 
-            self.create_user(user_data)
+            self._db.create_user(user_data)
             logging.info(
                 'User {} was created successfully'.format(username)
             )
@@ -106,7 +125,9 @@ class JiraBot(MongoBackend):
                 chat_id=update.message.chat_id,
                 text='Your account info is saved successfully. '
                      'Now you can use the commands associated with '
-                     'the service JIRA.'
+                     'the service JIRA.\n'
+                     'Please, delete all messages which contains your '
+                     'credentials (even if the credentials are incorrect).'
             )
 
     def _echo_command(self, bot, update):

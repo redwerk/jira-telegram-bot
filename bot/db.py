@@ -11,7 +11,7 @@ def get_db_connect(func):
     If the connection is - passes the object to the function to execute 
     the query. If you have no connection - writes to the log. 
     In any case closes the connection to the database.
-    :param func: unction in which the actions with the DB will be performed
+    :param func: function in which the actions with the DB will be performed
     :return: 
     """
     def wrapper(*args, **kwargs):
@@ -61,4 +61,4 @@ class MongoBackend(object):
 
     @get_db_connect
     def update_user_credential(self, user_data, *args, **kwargs):
-        db = kwargs.get('db')
+        pass
