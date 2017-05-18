@@ -1,8 +1,9 @@
 import logging
 
-import pymongo
+from bson import ObjectId
 from decouple import config
-from pymongo.errors import ServerSelectionTimeoutError
+from pymongo import MongoClient
+from pymongo.errors import ServerSelectionTimeoutError, WriteError
 
 
 def get_db_connect(func):
@@ -19,7 +20,7 @@ def get_db_connect(func):
         collection = config('DB_COLLECTION')
         data = False
 
-        client = pymongo.MongoClient(
+        client = MongoClient(
             host=config('DB_HOST'),
             port=config('DB_PORT', cast=int),
             serverSelectionTimeoutMS=1
@@ -44,21 +45,54 @@ def get_db_connect(func):
 class MongoBackend(object):
     """An interface that contains basic methods for working with the database"""
 
-    @get_db_connect
-    def create_user(self, user_data, *args, **kwargs):
-        db = kwargs.get('db')
+    @staticmethod
+    def create_user(user_data: dict, db: MongoClient):
         db.insert_one(user_data)
 
-    @get_db_connect
-    def get_user_data(self, user_id, *args, **kwargs):
-        db = kwargs.get('db')
+    @staticmethod
+    def update_user(user_id: ObjectId, user_data: dict, db: MongoClient):
+        db.update({'_id': user_id}, user_data)
+
+    @staticmethod
+    def get_user_data(user_id: str, db: MongoClient) -> dict:
         user = db.find_one({'telegram_id': user_id})
 
         if user:
             return user
 
-        return False
+        return dict()
 
     @get_db_connect
-    def update_user_credential(self, user_data, *args, **kwargs):
-        pass
+    def save_credentials(self, user_data: dict, *args, **kwargs) -> bool:
+        """
+        If the user is in the database - updates the data. 
+        If not - creates a user in the database.
+        :param user_data: user credentials in dict
+        :param args: 
+        :param kwargs: contains objects database access
+        :return: status of the transaction
+        """
+        db = kwargs.get('db')
+
+        user = self.get_user_data(
+            user_data.get('telegram_id'),
+            db
+        )
+
+        if user:
+            user_id = user.get('_id')
+            try:
+                self.update_user(user_id, user_data, db)
+            except WriteError as e:
+                logging.warning('Error updating user: {}'.format(e))
+                return False
+            else:
+                return True
+        else:
+            try:
+                self.create_user(user_data, db)
+            except WriteError as e:
+                logging.warning('Error creating user: {}'.format(e))
+                return False
+            else:
+                return True

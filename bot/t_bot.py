@@ -20,9 +20,7 @@ class JiraBot(object):
     /caps <some text>
         Return entered text into uppercase 
     /authorization <username> <password> 
-        Save user credentials into DB
-    /update_credentials <username> <password> 
-        Update user credentials into DB
+        Save or update user credentials into DB
     /help
         Returns commands and its descriptions 
     """
@@ -30,9 +28,8 @@ class JiraBot(object):
     bot_commands = [
         '/start - Start to work with user',
         '/caps <some text> - Return entered text into uppercase',
-        '/authorization <username> <password> - Save user credentials into DB',
-        '/update_credentials <username> <password> - '
-        'Update user credentials into DB',
+        '/authorization <username> <password> - Save or update user '
+        'credentials into DB',
         '/help - Returns commands and its descriptions'
     ]
 
@@ -77,15 +74,6 @@ class JiraBot(object):
         password = None
         telegram_id = str(update.message.from_user.id)
 
-        if self._db.get_user_data(telegram_id):
-            bot.send_message(
-                chat_id=update.message.chat_id,
-                text="You're already authorized. If you want to change "
-                     "credentials, use the "
-                     "/update_credentials <username> <password>"
-            )
-            return
-
         try:
             username, password = args
         except ValueError:
@@ -116,19 +104,21 @@ class JiraBot(object):
             jira_cred = dict(username=username, password=encrypted_password)
             user_data = dict(telegram_id=telegram_id, jira=jira_cred)
 
-            self._db.create_user(user_data)
-            logging.info(
-                'User {} was created successfully'.format(username)
-            )
+            # create user or update his credentials
+            transaction_status = self._db.save_credentials(user_data)
 
-            bot.send_message(
-                chat_id=update.message.chat_id,
-                text='Your account info is saved successfully. '
-                     'Now you can use the commands associated with '
-                     'the service JIRA.\n'
-                     'Please, delete all messages which contains your '
-                     'credentials (even if the credentials are incorrect).'
-            )
+            if not transaction_status:
+                bot.send_message(
+                    chat_id=update.message.chat_id,
+                    text='Internal error. Please try again after some time.'
+                )
+            else:
+                bot.send_message(
+                    chat_id=update.message.chat_id,
+                    text='Your credentials are saved successfully.\n'
+                         'Please, delete all messages which contains your '
+                         'credentials (even if the credentials are incorrect).'
+                )
 
     def _echo_command(self, bot, update):
         logging.info('Echo: {}'.format(update.message.text))

@@ -42,22 +42,23 @@ class JiraBackend(object):
     # description of the error for each action
     login_error = {
         401: 'Invalid credentials',
-        403: 'Login is denied due to a CAPTCHA requirement. '
-             'Please, login into Jira via browser and try again.',
+        403: 'Login is denied due to a CAPTCHA requirement, or any other '
+             'reason. Please, login (relogin) into Jira via browser '
+             'and try again.',
         409: 'Login is denied due to an unverified email. '
              'The email must be verified by logging in to JIRA through a '
              'browser and verifying the email.'
     }
 
     @staticmethod
-    def getting_credentials(kwargs):
+    def getting_credentials(kwargs: dict):
         username = kwargs.get('username', False)
         password = kwargs.get('password', False)
 
         return username, password
 
     @staticmethod
-    def check_credentials(username, password):
+    def check_credentials(username: str, password: str):
         try:
             jira_conn = jira.JIRA(
                 server=config('JIRA_HOST'),
