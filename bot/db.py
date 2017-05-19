@@ -6,14 +6,14 @@ from pymongo import MongoClient
 from pymongo.errors import ServerSelectionTimeoutError, WriteError
 
 
-def get_db_connect(func):
+def mongodb_connect(func):
     """
     Decorator establishes a connection to the database and checks it. 
     If the connection is - passes the object to the function to execute 
     the query. If you have no connection - writes to the log. 
     In any case closes the connection to the database.
     :param func: function in which the actions with the DB will be performed
-    :return: 
+    :return: data from DB
     """
     def wrapper(*args, **kwargs):
         db_name = config('DB_NAME')
@@ -62,7 +62,7 @@ class MongoBackend(object):
 
         return dict()
 
-    @get_db_connect
+    @mongodb_connect
     def save_credentials(self, user_data: dict, *args, **kwargs) -> bool:
         """
         If the user is in the database - updates the data. 
@@ -87,6 +87,10 @@ class MongoBackend(object):
                 logging.warning('Error updating user: {}'.format(e))
                 return False
             else:
+                logging.info(
+                    'Credentials of {} was '
+                    'updated'.format(user_data['jira']['username'])
+                )
                 return True
         else:
             try:
@@ -95,4 +99,21 @@ class MongoBackend(object):
                 logging.warning('Error creating user: {}'.format(e))
                 return False
             else:
+                logging.info(
+                    'User {} was created '
+                    'successfully'.format(user_data.get('username', ''))
+                )
                 return True
+
+    @mongodb_connect
+    def get_user_credentials(self, telegram_id: str, *args, **kwargs) -> dict:
+        db = kwargs.get('db')
+
+        user = self.get_user_data(telegram_id, db)
+
+        if user:
+            username = user['jira']['username']
+            password = user['jira']['password']
+            return dict(username=username, password=password)
+
+        return dict()

@@ -6,13 +6,13 @@ from decouple import config
 OK_STATUS = 200
 
 
-def jira_connection(func):
+def jira_connect(func):
     """
     The decorator creates a connection for each request to Jira, 
     handles the authorization errors and terminates the user session 
     upon completion of the action.
     :param func: function in which interacts with the Jira service
-    :return: requested data or an error code
+    :return: requested data and status code
     """
     def wrapper(*args, **kwargs):
         username, password = JiraBackend.getting_credentials(kwargs)
@@ -27,6 +27,7 @@ def jira_connection(func):
             logging.info('{}'.format(e.status_code))
             return False, e.status_code
         else:
+            kwargs.update({'jira_conn': jira_conn})
             data = func(*args, **kwargs)
             jira_conn.kill_session()
             return data, OK_STATUS
@@ -58,7 +59,13 @@ class JiraBackend(object):
         return username, password
 
     @staticmethod
-    def check_credentials(username: str, password: str):
+    def check_credentials(username: str, password: str) -> (bool, int):
+        """
+        Attempt to authorize the user in the JIRA service.
+        :param username: username at Jira
+        :param password: password at Jira
+        :return: Status and code
+        """
         try:
             jira_conn = jira.JIRA(
                 server=config('JIRA_HOST'),
@@ -71,6 +78,51 @@ class JiraBackend(object):
             jira_conn.kill_session()
             return True, OK_STATUS
 
-    @jira_connection
-    def get_open_tickets(self, *args, **kwargs):
-        pass
+    @staticmethod
+    def _getting_data(kwargs: dict) -> (jira.JIRA, str):
+        """
+        Getting jira_conn and username from kwargs
+        :param kwargs: dict
+        :return: jira_conn and username
+        """
+        jira_conn = kwargs.get('jira_conn')
+        username = kwargs.get('username')
+
+        return jira_conn, username
+
+    @jira_connect
+    def get_open_issues(self, *args, **kwargs) -> list:
+        """
+        Gets issues assigned to the user
+        :param args: 
+        :param kwargs: 
+        :return: 
+        """
+        jira_conn, username = self._getting_data(kwargs)
+
+        # TODO: Get issues by specific "open" status
+        issues = jira_conn.search_issues(
+            'assignee = {username}'.format(username=username)
+        )
+
+        if issues:
+            return self._issues_formatting(issues)
+
+        return list()
+
+    @staticmethod
+    def _issues_formatting(issues) -> list:
+        """
+        Formats tasks by template: issue id, title and permalink
+        :param issues: jira issues object
+        :return: list of formatted issues
+        """
+        issues_list = list()
+
+        for issue in issues:
+            issues_str = '{} {}\n{}'.format(
+                issue.key, issue.fields.summary, issue.permalink()
+            )
+            issues_list.append(issues_str)
+
+        return issues_list

@@ -1,7 +1,7 @@
 import logging
 
 from decouple import config
-from telegram import (InlineKeyboardButton, InlineKeyboardMarkup,
+from telegram import (ChatAction, InlineKeyboardButton, InlineKeyboardMarkup,
                       ReplyKeyboardMarkup, ReplyKeyboardRemove)
 from telegram.error import (BadRequest, ChatMigrated, NetworkError,
                             TelegramError, TimedOut, Unauthorized)
@@ -23,14 +23,13 @@ class JiraBot(object):
     /authorization <username> <password> 
         Save or update user credentials into DB
     /menu
-        
+        Displaying menu with main functions
     /help
         Returns commands and its descriptions 
     """
 
     bot_commands = [
         '/start - Start to work with user',
-        '/caps <some text> - Return entered text into uppercase',
         '/authorization <username> <password> - Save or update user '
         'credentials into DB',
         '/menu - Displaying menu with main functions',
@@ -55,10 +54,10 @@ class JiraBot(object):
             CommandHandler('menu', self._menu_command)
         )
         self.updater.dispatcher.add_handler(
-            CallbackQueryHandler(self._issues_handler, pattern=r'^issues:')
+            CommandHandler('help', self._help_command)
         )
         self.updater.dispatcher.add_handler(
-            CommandHandler('help', self._help_command)
+            CallbackQueryHandler(self._issues_handler, pattern=r'^issues:')
         )
         self.updater.dispatcher.add_handler(
             MessageHandler(Filters.text, self._menu_dispatcher)
@@ -81,12 +80,25 @@ class JiraBot(object):
         self.updater.stop()
 
     def _start_command(self, bot, update):
+        first_name = update.message.from_user.first_name
+        message = 'Hi, {}! List of basic commands can look through /help. '
+        'Be sure to specify your credentials using the '
+        'command /authorization.'
+
         bot.send_message(
             chat_id=update.message.chat_id,
-            text='Test',
+            text=message.format(first_name),
         )
 
     def _authorization_command(self, bot, update, args):
+        """
+        /authorization <username> <password>
+        
+        Saving user credentials. Credentials are verified through user 
+        authorization, if validation is completed, data is saved.
+        
+        :return: Error message or message about successful saving of data
+        """
         username = None
         password = None
         telegram_id = str(update.message.from_user.id)
@@ -96,8 +108,8 @@ class JiraBot(object):
         except ValueError:
             bot.send_message(
                 chat_id=update.message.chat_id,
-                text='Incorrectly entered data (enter only the username '
-                     'and password separated by a space)'
+                text='Incorrectly entered data (use the following '
+                     'command format: /authorization <username> <password>)'
             )
         else:
             # Verification of credentials. The data will be stored only
@@ -147,9 +159,6 @@ class JiraBot(object):
     def _menu_dispatcher(self, bot, update):
         """
         Call order: /menu
-        :param bot: 
-        :param update: 
-        :return: 
         """
         logging.info('Echo: {}'.format(update.message.text))
         reply_markup = ReplyKeyboardRemove()
@@ -162,7 +171,7 @@ class JiraBot(object):
             return
         elif 'Tracking' == update.message.text:
             bot.send_message(chat_id=update.message.chat_id,
-                             text='You chosed tracking',
+                             text='Tracking menu',
                              reply_markup=reply_markup)
             return
 
@@ -172,9 +181,6 @@ class JiraBot(object):
     def _issues_menu(self, bot, update):
         """
         Call order: /menu > Issues
-        :param bot: 
-        :param update: 
-        :return: 
         """
         issues_button_list = [
             InlineKeyboardButton(
@@ -201,16 +207,89 @@ class JiraBot(object):
     def _issues_handler(self, bot, update):
         """
         Call order: /menu > Issues > Any option
-        :param bot: 
-        :param update: 
-        :return: 
         """
         query = update.callback_query
+        telegram_id = str(update.callback_query.from_user.id)
+        chat_id = query.message.chat_id
+        message_id = query.message.message_id
+
+        if query.data == 'issues:my':
+            self._getting_my_open_issues(bot, telegram_id, chat_id, message_id)
+            return
+
         bot.edit_message_text(
             text='You chose: {}'.format(query.data.replace('issues:', '')),
             chat_id=query.message.chat_id,
             message_id=query.message.message_id
         )
+
+    def _getting_my_open_issues(self, bot, telegram_id, chat_id, message_id):
+        """
+        Receiving open user issues and modifying the current message
+        :param bot: 
+        :param telegram_id: user id
+        :param chat_id: chat id with user
+        :param message_id: last message id
+        :return: Message with a list of open user issues
+        """
+        bot.send_chat_action(chat_id=chat_id, action=ChatAction.TYPING)
+        credentials, message = self._get_and_check_cred(telegram_id)
+
+        if not credentials:
+            bot.edit_message_text(
+                text=message,
+                chat_id=chat_id,
+                message_id=message_id
+            )
+            return
+
+        username = credentials.get('username')
+        password = credentials.get('password')
+
+        issues, status = self._jira.get_open_issues(
+            username=username, password=password
+        )
+
+        if not issues:
+            if not credentials:
+                bot.edit_message_text(
+                    text='You have no open issues',
+                    chat_id=chat_id,
+                    message_id=message_id
+                )
+                return
+
+        # TODO: add pagination
+        formatted_issues = '\n\n'.join(issues)
+        bot.edit_message_text(
+            text=formatted_issues,
+            chat_id=chat_id,
+            message_id=message_id
+        )
+
+    def _get_and_check_cred(self, telegram_id: str):
+        """
+        Gets the user's credentials from the database and 
+        checks them (tries to authorize the user in JIRA)
+        :param telegram_id: user id telegram 
+        :return: credentials and an empty message or False and an error message
+        """
+        credentials = self._db.get_user_credentials(telegram_id)
+
+        if credentials:
+            username = credentials.get('username')
+            password = utils.decrypt_password(credentials.get('password'))
+
+            confirmed, status_code = self._jira.check_credentials(
+                username, password
+            )
+
+            if not confirmed:
+                return False, 'Credentials are incorrect'
+
+            return dict(username=username, password=password), ''
+
+        return False, 'You did not specify credentials'
 
     def _help_command(self, bot, update):
         bot.send_message(
