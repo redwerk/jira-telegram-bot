@@ -51,18 +51,6 @@ class JiraBackend(object):
              'browser and verifying the email.'
     }
 
-    issues_statuses = (
-        'Open',
-        'In Progress',
-        'Reopened',
-        'To Do',
-        'Testing',
-        'Selected for Development',
-        'QA',
-        'Sales team',
-        'Prepare for offer',
-    )
-
     @staticmethod
     def getting_credentials(kwargs: dict):
         username = kwargs.get('username', False)
@@ -111,8 +99,8 @@ class JiraBackend(object):
         jira_conn, username = self._getting_data(kwargs)
 
         issues = jira_conn.search_issues(
-            'assignee = {username} and ({statuses})'.format(
-                username=username, statuses=self.generate_status_query()
+            'assignee = {username} and resolution = Unresolved'.format(
+                username=username
             ),
             maxResults=100
         )
@@ -138,12 +126,3 @@ class JiraBackend(object):
             issues_list.append(issues_str)
 
         return issues_list
-
-    def generate_status_query(self) -> str:
-        """
-        Generating a query string in JQL format from open issues
-        :return: 'status = "Open" or status = "To Do"' etc.
-        """
-        sub_query = ['status = "{}"'.format(s) for s in self.issues_statuses]
-        return ' or '.join(sub_query)
-
