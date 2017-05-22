@@ -251,13 +251,12 @@ class JiraBot(object):
         )
 
         if not issues:
-            if not credentials:
-                bot.edit_message_text(
-                    text='You have no open issues',
-                    chat_id=chat_id,
-                    message_id=message_id
-                )
-                return
+            bot.edit_message_text(
+                text='You have no open issues',
+                chat_id=chat_id,
+                message_id=message_id
+            )
+            return
 
         # TODO: add pagination
         formatted_issues = '\n\n'.join(issues)
