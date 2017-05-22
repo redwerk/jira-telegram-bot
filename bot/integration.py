@@ -102,7 +102,7 @@ class JiraBackend(object):
             'assignee = {username} and resolution = Unresolved'.format(
                 username=username
             ),
-            maxResults=100
+            maxResults=200
         )
 
         if issues:

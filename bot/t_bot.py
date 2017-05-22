@@ -38,6 +38,9 @@ class JiraBot(object):
 
     def __init__(self):
         self.updater = Updater(config('BOT_TOKEN'))
+        self._user_open_issues = dict()
+        self.issues_per_page = 10
+
         self._db = MongoBackend()
         self._jira = JiraBackend()
 
@@ -60,9 +63,15 @@ class JiraBot(object):
             CallbackQueryHandler(self._issues_handler, pattern=r'^issues:')
         )
         self.updater.dispatcher.add_handler(
+            CallbackQueryHandler(
+                self._my_issue_paginator_handler,
+                pattern=r'^my_i:'
+            )
+        )
+        self.updater.dispatcher.add_handler(
             MessageHandler(Filters.text, self._menu_dispatcher)
         )
-        self.updater.dispatcher.add_error_handler(self._error_callback)
+        # self.updater.dispatcher.add_error_handler(self._error_callback)
 
         menu_keyboard = [
             ['Issues', 'Tracking'],
@@ -258,13 +267,118 @@ class JiraBot(object):
             )
             return
 
-        # TODO: add pagination
-        formatted_issues = '\n\n'.join(issues)
+        buttons = None
+        if len(issues) < self.issues_per_page:
+            formatted_issues = '\n\n'.join(issues)
+        else:
+            user_issues = utils.split_by_pages(issues, self.issues_per_page)
+            page_count = len(user_issues)
+            self._user_open_issues[username] = dict(
+                issues=user_issues, page_count=page_count
+            )
+
+            # return the first page
+            formatted_issues = '\n\n'.join(user_issues[0])
+            buttons = self.get_pagination_keyboard(1, page_count, 'my_i:{}')
+
         bot.edit_message_text(
             text=formatted_issues,
             chat_id=chat_id,
-            message_id=message_id
+            message_id=message_id,
+            reply_markup=buttons
         )
+
+    def _my_issue_paginator_handler(self, bot, update):
+        """
+        After the user clicked on the page number to be displayed, the handler 
+        generates a message with the data from the specified page, creates 
+        a new keyboard and modifies the last message (the one under which 
+        the key with the page number was pressed)
+        """
+        telegram_id = str(update.callback_query.from_user.id)
+
+        query = update.callback_query
+        chat_id = query.message.chat_id
+        message_id = query.message.message_id
+        current_page = int(query.data.replace('my_i:', ''))
+
+        user_cred = self._db.get_user_credentials(telegram_id)
+
+        if not user_cred:
+            bot.edit_message_text(
+                text='You did not specify credentials',
+                chat_id=chat_id,
+                message_id=message_id
+            )
+
+        user_data = self._user_open_issues.get(user_cred['username'])
+        buttons = self.get_pagination_keyboard(
+            current=current_page,
+            max_page=user_data['page_count'],
+            str_key='my_i:{}'
+        )
+        formatted_issues = '\n\n'.join(user_data['issues'][current_page - 1])
+
+        bot.edit_message_text(
+            text=formatted_issues,
+            chat_id=chat_id,
+            message_id=message_id,
+            reply_markup=buttons
+        )
+
+    @staticmethod
+    def get_pagination_keyboard(current: int, max_page: int, str_key: str):
+        """
+        Generating an inline keyboard for displaying pagination
+        :param current: selected page number
+        :param max_page: max page number for displaying in keyboard
+        :param str_key: some key for different handlers
+        :return: list from formed inline buttons
+        """
+        inline_buttons = []
+
+        if current > 1:
+            inline_buttons.append(
+                InlineKeyboardButton(
+                    '<< 1',
+                    callback_data=str_key.format('1')
+                )
+            )
+
+        if current > 2:
+            inline_buttons.append(
+                InlineKeyboardButton(
+                    '< {}'.format(current - 1),
+                    callback_data=str_key.format(current - 1)
+                )
+            )
+
+        inline_buttons.append(
+            InlineKeyboardButton(
+                '* {} *'.format(current),
+                callback_data=str_key.format(current)
+            )
+        )
+
+        if current < max_page - 1:
+            inline_buttons.append(
+                InlineKeyboardButton(
+                    '{} >'.format(current + 1),
+                    callback_data=str_key.format(current + 1)
+                )
+            )
+
+        if current < max_page:
+            inline_buttons.append(
+                InlineKeyboardButton(
+                    '{} >>'.format(max_page),
+                    callback_data=str_key.format(max_page)
+                )
+            )
+
+        return InlineKeyboardMarkup(utils.build_menu(
+            inline_buttons, n_cols=len(inline_buttons)
+        ))
 
     def _get_and_check_cred(self, telegram_id: str):
         """
