@@ -39,6 +39,7 @@ class JiraBot(object):
     def __init__(self):
         self.updater = Updater(config('BOT_TOKEN'))
         self._user_open_issues = dict()
+        self._project_open_issues = dict()
         self.issues_per_page = 10
 
         self._db = MongoBackend()
@@ -66,6 +67,18 @@ class JiraBot(object):
             CallbackQueryHandler(
                 self._my_issue_paginator_handler,
                 pattern=r'^my_i:'
+            )
+        )
+        self.updater.dispatcher.add_handler(
+            CallbackQueryHandler(
+                self._getting_open_project_issues,
+                pattern=r'^project:'
+            )
+        )
+        self.updater.dispatcher.add_handler(
+            CallbackQueryHandler(
+                self._project_issue_paginator_handler,
+                pattern=r'^project_i:'
             )
         )
         self.updater.dispatcher.add_handler(
@@ -225,6 +238,9 @@ class JiraBot(object):
         if query.data == 'issues:my':
             self._getting_my_open_issues(bot, telegram_id, chat_id, message_id)
             return
+        elif query.data == 'issues:p':
+            self._choose_project_menu(bot, telegram_id, chat_id, message_id)
+            return
 
         bot.edit_message_text(
             text='You chose: {}'.format(query.data.replace('issues:', '')),
@@ -318,6 +334,158 @@ class JiraBot(object):
             str_key='my_i:{}'
         )
         formatted_issues = '\n\n'.join(user_data['issues'][current_page - 1])
+
+        bot.edit_message_text(
+            text=formatted_issues,
+            chat_id=chat_id,
+            message_id=message_id,
+            reply_markup=buttons
+        )
+
+    def _choose_project_menu(self, bot, telegram_id, chat_id, message_id):
+        """
+        Call order: /menu > Issues > Open issues by project
+        Displaying inline keyboard with names of projects
+        
+        :param bot: 
+        :param telegram_id: user id in telegram
+        :param chat_id: current chat whith a user
+        :param message_id: last message
+        """
+        credentials, message = self._get_and_check_cred(telegram_id)
+
+        if not credentials:
+            bot.edit_message_text(
+                text=message,
+                chat_id=chat_id,
+                message_id=message_id
+            )
+            return
+
+        username = credentials.get('username')
+        password = credentials.get('password')
+
+        projects_buttons = list()
+        projects, status = self._jira.get_projects(
+            username=username, password=password
+        )
+
+        if not projects:
+            bot.edit_message_text(
+                text="Sorry, can't get projects",
+                chat_id=chat_id,
+                message_id=message_id
+            )
+            return
+
+        # dynamic keyboard creation
+        for project_name in projects:
+            projects_buttons.append(
+                InlineKeyboardButton(
+                    text=project_name,
+                    callback_data='project:{}'.format(project_name)
+                )
+            )
+
+        buttons = InlineKeyboardMarkup(
+            utils.build_menu(projects_buttons, n_cols=3)
+        )
+
+        bot.edit_message_text(
+            text='Choose one of the projects',
+            chat_id=chat_id,
+            message_id=message_id,
+            reply_markup=buttons
+        )
+
+    def _getting_open_project_issues(self, bot, update):
+        """
+        Call order: /menu > Issues > Open project issues > Some project
+        Display unresolved issues by selected project.
+        """
+        buttons = None
+        telegram_id = str(update.callback_query.from_user.id)
+
+        query = update.callback_query
+        chat_id = query.message.chat_id
+        message_id = query.message.message_id
+        project_name = query.data.replace('project:', '')
+
+        bot.send_chat_action(chat_id=chat_id, action=ChatAction.TYPING)
+        credentials, message = self._get_and_check_cred(telegram_id)
+
+        if not credentials:
+            bot.edit_message_text(
+                text=message,
+                chat_id=chat_id,
+                message_id=message_id
+            )
+            return
+
+        username = credentials.get('username')
+        password = credentials.get('password')
+
+        issues, status = self._jira.get_open_project_issues(
+            project=project_name, username=username, password=password
+        )
+
+        if not issues:
+            bot.edit_message_text(
+                text="Project doesn't have any open issues",
+                chat_id=chat_id,
+                message_id=message_id
+            )
+            return
+        
+        if len(issues) < self.issues_per_page:
+            formatted_issues = '\n\n'.join(issues)
+        else:
+            project_issues = utils.split_by_pages(issues, self.issues_per_page)
+            page_count = len(project_issues)
+            self._project_open_issues[project_name] = dict(
+                issues=project_issues, page_count=page_count
+            )
+
+            # return the first page
+            formatted_issues = '\n\n'.join(project_issues[0])
+            str_key = 'project_i:{name}'.format(name=project_name)
+            buttons = utils.get_pagination_keyboard(
+                current=1,
+                max_page=page_count,
+                str_key=str_key + '-{}'
+            )
+
+            bot.edit_message_text(
+                text=formatted_issues,
+                chat_id=chat_id,
+                message_id=message_id,
+                reply_markup=buttons
+            )
+
+    def _project_issue_paginator_handler(self, bot, update):
+        """
+        Page turning by unresolved issues in selected project
+        :return: display current selected page
+        """
+        query = update.callback_query
+        chat_id = query.message.chat_id
+        message_id = query.message.message_id
+
+        name_page = query.data.replace('project_i:', '')
+        project_name, page = name_page.split('-')
+        current_page = int(page)
+
+        project_data = self._project_open_issues.get(project_name)
+        str_key = 'project_i:{name}'.format(name=project_name)
+        buttons = utils.get_pagination_keyboard(
+            current=current_page,
+            max_page=project_data['page_count'],
+            str_key=str_key + '-{}'
+        )
+
+        formatted_issues = '\n\n'.join(
+            project_data['issues'][current_page - 1]
+        )
 
         bot.edit_message_text(
             text=formatted_issues,

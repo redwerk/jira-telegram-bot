@@ -126,3 +126,33 @@ class JiraBackend(object):
             issues_list.append(issues_str)
 
         return issues_list
+
+    @jira_connect
+    def get_projects(self, *args, **kwargs) -> list:
+        """
+        Return abbreviation name of the projects
+        :return: list of names
+        """
+        jira_conn = kwargs.get('jira_conn')
+
+        projects = jira_conn.projects()
+        return [project.key for project in projects]
+
+    @jira_connect
+    def get_open_project_issues(self, project: str, *args, **kwargs) -> list:
+        """
+        Getting unresolved issues by project
+        :param project: abbreviation name of the project
+        :return: formatted issues list or empty list
+        """
+        jira_conn = kwargs.get('jira_conn')
+
+        issues = jira_conn.search_issues(
+            'project = {} and resolution = Unresolved'.format(project),
+            maxResults=200
+        )
+
+        if issues:
+            return self._issues_formatting(issues)
+
+        return list()

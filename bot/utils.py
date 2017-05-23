@@ -85,7 +85,7 @@ def get_pagination_keyboard(current: int, max_page: int, str_key: str):
 
     inline_buttons.append(
         InlineKeyboardButton(
-            '* {} *'.format(current),
+            '· {} ·'.format(current),
             callback_data=str_key.format(current)
         )
     )
