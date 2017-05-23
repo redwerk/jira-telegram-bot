@@ -37,54 +37,54 @@ class JiraBot(object):
     ]
 
     def __init__(self):
-        self.updater = Updater(config('BOT_TOKEN'))
-        self._user_open_issues = dict()
-        self._project_open_issues = dict()
+        self.__updater = Updater(config('BOT_TOKEN'))
+        self.__user_open_issues = dict()
+        self.__project_open_issues = dict()
         self.issues_per_page = 10
 
-        self._db = MongoBackend()
-        self._jira = JiraBackend()
+        self.__db = MongoBackend()
+        self.__jira = JiraBackend()
 
-        self.updater.dispatcher.add_handler(
-            CommandHandler('start', self._start_command)
+        self.__updater.dispatcher.add_handler(
+            CommandHandler('start', self.__start_command)
         )
-        self.updater.dispatcher.add_handler(
+        self.__updater.dispatcher.add_handler(
             CommandHandler(
                 'authorization',
-                self._authorization_command,
+                self.__authorization_command,
                 pass_args=True)
         )
-        self.updater.dispatcher.add_handler(
-            CommandHandler('menu', self._menu_command)
+        self.__updater.dispatcher.add_handler(
+            CommandHandler('menu', self.__menu_command)
         )
-        self.updater.dispatcher.add_handler(
-            CommandHandler('help', self._help_command)
+        self.__updater.dispatcher.add_handler(
+            CommandHandler('help', self.__help_command)
         )
-        self.updater.dispatcher.add_handler(
-            CallbackQueryHandler(self._issues_handler, pattern=r'^issues:')
+        self.__updater.dispatcher.add_handler(
+            CallbackQueryHandler(self.__issues_handler, pattern=r'^issues:')
         )
-        self.updater.dispatcher.add_handler(
+        self.__updater.dispatcher.add_handler(
             CallbackQueryHandler(
-                self._my_issue_paginator_handler,
+                self.__my_issue_paginator_handler,
                 pattern=r'^my_i:'
             )
         )
-        self.updater.dispatcher.add_handler(
+        self.__updater.dispatcher.add_handler(
             CallbackQueryHandler(
-                self._getting_open_project_issues,
+                self.__get_open_project_issues,
                 pattern=r'^project:'
             )
         )
-        self.updater.dispatcher.add_handler(
+        self.__updater.dispatcher.add_handler(
             CallbackQueryHandler(
-                self._project_issue_paginator_handler,
+                self.__project_issue_paginator_handler,
                 pattern=r'^project_i:'
             )
         )
-        self.updater.dispatcher.add_handler(
-            MessageHandler(Filters.text, self._menu_dispatcher)
+        self.__updater.dispatcher.add_handler(
+            MessageHandler(Filters.text, self.__menu_dispatcher)
         )
-        self.updater.dispatcher.add_error_handler(self._error_callback)
+        self.__updater.dispatcher.add_error_handler(self.__error_callback)
 
         menu_keyboard = [
             ['Issues', 'Tracking'],
@@ -95,13 +95,11 @@ class JiraBot(object):
         )
 
     def start(self):
-        self.updater.start_polling()
-        self.updater.idle()
+        self.__updater.start_polling()
+        self.__updater.idle()
 
-    def stop(self):
-        self.updater.stop()
-
-    def _start_command(self, bot, update):
+    @staticmethod
+    def __start_command(bot, update):
         first_name = update.message.from_user.first_name
         message = 'Hi, {}! List of basic commands can look through /help. '
         'Be sure to specify your credentials using the '
@@ -112,7 +110,7 @@ class JiraBot(object):
             text=message.format(first_name),
         )
 
-    def _authorization_command(self, bot, update, args):
+    def __authorization_command(self, bot, update, args):
         """
         /authorization <username> <password>
         
@@ -136,12 +134,12 @@ class JiraBot(object):
         else:
             # Verification of credentials. The data will be stored only
             # if there is confirmed authorization in Jira.
-            confirmed, status_code = self._jira.check_credentials(
+            confirmed, status_code = self.__jira.check_credentials(
                 username, password
             )
 
             if not confirmed:
-                message = self._jira.login_error.get(
+                message = self.__jira.login_error.get(
                     status_code, 'Unknown error'
                 )
                 bot.send_message(
@@ -156,7 +154,7 @@ class JiraBot(object):
             user_data = dict(telegram_id=telegram_id, jira=jira_cred)
 
             # create user or update his credentials
-            transaction_status = self._db.save_credentials(user_data)
+            transaction_status = self.__db.save_credentials(user_data)
 
             if not transaction_status:
                 bot.send_message(
@@ -171,14 +169,14 @@ class JiraBot(object):
                          'credentials (even if the credentials are incorrect).'
                 )
 
-    def _menu_command(self, bot, update):
+    def __menu_command(self, bot, update):
         bot.send_message(
             chat_id=update.message.chat_id,
             text='What do you want to see?',
             reply_markup=self.menu_markup
         )
 
-    def _menu_dispatcher(self, bot, update):
+    def __menu_dispatcher(self, bot, update):
         """
         Call order: /menu
         """
@@ -189,7 +187,7 @@ class JiraBot(object):
             bot.send_message(chat_id=update.message.chat_id,
                              text='Issues menu',
                              reply_markup=reply_markup)
-            self._issues_menu(bot, update)
+            self.__issues_menu(bot, update)
             return
         elif 'Tracking' == update.message.text:
             bot.send_message(chat_id=update.message.chat_id,
@@ -200,7 +198,8 @@ class JiraBot(object):
         bot.send_message(chat_id=update.message.chat_id,
                          text=update.message.text)
 
-    def _issues_menu(self, bot, update):
+    @staticmethod
+    def __issues_menu(bot, update):
         """
         Call order: /menu > Issues
         """
@@ -226,7 +225,7 @@ class JiraBot(object):
             reply_markup=reply_markup
         )
 
-    def _issues_handler(self, bot, update):
+    def __issues_handler(self, bot, update):
         """
         Call order: /menu > Issues > Any option
         """
@@ -236,10 +235,10 @@ class JiraBot(object):
         message_id = query.message.message_id
 
         if query.data == 'issues:my':
-            self._getting_my_open_issues(bot, telegram_id, chat_id, message_id)
+            self.__getting_my_open_issues(bot, telegram_id, chat_id, message_id)
             return
         elif query.data == 'issues:p':
-            self._choose_project_menu(bot, telegram_id, chat_id, message_id)
+            self.__choose_project_menu(bot, telegram_id, chat_id, message_id)
             return
 
         bot.edit_message_text(
@@ -248,7 +247,7 @@ class JiraBot(object):
             message_id=query.message.message_id
         )
 
-    def _getting_my_open_issues(self, bot, telegram_id, chat_id, message_id):
+    def __getting_my_open_issues(self, bot, telegram_id, chat_id, message_id):
         """
         Receiving open user issues and modifying the current message
         :param bot: 
@@ -258,7 +257,7 @@ class JiraBot(object):
         :return: Message with a list of open user issues
         """
         bot.send_chat_action(chat_id=chat_id, action=ChatAction.TYPING)
-        credentials, message = self._get_and_check_cred(telegram_id)
+        credentials, message = self.__get_and_check_cred(telegram_id)
 
         if not credentials:
             bot.edit_message_text(
@@ -271,7 +270,7 @@ class JiraBot(object):
         username = credentials.get('username')
         password = credentials.get('password')
 
-        issues, status = self._jira.get_open_issues(
+        issues, status = self.__jira.get_open_issues(
             username=username, password=password
         )
 
@@ -289,7 +288,7 @@ class JiraBot(object):
         else:
             user_issues = utils.split_by_pages(issues, self.issues_per_page)
             page_count = len(user_issues)
-            self._user_open_issues[username] = dict(
+            self.__user_open_issues[username] = dict(
                 issues=user_issues, page_count=page_count
             )
 
@@ -304,7 +303,7 @@ class JiraBot(object):
             reply_markup=buttons
         )
 
-    def _my_issue_paginator_handler(self, bot, update):
+    def __my_issue_paginator_handler(self, bot, update):
         """
         After the user clicked on the page number to be displayed, the handler 
         generates a message with the data from the specified page, creates 
@@ -318,7 +317,7 @@ class JiraBot(object):
         message_id = query.message.message_id
         current_page = int(query.data.replace('my_i:', ''))
 
-        user_cred = self._db.get_user_credentials(telegram_id)
+        user_cred = self.__db.get_user_credentials(telegram_id)
 
         if not user_cred:
             bot.edit_message_text(
@@ -327,7 +326,7 @@ class JiraBot(object):
                 message_id=message_id
             )
 
-        user_data = self._user_open_issues.get(user_cred['username'])
+        user_data = self.__user_open_issues.get(user_cred['username'])
         buttons = utils.get_pagination_keyboard(
             current=current_page,
             max_page=user_data['page_count'],
@@ -342,7 +341,7 @@ class JiraBot(object):
             reply_markup=buttons
         )
 
-    def _choose_project_menu(self, bot, telegram_id, chat_id, message_id):
+    def __choose_project_menu(self, bot, telegram_id, chat_id, message_id):
         """
         Call order: /menu > Issues > Open issues by project
         Displaying inline keyboard with names of projects
@@ -352,7 +351,7 @@ class JiraBot(object):
         :param chat_id: current chat whith a user
         :param message_id: last message
         """
-        credentials, message = self._get_and_check_cred(telegram_id)
+        credentials, message = self.__get_and_check_cred(telegram_id)
 
         if not credentials:
             bot.edit_message_text(
@@ -366,7 +365,7 @@ class JiraBot(object):
         password = credentials.get('password')
 
         projects_buttons = list()
-        projects, status = self._jira.get_projects(
+        projects, status = self.__jira.get_projects(
             username=username, password=password
         )
 
@@ -398,7 +397,7 @@ class JiraBot(object):
             reply_markup=buttons
         )
 
-    def _getting_open_project_issues(self, bot, update):
+    def __get_open_project_issues(self, bot, update):
         """
         Call order: /menu > Issues > Open project issues > Some project
         Display unresolved issues by selected project.
@@ -412,7 +411,7 @@ class JiraBot(object):
         project_name = query.data.replace('project:', '')
 
         bot.send_chat_action(chat_id=chat_id, action=ChatAction.TYPING)
-        credentials, message = self._get_and_check_cred(telegram_id)
+        credentials, message = self.__get_and_check_cred(telegram_id)
 
         if not credentials:
             bot.edit_message_text(
@@ -425,7 +424,7 @@ class JiraBot(object):
         username = credentials.get('username')
         password = credentials.get('password')
 
-        issues, status = self._jira.get_open_project_issues(
+        issues, status = self.__jira.get_open_project_issues(
             project=project_name, username=username, password=password
         )
 
@@ -442,7 +441,7 @@ class JiraBot(object):
         else:
             project_issues = utils.split_by_pages(issues, self.issues_per_page)
             page_count = len(project_issues)
-            self._project_open_issues[project_name] = dict(
+            self.__project_open_issues[project_name] = dict(
                 issues=project_issues, page_count=page_count
             )
 
@@ -462,7 +461,7 @@ class JiraBot(object):
                 reply_markup=buttons
             )
 
-    def _project_issue_paginator_handler(self, bot, update):
+    def __project_issue_paginator_handler(self, bot, update):
         """
         Page turning by unresolved issues in selected project
         :return: display current selected page
@@ -475,7 +474,7 @@ class JiraBot(object):
         project_name, page = name_page.split('-')
         current_page = int(page)
 
-        project_data = self._project_open_issues.get(project_name)
+        project_data = self.__project_open_issues.get(project_name)
         str_key = 'project_i:{name}'.format(name=project_name)
         buttons = utils.get_pagination_keyboard(
             current=current_page,
@@ -494,20 +493,20 @@ class JiraBot(object):
             reply_markup=buttons
         )
 
-    def _get_and_check_cred(self, telegram_id: str):
+    def __get_and_check_cred(self, telegram_id: str):
         """
         Gets the user's credentials from the database and 
         checks them (tries to authorize the user in JIRA)
         :param telegram_id: user id telegram 
         :return: credentials and an empty message or False and an error message
         """
-        credentials = self._db.get_user_credentials(telegram_id)
+        credentials = self.__db.get_user_credentials(telegram_id)
 
         if credentials:
             username = credentials.get('username')
             password = utils.decrypt_password(credentials.get('password'))
 
-            confirmed, status_code = self._jira.check_credentials(
+            confirmed, status_code = self.__jira.check_credentials(
                 username, password
             )
 
@@ -518,12 +517,13 @@ class JiraBot(object):
 
         return False, 'You did not specify credentials'
 
-    def _help_command(self, bot, update):
+    def __help_command(self, bot, update):
         bot.send_message(
             chat_id=update.message.chat_id, text='\n'.join(self.bot_commands)
         )
 
-    def _error_callback(self, bot, update, error):
+    @staticmethod
+    def __error_callback(bot, update, error):
         try:
             raise error
         except Unauthorized:
