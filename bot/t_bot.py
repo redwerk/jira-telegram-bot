@@ -35,12 +35,11 @@ class JiraBot(object):
         '/menu - Displaying menu with main functions',
         '/help - Returns commands and its descriptions'
     ]
+    issues_per_page = 10
 
     def __init__(self):
         self.__updater = Updater(config('BOT_TOKEN'))
-        self.__user_open_issues = dict()
-        self.__project_open_issues = dict()
-        self.issues_per_page = 10
+        self.__issue_cache = dict()
 
         self.__db = MongoBackend()
         self.__jira = JiraBackend()
@@ -65,20 +64,14 @@ class JiraBot(object):
         )
         self.__updater.dispatcher.add_handler(
             CallbackQueryHandler(
-                self.__my_issue_paginator_handler,
-                pattern=r'^my_i:'
+                self.__paginator_handler,
+                pattern=r'^paginator:'
             )
         )
         self.__updater.dispatcher.add_handler(
             CallbackQueryHandler(
                 self.__get_open_project_issues,
                 pattern=r'^project:'
-            )
-        )
-        self.__updater.dispatcher.add_handler(
-            CallbackQueryHandler(
-                self.__project_issue_paginator_handler,
-                pattern=r'^project_i:'
             )
         )
         self.__updater.dispatcher.add_handler(
@@ -180,7 +173,6 @@ class JiraBot(object):
         """
         Call order: /menu
         """
-        logging.info('Echo: {}'.format(update.message.text))
         reply_markup = ReplyKeyboardRemove()
 
         if 'Issues' == update.message.text:
@@ -194,9 +186,6 @@ class JiraBot(object):
                              text='Tracking menu',
                              reply_markup=reply_markup)
             return
-
-        bot.send_message(chat_id=update.message.chat_id,
-                         text=update.message.text)
 
     @staticmethod
     def __issues_menu(bot, update):
@@ -288,13 +277,18 @@ class JiraBot(object):
         else:
             user_issues = utils.split_by_pages(issues, self.issues_per_page)
             page_count = len(user_issues)
-            self.__user_open_issues[username] = dict(
+            self.__issue_cache[username] = dict(
                 issues=user_issues, page_count=page_count
             )
 
             # return the first page
             formatted_issues = '\n\n'.join(user_issues[0])
-            buttons = utils.get_pagination_keyboard(1, page_count, 'my_i:{}')
+            str_key = 'paginator:{}'.format(username)
+            buttons = utils.get_pagination_keyboard(
+                current=1,
+                max_page=page_count,
+                str_key=str_key + '-{}'
+            )
 
         bot.edit_message_text(
             text=formatted_issues,
@@ -303,41 +297,33 @@ class JiraBot(object):
             reply_markup=buttons
         )
 
-    def __my_issue_paginator_handler(self, bot, update):
+    def __paginator_handler(self, bot, update):
         """
         After the user clicked on the page number to be displayed, the handler 
         generates a message with the data from the specified page, creates 
         a new keyboard and modifies the last message (the one under which 
         the key with the page number was pressed)
         """
-        telegram_id = str(update.callback_query.from_user.id)
+        scope = self.__get_query_scope(update)
+        key, page = self.__get_issue_data(scope['data'])
+        user_data = self.__issue_cache.get(key)
 
-        query = update.callback_query
-        chat_id = query.message.chat_id
-        message_id = query.message.message_id
-        current_page = int(query.data.replace('my_i:', ''))
+        if not user_data:
+            logging.info('There is no data in the cache for {}'.format(key))
+            return
 
-        user_cred = self.__db.get_user_credentials(telegram_id)
-
-        if not user_cred:
-            bot.edit_message_text(
-                text='You did not specify credentials',
-                chat_id=chat_id,
-                message_id=message_id
-            )
-
-        user_data = self.__user_open_issues.get(user_cred['username'])
+        str_key = 'paginator:{}'.format(key)
         buttons = utils.get_pagination_keyboard(
-            current=current_page,
+            current=page,
             max_page=user_data['page_count'],
-            str_key='my_i:{}'
+            str_key=str_key + '-{}'
         )
-        formatted_issues = '\n\n'.join(user_data['issues'][current_page - 1])
+        formatted_issues = '\n\n'.join(user_data['issues'][page - 1])
 
         bot.edit_message_text(
             text=formatted_issues,
-            chat_id=chat_id,
-            message_id=message_id,
+            chat_id=scope['chat_id'],
+            message_id=scope['message_id'],
             reply_markup=buttons
         )
 
@@ -441,50 +427,18 @@ class JiraBot(object):
         else:
             project_issues = utils.split_by_pages(issues, self.issues_per_page)
             page_count = len(project_issues)
-            self.__project_open_issues[project_name] = dict(
+            self.__issue_cache[project_name] = dict(
                 issues=project_issues, page_count=page_count
             )
 
             # return the first page
             formatted_issues = '\n\n'.join(project_issues[0])
-            str_key = 'project_i:{name}'.format(name=project_name)
+            str_key = 'paginator:{name}'.format(name=project_name)
             buttons = utils.get_pagination_keyboard(
                 current=1,
                 max_page=page_count,
                 str_key=str_key + '-{}'
             )
-
-            bot.edit_message_text(
-                text=formatted_issues,
-                chat_id=chat_id,
-                message_id=message_id,
-                reply_markup=buttons
-            )
-
-    def __project_issue_paginator_handler(self, bot, update):
-        """
-        Page turning by unresolved issues in selected project
-        :return: display current selected page
-        """
-        query = update.callback_query
-        chat_id = query.message.chat_id
-        message_id = query.message.message_id
-
-        name_page = query.data.replace('project_i:', '')
-        project_name, page = name_page.split('-')
-        current_page = int(page)
-
-        project_data = self.__project_open_issues.get(project_name)
-        str_key = 'project_i:{name}'.format(name=project_name)
-        buttons = utils.get_pagination_keyboard(
-            current=current_page,
-            max_page=project_data['page_count'],
-            str_key=str_key + '-{}'
-        )
-
-        formatted_issues = '\n\n'.join(
-            project_data['issues'][current_page - 1]
-        )
 
         bot.edit_message_text(
             text=formatted_issues,
@@ -492,6 +446,37 @@ class JiraBot(object):
             message_id=message_id,
             reply_markup=buttons
         )
+
+    @staticmethod
+    def __get_query_scope(update) -> dict:
+        """
+        Gets scope data for current message
+        """
+        telegram_id = str(update.callback_query.from_user.id)
+
+        query = update.callback_query
+        chat_id = query.message.chat_id
+        message_id = query.message.message_id
+        data = query.data
+
+        return dict(
+            telegram_id=telegram_id,
+            chat_id=chat_id,
+            message_id=message_id,
+            data=data
+        )
+
+    @staticmethod
+    def __get_issue_data(query_data: str) -> (str, int):
+        """
+        Gets key and page for cached issues
+        :param query_data: 'paginator:IHB-13'
+        :return: ('IHB', 13)
+        """
+        _data = query_data.replace('paginator:', '')
+        key, page = _data.split('-')
+
+        return key, int(page)
 
     def __get_and_check_cred(self, telegram_id: str):
         """
