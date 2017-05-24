@@ -1,12 +1,10 @@
 import logging
 
 from decouple import config
-from telegram import (ChatAction, InlineKeyboardButton, InlineKeyboardMarkup,
-                      ReplyKeyboardMarkup, ReplyKeyboardRemove)
+from telegram import ChatAction, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.error import (BadRequest, ChatMigrated, NetworkError,
                             TelegramError, TimedOut, Unauthorized)
-from telegram.ext import (CallbackQueryHandler, CommandHandler, Filters,
-                          MessageHandler, Updater)
+from telegram.ext import CallbackQueryHandler, CommandHandler, Updater
 
 from bot import utils
 from bot.db import MongoBackend
@@ -75,17 +73,9 @@ class JiraBot(object):
             )
         )
         self.__updater.dispatcher.add_handler(
-            MessageHandler(Filters.text, self.__menu_dispatcher)
+            CallbackQueryHandler(self.__menu_dispatcher, pattern=r'.+_menu$')
         )
         self.__updater.dispatcher.add_error_handler(self.__error_callback)
-
-        menu_keyboard = [
-            ['Issues', 'Tracking'],
-        ]
-
-        self.menu_markup = ReplyKeyboardMarkup(
-            menu_keyboard, one_time_keyboard=True
-        )
 
     def start(self):
         self.__updater.start_polling()
@@ -163,61 +153,63 @@ class JiraBot(object):
                 )
 
     def __menu_command(self, bot, update):
-        bot.send_message(
-            chat_id=update.message.chat_id,
-            text='What do you want to see?',
-            reply_markup=self.menu_markup
-        )
-
-    def __menu_dispatcher(self, bot, update):
         """
         Call order: /menu
         """
-        reply_markup = ReplyKeyboardRemove()
-
-        if 'Issues' == update.message.text:
-            bot.send_message(chat_id=update.message.chat_id,
-                             text='Issues menu',
-                             reply_markup=reply_markup)
-            self.__issues_menu(bot, update)
-            return
-        elif 'Tracking' == update.message.text:
-            bot.send_message(chat_id=update.message.chat_id,
-                             text='Tracking menu',
-                             reply_markup=reply_markup)
-            return
-
-    @staticmethod
-    def __issues_menu(bot, update):
-        """
-        Call order: /menu > Issues
-        """
-        issues_button_list = [
+        button_list = [
             InlineKeyboardButton(
-                'My open issues', callback_data='issues:my'
+                'Issues', callback_data='issues_menu'
             ),
             InlineKeyboardButton(
-                'Open issues by projects', callback_data='issues:p'
-            ),
-            InlineKeyboardButton(
-                'Open issues by project and status', callback_data='issues:ps'
+                'Tracking', callback_data='tracking_menu'
             ),
         ]
 
         reply_markup = InlineKeyboardMarkup(utils.build_menu(
-            issues_button_list, n_cols=2
+            button_list, n_cols=2
         ))
 
         bot.send_message(
             chat_id=update.message.chat_id,
-            text='Chose from options',
+            text='What do you want to see?',
             reply_markup=reply_markup
         )
+
+    def __menu_dispatcher(self, bot, update):
+        """
+        Call order: /menu > Any option
+        """
+        scope = self.__get_query_scope(update)
+        issues_button_list = [
+            InlineKeyboardButton(
+                'My unresolved', callback_data='issues:my'
+            ),
+            InlineKeyboardButton(
+                'Unresolved by projects', callback_data='issues:p'
+            ),
+            InlineKeyboardButton(
+                'By project with a status', callback_data='issues:ps'
+            ),
+        ]
+
+        if 'issues_menu' == scope['data']:
+            reply_markup = InlineKeyboardMarkup(utils.build_menu(
+                issues_button_list, n_cols=2
+            ))
+
+            bot.edit_message_text(
+                chat_id=scope['chat_id'],
+                message_id=scope['message_id'],
+                text='What issues do you want to see?',
+                reply_markup=reply_markup
+            )
+            return
 
     def __issues_handler(self, bot, update):
         """
         Call order: /menu > Issues > Any option
         """
+        scope = self.__get_query_scope(update)
         query = update.callback_query
         telegram_id = str(update.callback_query.from_user.id)
         chat_id = query.message.chat_id
@@ -372,8 +364,14 @@ class JiraBot(object):
                 )
             )
 
+        footer_button = [
+            InlineKeyboardButton('« Back', callback_data='issues_menu')
+        ]
         buttons = InlineKeyboardMarkup(
-            utils.build_menu(projects_buttons, n_cols=3)
+            utils.build_menu(
+                projects_buttons,
+                n_cols=3,
+                footer_buttons=footer_button)
         )
 
         bot.edit_message_text(

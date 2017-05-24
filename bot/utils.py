@@ -70,7 +70,7 @@ def get_pagination_keyboard(current: int, max_page: int, str_key: str):
     if current > 1:
         inline_buttons.append(
             InlineKeyboardButton(
-                '<< 1',
+                '« 1',
                 callback_data=str_key.format('1')
             )
         )
@@ -101,7 +101,7 @@ def get_pagination_keyboard(current: int, max_page: int, str_key: str):
     if current < max_page:
         inline_buttons.append(
             InlineKeyboardButton(
-                '{} >>'.format(max_page),
+                '{} »'.format(max_page),
                 callback_data=str_key.format(max_page)
             )
         )
