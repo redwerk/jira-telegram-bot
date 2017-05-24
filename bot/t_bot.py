@@ -71,8 +71,14 @@ class JiraBot(object):
         )
         self.__updater.dispatcher.add_handler(
             CallbackQueryHandler(
+                self.__choose_status,
+                pattern=r'^project_s_menu:'
+            )
+        )
+        self.__updater.dispatcher.add_handler(
+            CallbackQueryHandler(
                 self.__get_project_status_issues,
-                pattern=r'^ptoject_s_menu:'
+                pattern=r'^project_s:'
             )
         )
         self.__updater.dispatcher.add_handler(
@@ -364,7 +370,7 @@ class JiraBot(object):
         password = credentials.get('password')
 
         projects_buttons = list()
-        projects, status = self.__jira.get_projects(
+        projects, status_code = self.__jira.get_projects(
             username=username, password=password
         )
 
@@ -377,7 +383,7 @@ class JiraBot(object):
             return
 
         if status:
-            _callback = 'ptoject_s_menu:{}'
+            _callback = 'project_s_menu:{}'
         else:
             _callback = 'project:{}'
 
@@ -410,7 +416,7 @@ class JiraBot(object):
     def __get_project_issues(self, bot, update):
         """
         Call order: /menu > Issues > Open project issues > Some project
-        Display unresolved issues by selected project.
+        Shows unresolved issues by selected project
         """
         buttons = None
         telegram_id = str(update.callback_query.from_user.id)
@@ -471,13 +477,13 @@ class JiraBot(object):
             reply_markup=buttons
         )
 
-    def __get_project_status_issues(self, bot, update):
+    def __choose_status(self, bot, update):
         """
         Call order: /menu > Issues > Unresolved by project > Some project
         Displaying inline keyboard with available statuses
         """
         scope = self.__get_query_scope(update)
-        project_name = scope['data'].replace('ptoject_s_menu:', '')
+        project_name = scope['data'].replace('project_s_menu:', '')
 
         credentials, message = self.__get_and_check_cred(scope['telegram_id'])
 
@@ -531,6 +537,68 @@ class JiraBot(object):
             chat_id=scope['chat_id'],
             message_id=scope['message_id'],
             text=text,
+            reply_markup=buttons
+        )
+
+    def __get_project_status_issues(self, bot, update):
+        """
+        Call order: /menu > Issues > Open project issues > 
+                    > Some project  > Some status
+        Shows project issues with selected status
+        """
+        buttons = None
+        scope = self.__get_query_scope(update)
+        project_key = scope['data'].replace('project_s:', '')
+        project, status = project_key.split(':')
+
+        credentials, message = self.__get_and_check_cred(scope['telegram_id'])
+
+        if not credentials:
+            bot.edit_message_text(
+                text=message,
+                chat_id=scope['chat_id'],
+                message_id=scope['message_id']
+            )
+            return
+
+        issues, status_code = self.__jira.get_project_status_issues(
+            project=project,
+            status=status,
+            username=credentials.get('username'),
+            password=credentials.get('password')
+        )
+
+        if not issues:
+            bot.edit_message_text(
+                text="Project {} doesn't have any "
+                     "issues with {} status".format(project, status),
+                chat_id=scope['chat_id'],
+                message_id=scope['message_id']
+            )
+            return
+
+        if len(issues) < self.issues_per_page:
+            formatted_issues = '\n\n'.join(issues)
+        else:
+            project_issues = utils.split_by_pages(issues, self.issues_per_page)
+            page_count = len(project_issues)
+            self.__issue_cache[project_key] = dict(
+                issues=project_issues, page_count=page_count
+            )
+
+            # return the first page
+            formatted_issues = '\n\n'.join(project_issues[0])
+            str_key = 'paginator:{name}'.format(name=project_key)
+            buttons = utils.get_pagination_keyboard(
+                current=1,
+                max_page=page_count,
+                str_key=str_key + '-{}'
+            )
+
+        bot.edit_message_text(
+            text=formatted_issues,
+            chat_id=scope['chat_id'],
+            message_id=scope['message_id'],
             reply_markup=buttons
         )
 
