@@ -225,7 +225,7 @@ class JiraBot(object):
 
         # Show user unresolved issues
         if scope['data'] == 'issues:my':
-            self.__getting_my_open_issues(
+            self.__get_user_unresolved_issues(
                 bot,
                 scope['telegram_id'],
                 scope['chat_id'],
@@ -254,7 +254,8 @@ class JiraBot(object):
             )
             return
 
-    def __getting_my_open_issues(self, bot, telegram_id, chat_id, message_id):
+    def __get_user_unresolved_issues(self, bot, telegram_id,
+                                     chat_id, message_id):
         """
         Receiving open user issues and modifying the current message
         :param bot: 
@@ -283,7 +284,7 @@ class JiraBot(object):
 
         if not issues:
             bot.edit_message_text(
-                text='You have no open issues',
+                text='You have no unresolved issues',
                 chat_id=chat_id,
                 message_id=message_id
             )
