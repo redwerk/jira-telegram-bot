@@ -58,22 +58,28 @@ class JiraBot(object):
             CommandHandler('help', self.__help_command)
         )
         self.__updater.dispatcher.add_handler(
+            CallbackQueryHandler(self.__menu_dispatcher, pattern=r'.+_menu$')
+        )
+        self.__updater.dispatcher.add_handler(
             CallbackQueryHandler(self.__issues_handler, pattern=r'^issues:')
+        )
+        self.__updater.dispatcher.add_handler(
+            CallbackQueryHandler(
+                self.__get_project_issues,
+                pattern=r'^project:'
+            )
+        )
+        self.__updater.dispatcher.add_handler(
+            CallbackQueryHandler(
+                self.__get_project_status_issues,
+                pattern=r'^project_s:'
+            )
         )
         self.__updater.dispatcher.add_handler(
             CallbackQueryHandler(
                 self.__paginator_handler,
                 pattern=r'^paginator:'
             )
-        )
-        self.__updater.dispatcher.add_handler(
-            CallbackQueryHandler(
-                self.__get_open_project_issues,
-                pattern=r'^project:'
-            )
-        )
-        self.__updater.dispatcher.add_handler(
-            CallbackQueryHandler(self.__menu_dispatcher, pattern=r'.+_menu$')
         )
         self.__updater.dispatcher.add_error_handler(self.__error_callback)
 
@@ -210,23 +216,37 @@ class JiraBot(object):
         Call order: /menu > Issues > Any option
         """
         scope = self.__get_query_scope(update)
-        query = update.callback_query
-        telegram_id = str(update.callback_query.from_user.id)
-        chat_id = query.message.chat_id
-        message_id = query.message.message_id
 
-        if query.data == 'issues:my':
-            self.__getting_my_open_issues(bot, telegram_id, chat_id, message_id)
-            return
-        elif query.data == 'issues:p':
-            self.__choose_project_menu(bot, telegram_id, chat_id, message_id)
+        # Show user unresolved issues
+        if scope['data'] == 'issues:my':
+            self.__getting_my_open_issues(
+                bot,
+                scope['telegram_id'],
+                scope['chat_id'],
+                scope['message_id']
+            )
             return
 
-        bot.edit_message_text(
-            text='You chose: {}'.format(query.data.replace('issues:', '')),
-            chat_id=query.message.chat_id,
-            message_id=query.message.message_id
-        )
+        # Show unresolved issues by project
+        elif scope['data'] == 'issues:p':
+            self.__choose_project(
+                bot,
+                scope['telegram_id'],
+                scope['chat_id'],
+                scope['message_id']
+            )
+            return
+
+        # Show unresolved issues by project with a status
+        elif scope['data'] == 'issues:ps':
+            self.__choose_project(
+                bot,
+                scope['telegram_id'],
+                scope['chat_id'],
+                scope['message_id'],
+                status=True
+            )
+            return
 
     def __getting_my_open_issues(self, bot, telegram_id, chat_id, message_id):
         """
@@ -319,7 +339,8 @@ class JiraBot(object):
             reply_markup=buttons
         )
 
-    def __choose_project_menu(self, bot, telegram_id, chat_id, message_id):
+    def __choose_project(self, bot, telegram_id,
+                         chat_id, message_id, status=None):
         """
         Call order: /menu > Issues > Open issues by project
         Displaying inline keyboard with names of projects
@@ -355,12 +376,17 @@ class JiraBot(object):
             )
             return
 
+        if status:
+            _callback = 'project_s:{}'
+        else:
+            _callback = 'project:{}'
+
         # dynamic keyboard creation
         for project_name in projects:
             projects_buttons.append(
                 InlineKeyboardButton(
                     text=project_name,
-                    callback_data='project:{}'.format(project_name)
+                    callback_data=_callback.format(project_name)
                 )
             )
 
@@ -381,7 +407,7 @@ class JiraBot(object):
             reply_markup=buttons
         )
 
-    def __get_open_project_issues(self, bot, update):
+    def __get_project_issues(self, bot, update):
         """
         Call order: /menu > Issues > Open project issues > Some project
         Display unresolved issues by selected project.
@@ -443,6 +469,15 @@ class JiraBot(object):
             chat_id=chat_id,
             message_id=message_id,
             reply_markup=buttons
+        )
+
+    def __get_project_status_issues(self, bot, update):
+        scope = self.__get_query_scope(update)
+        bot.edit_message_text(
+            chat_id=scope['chat_id'],
+            message_id=scope['message_id'],
+            text="{}\nYou got to the status selection menu, "
+                 "but it's not there yet :(".format(scope['data'])
         )
 
     @staticmethod
