@@ -72,7 +72,7 @@ class JiraBot(object):
         self.__updater.dispatcher.add_handler(
             CallbackQueryHandler(
                 self.__get_project_status_issues,
-                pattern=r'^project_s:'
+                pattern=r'^ptoject_s_menu:'
             )
         )
         self.__updater.dispatcher.add_handler(
@@ -342,7 +342,7 @@ class JiraBot(object):
     def __choose_project(self, bot, telegram_id,
                          chat_id, message_id, status=None):
         """
-        Call order: /menu > Issues > Open issues by project
+        Call order: /menu > Issues > Unresolved by project
         Displaying inline keyboard with names of projects
         
         :param bot: 
@@ -377,7 +377,7 @@ class JiraBot(object):
             return
 
         if status:
-            _callback = 'project_s:{}'
+            _callback = 'ptoject_s_menu:{}'
         else:
             _callback = 'project:{}'
 
@@ -472,12 +472,66 @@ class JiraBot(object):
         )
 
     def __get_project_status_issues(self, bot, update):
+        """
+        Call order: /menu > Issues > Unresolved by project > Some project
+        Displaying inline keyboard with available statuses
+        """
         scope = self.__get_query_scope(update)
+        project_name = scope['data'].replace('ptoject_s_menu:', '')
+
+        credentials, message = self.__get_and_check_cred(scope['telegram_id'])
+
+        if not credentials:
+            bot.edit_message_text(
+                text=message,
+                chat_id=scope['chat_id'],
+                message_id=scope['message_id']
+            )
+            return
+
+        username = credentials.get('username')
+        password = credentials.get('password')
+
+        status_buttons = list()
+        statuses, status = self.__jira.get_statuses(
+            username=username, password=password
+        )
+
+        if not statuses:
+            bot.edit_message_text(
+                text="Sorry, can't get statuses at this moment",
+                chat_id=scope['chat_id'],
+                message_id=scope['message_id']
+            )
+            return
+
+        for _status in statuses:
+            status_buttons.append(
+                InlineKeyboardButton(
+                    text=_status,
+                    callback_data='project_s:{}:{}'.format(
+                        project_name, _status
+                    )
+                )
+            )
+        footer_button = [
+            InlineKeyboardButton('« Back', callback_data='issues:ps')
+        ]
+
+        buttons = InlineKeyboardMarkup(
+            utils.build_menu(
+                status_buttons,
+                n_cols=2,
+                footer_buttons=footer_button)
+        )
+
+        text = 'You chose {} project.\n' \
+               'Choose one of the statuses'.format(project_name)
         bot.edit_message_text(
             chat_id=scope['chat_id'],
             message_id=scope['message_id'],
-            text="{}\nYou got to the status selection menu, "
-                 "but it's not there yet :(".format(scope['data'])
+            text=text,
+            reply_markup=buttons
         )
 
     @staticmethod

@@ -156,3 +156,14 @@ class JiraBackend(object):
             return self._issues_formatting(issues)
 
         return list()
+
+    @jira_connect
+    def get_statuses(self, *args, **kwargs) -> list:
+        """
+        Return names of available statuses
+        :return: list of names
+        """
+        jira_conn = kwargs.get('jira_conn')
+
+        statuses = jira_conn.statuses()
+        return [status.name for status in statuses]
