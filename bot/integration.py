@@ -98,14 +98,18 @@ class JiraBackend(object):
         """
         jira_conn, username = self._getting_data(kwargs)
 
-        issues = jira_conn.search_issues(
-            'assignee = {username} and resolution = Unresolved'.format(
-                username=username
-            ),
-            maxResults=200
-        )
-
-        if issues:
+        try:
+            issues = jira_conn.search_issues(
+                'assignee = {username} and resolution = Unresolved'.format(
+                    username=username
+                ),
+                maxResults=200
+            )
+        except jira.JIRAError as e:
+            logging.error(
+                'Error while getting {} issues:\n{}'.format(username, e)
+            )
+        else:
             return self._issues_formatting(issues)
 
         return list()
@@ -147,12 +151,17 @@ class JiraBackend(object):
         """
         jira_conn = kwargs.get('jira_conn')
 
-        issues = jira_conn.search_issues(
-            'project = {} and resolution = Unresolved'.format(project),
-            maxResults=200
-        )
-
-        if issues:
+        try:
+            issues = jira_conn.search_issues(
+                'project = "{}" and resolution = Unresolved'.format(project),
+                maxResults=200
+            )
+        except jira.JIRAError as e:
+            logging.error(
+                'Error while getting unresolved '
+                '{} issues:\n{}'.format(project, e)
+            )
+        else:
             return self._issues_formatting(issues)
 
         return list()
@@ -167,3 +176,32 @@ class JiraBackend(object):
 
         statuses = jira_conn.statuses()
         return [status.name for status in statuses]
+
+    @jira_connect
+    def get_project_status_issues(self,
+                                  project: str,
+                                  status: str,
+                                  *args,
+                                  **kwargs) -> list:
+        """
+        Gets issues by project with a selected status
+        :param project: abbreviation name of the project
+        :param status: available status
+        :return: formatted issues list or empty list
+        """
+        jira_conn = kwargs.get('jira_conn')
+
+        try:
+            issues = jira_conn.search_issues(
+                'project = "{}" and status = "{}"'.format(project, status),
+                maxResults=200
+            )
+        except jira.JIRAError as e:
+            logging.error(
+                'Error while getting {} '
+                'issues with status = {}:\n{}'.format(project, status, e)
+            )
+        else:
+            return self._issues_formatting(issues)
+
+        return list()
