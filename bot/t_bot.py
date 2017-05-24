@@ -419,36 +419,30 @@ class JiraBot(object):
         Shows unresolved issues by selected project
         """
         buttons = None
-        telegram_id = str(update.callback_query.from_user.id)
+        scope = self.__get_query_scope(update)
+        project_name = scope['data'].replace('project:', '')
 
-        query = update.callback_query
-        chat_id = query.message.chat_id
-        message_id = query.message.message_id
-        project_name = query.data.replace('project:', '')
-
-        bot.send_chat_action(chat_id=chat_id, action=ChatAction.TYPING)
-        credentials, message = self.__get_and_check_cred(telegram_id)
+        credentials, message = self.__get_and_check_cred(scope['telegram_id'])
 
         if not credentials:
             bot.edit_message_text(
                 text=message,
-                chat_id=chat_id,
-                message_id=message_id
+                chat_id=scope['chat_id'],
+                message_id=scope['message_id']
             )
             return
 
-        username = credentials.get('username')
-        password = credentials.get('password')
-
-        issues, status = self.__jira.get_open_project_issues(
-            project=project_name, username=username, password=password
+        issues, status_code = self.__jira.get_open_project_issues(
+            project=project_name,
+            username=credentials.get('username'),
+            password=credentials.get('password')
         )
 
         if not issues:
             bot.edit_message_text(
                 text="Project doesn't have any open issues",
-                chat_id=chat_id,
-                message_id=message_id
+                chat_id=scope['chat_id'],
+                message_id=scope['message_id']
             )
             return
         
@@ -472,8 +466,8 @@ class JiraBot(object):
 
         bot.edit_message_text(
             text=formatted_issues,
-            chat_id=chat_id,
-            message_id=message_id,
+            chat_id=scope['chat_id'],
+            message_id=scope['message_id'],
             reply_markup=buttons
         )
 
