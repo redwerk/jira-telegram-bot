@@ -20,8 +20,9 @@
 5. Install and setting up MongoDB (create DB and collection).
 
 6. Create **.env** text file with following data:
+
 ```
-BOT_TOKEN = <string.
+BOT_TOKEN = <string>
 SECRET_KEY = <string> # from cryptography.fernet import Fernet; Fernet.generate_key()
 JIRA_HOST = <string>
 
