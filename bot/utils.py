@@ -1,4 +1,5 @@
-from typing import List, Generator
+import calendar
+from typing import Generator, List
 
 from cryptography.fernet import Fernet
 from decouple import config
@@ -38,20 +39,21 @@ def build_menu(buttons: List,
 
 def split_by_pages(issues: list, item_per_page: int) -> list:
     """
-    Return list of lists. Each list contains elements associated to 
+    Return list of lists. Each list contains elements associated to
     page number + 1.
-    
+
     exp: issues = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     items_by_pages = split_by_pages(issues, 3) # 3 items per page
     items_by_pages # [[1, 2, 3], [4, 5, 6], [7, 8, 9], [10]]
-    
+
     page = 4 # want to get items from page 4
     items_by_pages[page + 1] # [10]
-    
+
     :param issues: list of items
     :param item_per_page: count of items per page
     :return: list of lists
     """
+
     def slice_generator(sequence: list, item_per_page: int) -> Generator:
         for start in range(0, len(sequence), item_per_page):
             yield sequence[start:start + item_per_page]
@@ -113,3 +115,64 @@ def get_pagination_keyboard(current: int,
     return InlineKeyboardMarkup(build_menu(
         inline_buttons, n_cols=len(inline_buttons)
     ))
+
+
+def create_calendar(year: int,
+                    month: int,
+                    pattern_key: str) -> InlineKeyboardMarkup:
+    buttons = list()
+    previous_m = 'change_m:{}.{}'.format(month - 1, year)
+    next_m = 'change_m:{}.{}'.format(month + 1, year)
+
+    week_days = ['M', 'T', 'W', 'R', 'F', 'S', 'U']
+    for week_day in week_days:
+        buttons.append(
+            InlineKeyboardButton(
+                week_day, callback_data='ignore'
+            )
+        )
+
+    h_buttons = [
+        InlineKeyboardButton(
+            calendar.month_name[month] + ' ' + str(year),
+            callback_data='ignore'
+        )
+    ]
+    f_buttons = [
+        InlineKeyboardButton(
+            '< ' + calendar.month_name[month - 1],
+            callback_data=pattern_key.format(previous_m)
+        ),
+        InlineKeyboardButton(
+            ' ', callback_data='ignore'
+        ),
+        InlineKeyboardButton(
+            calendar.month_name[month + 1] + ' >',
+            callback_data=pattern_key.format(next_m)
+        )
+    ]
+
+    current_month = calendar.monthcalendar(year, month)
+    for week in current_month:
+        for day in week:
+            if day:
+                date = 'date:{}.{}.{}'.format(day, month, year)
+                buttons.append(
+                    InlineKeyboardButton(
+                        str(day),
+                        callback_data=pattern_key.format(date)
+                    )
+                )
+            else:
+                buttons.append(
+                    InlineKeyboardButton(' ', callback_data='ignore')
+                )
+
+    return InlineKeyboardMarkup(
+        build_menu(
+            buttons,
+            n_cols=7,
+            header_buttons=h_buttons,
+            footer_buttons=f_buttons
+        )
+    )
