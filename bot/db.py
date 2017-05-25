@@ -8,13 +8,14 @@ from pymongo.errors import ServerSelectionTimeoutError, WriteError
 
 def mongodb_connect(func):
     """
-    Decorator establishes a connection to the database and checks it. 
-    If the connection is - passes the object to the function to execute 
-    the query. If you have no connection - writes to the log. 
+    Decorator establishes a connection to the database and checks it.
+    If the connection is - passes the object to the function to execute
+    the query. If you have no connection - writes to the log.
     In any case closes the connection to the database.
     :param func: function in which the actions with the DB will be performed
     :return: data from DB
     """
+
     def wrapper(*args, **kwargs):
         db_name = config('DB_NAME')
         collection = config('DB_COLLECTION')
@@ -65,10 +66,10 @@ class MongoBackend:
     @mongodb_connect
     def save_credentials(self, user_data: dict, *args, **kwargs) -> bool:
         """
-        If the user is in the database - updates the data. 
+        If the user is in the database - updates the data.
         If not - creates a user in the database.
         :param user_data: user credentials in dict
-        :param args: 
+        :param args:
         :param kwargs: contains objects database access
         :return: status of the transaction
         """
