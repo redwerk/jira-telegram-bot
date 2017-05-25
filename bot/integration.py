@@ -35,7 +35,7 @@ def jira_connect(func):
     return wrapper
 
 
-class JiraBackend(object):
+class JiraBackend:
     """
     Interface for working with Jira service
     """
@@ -52,7 +52,7 @@ class JiraBackend(object):
     }
 
     @staticmethod
-    def getting_credentials(kwargs: dict):
+    def getting_credentials(kwargs: dict) -> (str, str):
         username = kwargs.get('username', False)
         password = kwargs.get('password', False)
 

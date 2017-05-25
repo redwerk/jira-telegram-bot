@@ -42,7 +42,7 @@ def mongodb_connect(func):
     return wrapper
 
 
-class MongoBackend(object):
+class MongoBackend:
     """An interface that contains basic methods for working with the database"""
 
     @staticmethod

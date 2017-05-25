@@ -11,7 +11,7 @@ from bot.db import MongoBackend
 from bot.integration import JiraBackend
 
 
-class JiraBot(object):
+class JiraBot:
     """
     Bot to integrate with the JIRA service.
     
