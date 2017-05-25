@@ -31,3 +31,13 @@ DB_PORT = <integer>
 DB_NAME = <string>
 DB_COLLECTION = <string>
 ```
+
+
+### Code style and contribution guide
+- Install the [editorconfig](http://editorconfig.org/) plugin for your code editor.
+- Used Flake8 or PEP8 plugins in your console or code editor.
+- Do not copypaste, do not hack, always look for easiest solutions.
+- Write tests for your code.
+- For every task create a branch from current `master`.
+- Prefer small commits and branches.
+- Read this [docs]

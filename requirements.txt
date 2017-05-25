@@ -4,3 +4,4 @@ pymongo==3.4.0
 python-decouple==3.0
 python-telegram-bot==5.3.1
 ujson==1.35
+flake8>=3.0.4
