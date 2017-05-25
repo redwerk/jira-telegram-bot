@@ -1,11 +1,11 @@
-from typing import List
+from typing import List, Generator
 
 from cryptography.fernet import Fernet
 from decouple import config
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 
-def get_encoder():
+def get_encoder() -> Fernet:
     secret = config('SECRET_KEY')
     return Fernet(key=bytes(secret.encode()))
 
@@ -25,12 +25,14 @@ def decrypt_password(encrypted_password: bytes) -> str:
 def build_menu(buttons: List,
                n_cols: int,
                header_buttons: List = None,
-               footer_buttons: List = None):
+               footer_buttons: List = None) -> List:
     menu = [buttons[i:i + n_cols] for i in range(0, len(buttons), n_cols)]
+
     if header_buttons:
         menu.insert(0, header_buttons)
     if footer_buttons:
         menu.append(footer_buttons)
+
     return menu
 
 
@@ -50,14 +52,16 @@ def split_by_pages(issues: list, item_per_page: int) -> list:
     :param item_per_page: count of items per page
     :return: list of lists
     """
-    def slice_generator(sequence, item_per_page):
+    def slice_generator(sequence: list, item_per_page: int) -> Generator:
         for start in range(0, len(sequence), item_per_page):
             yield sequence[start:start + item_per_page]
 
     return list(slice_generator(issues, item_per_page))
 
 
-def get_pagination_keyboard(current: int, max_page: int, str_key: str):
+def get_pagination_keyboard(current: int,
+                            max_page: int,
+                            str_key: str) -> InlineKeyboardMarkup:
     """
     Generating an inline keyboard for displaying pagination
     :param current: selected page number

@@ -14,7 +14,7 @@ def jira_connect(func):
     :param func: function in which interacts with the Jira service
     :return: requested data and status code
     """
-    def wrapper(*args, **kwargs):
+    def wrapper(*args, **kwargs) -> (list or bool, int):
         username, password = JiraBackend.getting_credentials(kwargs)
 
         try:
