@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 
 from decouple import config
 from telegram import ChatAction, InlineKeyboardButton, InlineKeyboardMarkup
@@ -14,16 +15,16 @@ from bot.integration import JiraBackend
 class JiraBot:
     """
     Bot to integrate with the JIRA service.
-    
+
     Commands (synopsis and description):
-    /start  
+    /start
         Start to work with user
-    /authorization <username> <password> 
+    /authorization <username> <password>
         Save or update user credentials into DB
     /menu
         Displaying menu with main functions
     /help
-        Returns commands and its descriptions 
+        Returns commands and its descriptions
     """
 
     bot_commands = [
@@ -62,6 +63,9 @@ class JiraBot:
         )
         self.__updater.dispatcher.add_handler(
             CallbackQueryHandler(self.__issues_handler, pattern=r'^issues:')
+        )
+        self.__updater.dispatcher.add_handler(
+            CallbackQueryHandler(self.__tracking_handler, pattern=r'^tracking:')
         )
         self.__updater.dispatcher.add_handler(
             CallbackQueryHandler(
@@ -108,10 +112,10 @@ class JiraBot:
     def __authorization_command(self, bot, update, args):
         """
         /authorization <username> <password>
-        
-        Saving user credentials. Credentials are verified through user 
+
+        Saving user credentials. Credentials are verified through user
         authorization, if validation is completed, data is saved.
-        
+
         :return: Error message or message about successful saving of data
         """
         username = None
@@ -204,6 +208,18 @@ class JiraBot:
             ),
         ]
 
+        tracking_button_list = [
+            InlineKeyboardButton(
+                'My time', callback_data='tracking:my'
+            ),
+            InlineKeyboardButton(
+                'Project time', callback_data='tracking:p'
+            ),
+            InlineKeyboardButton(
+                'Project time by user', callback_data='tracking:pu'
+            ),
+        ]
+
         if 'issues_menu' == scope['data']:
             reply_markup = InlineKeyboardMarkup(utils.build_menu(
                 issues_button_list, n_cols=2
@@ -213,6 +229,18 @@ class JiraBot:
                 chat_id=scope['chat_id'],
                 message_id=scope['message_id'],
                 text='What issues do you want to see?',
+                reply_markup=reply_markup
+            )
+            return
+        elif 'tracking_menu' == scope['data']:
+            reply_markup = InlineKeyboardMarkup(utils.build_menu(
+                tracking_button_list, n_cols=2
+            ))
+
+            bot.edit_message_text(
+                chat_id=scope['chat_id'],
+                message_id=scope['message_id'],
+                text='What kind of time do you want to see?',
                 reply_markup=reply_markup
             )
             return
@@ -258,7 +286,7 @@ class JiraBot:
                                      chat_id, message_id):
         """
         Receiving open user issues and modifying the current message
-        :param bot: 
+        :param bot:
         :param telegram_id: user id
         :param chat_id: chat id with user
         :param message_id: last message id
@@ -318,9 +346,9 @@ class JiraBot:
 
     def __paginator_handler(self, bot, update):
         """
-        After the user clicked on the page number to be displayed, the handler 
-        generates a message with the data from the specified page, creates 
-        a new keyboard and modifies the last message (the one under which 
+        After the user clicked on the page number to be displayed, the handler
+        generates a message with the data from the specified page, creates
+        a new keyboard and modifies the last message (the one under which
         the key with the page number was pressed)
         """
         scope = self.__get_query_scope(update)
@@ -351,8 +379,8 @@ class JiraBot:
         """
         Call order: /menu > Issues > Unresolved by project
         Displaying inline keyboard with names of projects
-        
-        :param bot: 
+
+        :param bot:
         :param telegram_id: user id in telegram
         :param chat_id: current chat whith a user
         :param message_id: last message
@@ -446,7 +474,7 @@ class JiraBot:
                 message_id=scope['message_id']
             )
             return
-        
+
         if len(issues) < self.issues_per_page:
             formatted_issues = '\n\n'.join(issues)
         else:
@@ -537,7 +565,7 @@ class JiraBot:
 
     def __get_project_status_issues(self, bot, update):
         """
-        Call order: /menu > Issues > Open project issues > 
+        Call order: /menu > Issues > Open project issues >
                     > Some project  > Some status
         Shows project issues with selected status
         """
@@ -597,6 +625,54 @@ class JiraBot:
             reply_markup=buttons
         )
 
+    def __tracking_handler(self, bot, update):
+        """
+        Call order: /menu > Tracking > Any option
+        """
+        scope = self.__get_query_scope(update)
+
+        if 'tracking:my' in scope['data']:
+            data = scope['data'].replace('tracking:my', '')
+            date = self.__choose_date(bot, data, scope, 'tracking:my:{}')
+
+            if date:
+                # TODO: implement show time in this date
+                bot.edit_message_text(
+                    chat_id=scope['chat_id'],
+                    message_id=scope['message_id'],
+                    text='You chose: {day}.{month}.{year}'.format(**date),
+                )
+
+    def __choose_date(self, bot, data: str, scope: dict, pattern: str) -> dict:
+        """
+        Show calendar. User can change a month or choose the date.
+        :param data: callback data
+        :param scope: current message data
+        :param pattern: callback pattern
+        """
+        now = datetime.now()
+
+        # user wants to change the month
+        if 'change_m' in data:
+            month, year = data.replace(':change_m:', '').split('.')
+            self.__show_calendar(bot, scope, int(year), int(month), pattern)
+
+        # user was selected the date
+        elif 'date' in scope['data']:
+            date = data.replace(':date:', '')
+            day, month, year = date.split('.')
+
+            bot.edit_message_text(
+                chat_id=scope['chat_id'],
+                message_id=scope['message_id'],
+                text='You chose: {}'.format(data.replace(':date:', '')),
+            )
+
+            return dict(day=int(day), month=int(month), year=int(year))
+
+        else:
+            self.__show_calendar(bot, scope, now.year, now.month, pattern)
+
     @staticmethod
     def __get_query_scope(update) -> dict:
         """
@@ -628,11 +704,29 @@ class JiraBot:
 
         return key, int(page)
 
+    def __show_calendar(self, bot, scope: dict,
+                        year: int, month: int, pattern: str) -> None:
+        """
+        Shows calendar with selected month and year
+        :param scope: current message data
+        :param year:
+        :param month:
+        :param pattern: callback data
+        """
+        calendar = utils.create_calendar(year, month, pattern)
+
+        bot.edit_message_text(
+            chat_id=scope['chat_id'],
+            message_id=scope['message_id'],
+            text='Choose a date',
+            reply_markup=calendar
+        )
+
     def __get_and_check_cred(self, telegram_id: str):
         """
-        Gets the user's credentials from the database and 
+        Gets the user's credentials from the database and
         checks them (tries to authorize the user in JIRA)
-        :param telegram_id: user id telegram 
+        :param telegram_id: user id telegram
         :return: credentials and an empty message or False and an error message
         """
         credentials = self.__db.get_user_credentials(telegram_id)
