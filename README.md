@@ -9,7 +9,7 @@
 
 
 ### Deployment
-1. Clone a repository: `git clone https://github.com/curious22/jira-telegram-bot.git`
+1. Clone a repository: `git clone https://git.redwerk.com/redwerk/jira-telegram-bot.git`
 
 2. Navigate into *jira-telegram-bot* folder
 
