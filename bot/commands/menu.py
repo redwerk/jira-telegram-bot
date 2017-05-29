@@ -86,10 +86,10 @@ class MenuCommandFactory(AbstractCommandFactory):
         "tracking_menu": TrackingMenuCommand
     }
 
-    def get_command(self, bot, update, *args, **kwargs):
+    def command(self, bot, update, *args, **kwargs):
         scope = self._bot_instance.__get_query_scope(update)
         obj = self._command_factory_method(scope['data'])
         obj.handler(bot, scope['telegram_id'], scope['chat_id'], scope['message_id'])
 
     def command_callback(self):
-        return CallbackQueryHandler(self.get_command, pattern=r'.+_menu$')
+        return CallbackQueryHandler(self.command, pattern=r'.+_menu$')
