@@ -18,7 +18,7 @@ class UserUnresolvedIssuesCommand(AbstractCommand):
         :return: Message with a list of open user issues
         """
         bot.send_chat_action(chat_id=chat_id, action=ChatAction.TYPING)
-        credentials, message = self._bot_instance.__get_and_check_cred(telegram_id)
+        credentials, message = self._bot_instance.get_and_check_cred(telegram_id)
 
         if not credentials:
             bot.edit_message_text(
@@ -31,7 +31,7 @@ class UserUnresolvedIssuesCommand(AbstractCommand):
         username = credentials.get('username')
         password = credentials.get('password')
 
-        issues, status = self._bot_instance.__jira.get_open_issues(
+        issues, status = self._bot_instance.jira.get_open_issues(
             username=username, password=password
         )
 
@@ -49,7 +49,7 @@ class UserUnresolvedIssuesCommand(AbstractCommand):
         else:
             user_issues = utils.split_by_pages(issues, self._bot_instance.issues_per_page)
             page_count = len(user_issues)
-            self._bot_instance.__issue_cache[username] = dict(
+            self._bot_instance.issue_cache[username] = dict(
                 issues=user_issues, page_count=page_count
             )
 
@@ -82,7 +82,7 @@ class ChooseProjectCommand(AbstractCommand):
         :param chat_id: current chat whith a user
         :param message_id: last message
         """
-        credentials, message = self._bot_instance.__get_and_check_cred(telegram_id)
+        credentials, message = self._bot_instance.get_and_check_cred(telegram_id)
 
         if not credentials:
             bot.edit_message_text(
@@ -96,7 +96,7 @@ class ChooseProjectCommand(AbstractCommand):
         password = credentials.get('password')
 
         projects_buttons = list()
-        projects, status_code = self._bot_instance.__jira.get_projects(
+        projects, status_code = self._bot_instance.jira.get_projects(
             username=username, password=password
         )
 
@@ -158,7 +158,7 @@ class IssueCommandFactory(AbstractCommandFactory):
         """
         Call order: /menu > Issues > Any option
         """
-        scope = self._bot_instance.__get_query_scope(update)
+        scope = self._bot_instance.get_query_scope(update)
         obj = self._command_factory_method(scope['data'])
         obj.handler(bot, scope['telegram_id'], scope['chat_id'], scope['message_id'])
 

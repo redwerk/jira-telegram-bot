@@ -35,7 +35,7 @@ class AbstractCommandFactory(metaclass=ABCMeta):
 
     def _command_factory_method(self, cmd):
         # Validation commands list
-        if not hasattr(self, commands) or not isinstance(self.commands, dict):
+        if not hasattr(self, "commands") or not isinstance(self.commands, dict):
             raise AttributeError("commands not implemented or is not dict type!")
 
         command = self.commands.get(cmd)

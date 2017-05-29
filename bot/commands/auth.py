@@ -31,12 +31,12 @@ class UserAuthenticatedCommand(AbstractCommand):
         else:
             # Verification of credentials. The data will be stored only
             # if there is confirmed authorization in Jira.
-            confirmed, status_code = self._bot_instance.__jira.check_credentials(
+            confirmed, status_code = self._bot_instance.jira.check_credentials(
                 username, password
             )
 
             if not confirmed:
-                message = self._bot_instance.__jira.login_error.get(
+                message = self._bot_instance.jira.login_error.get(
                     status_code, 'Unknown error'
                 )
                 bot.send_message(
