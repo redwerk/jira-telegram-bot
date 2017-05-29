@@ -1,8 +1,8 @@
 from telegram.ext import CommandHandler
 
-from .base import AbstractCommand, AbstractCommandFactory
-
 from bot import utils
+
+from .base import AbstractCommand, AbstractCommandFactory
 
 
 class UserAuthenticatedCommand(AbstractCommand):

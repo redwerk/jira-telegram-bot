@@ -1,9 +1,9 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackQueryHandler, CommandHandler
 
-from .base import AbstractCommand, AbstractCommandFactory
-
 from bot import utils
+
+from .base import AbstractCommand, AbstractCommandFactory
 
 
 class MainMenuCommand(AbstractCommand):

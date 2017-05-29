@@ -6,10 +6,10 @@ from telegram.error import (BadRequest, ChatMigrated, NetworkError,
                             TelegramError, TimedOut, Unauthorized)
 from telegram.ext import CallbackQueryHandler, CommandHandler, Updater
 
+import bot.commands as commands
 from bot import utils
 from bot.db import MongoBackend
 from bot.integration import JiraBackend
-import bot.commands as commands
 
 
 class JiraBot:
@@ -37,6 +37,7 @@ class JiraBot:
     issues_per_page = 10
     commands_factories = [
         commands.IssueCommandFactory,
+        commands.ProjectIssuesFactory,
         commands.MainMenuCommandFactory,
         commands.MenuCommandFactory,
         commands.AuthCommandFactory
@@ -59,12 +60,6 @@ class JiraBot:
 
         self.__updater.dispatcher.add_handler(
             CallbackQueryHandler(self.tracking_handler, pattern=r'^tracking:')
-        )
-        self.__updater.dispatcher.add_handler(
-            CallbackQueryHandler(
-                self.get_project_status_issues,
-                pattern=r'^project_s:'
-            )
         )
         self.__updater.dispatcher.add_handler(
             CallbackQueryHandler(
@@ -117,68 +112,6 @@ class JiraBot:
             str_key=str_key + '-{}'
         )
         formatted_issues = '\n\n'.join(user_data['issues'][page - 1])
-
-        bot.edit_message_text(
-            text=formatted_issues,
-            chat_id=scope['chat_id'],
-            message_id=scope['message_id'],
-            reply_markup=buttons
-        )
-
-    def get_project_status_issues(self, bot, update):
-        """
-        Call order: /menu > Issues > Open project issues >
-                    > Some project  > Some status
-        Shows project issues with selected status
-        """
-        buttons = None
-        scope = self.get_query_scope(update)
-        project_key = scope['data'].replace('project_s:', '')
-        project, status = project_key.split(':')
-
-        credentials, message = self.get_and_check_cred(scope['telegram_id'])
-
-        if not credentials:
-            bot.edit_message_text(
-                text=message,
-                chat_id=scope['chat_id'],
-                message_id=scope['message_id']
-            )
-            return
-
-        issues, status_code = self.jira.get_project_status_issues(
-            project=project,
-            status=status,
-            username=credentials.get('username'),
-            password=credentials.get('password')
-        )
-
-        if not issues:
-            bot.edit_message_text(
-                text="Project {} doesn't have any "
-                     "issues with {} status".format(project, status),
-                chat_id=scope['chat_id'],
-                message_id=scope['message_id']
-            )
-            return
-
-        if len(issues) < self.issues_per_page:
-            formatted_issues = '\n\n'.join(issues)
-        else:
-            project_issues = utils.split_by_pages(issues, self.issues_per_page)
-            page_count = len(project_issues)
-            self.issue_cache[project_key] = dict(
-                issues=project_issues, page_count=page_count
-            )
-
-            # return the first page
-            formatted_issues = '\n\n'.join(project_issues[0])
-            str_key = 'paginator:{name}'.format(name=project_key)
-            buttons = utils.get_pagination_keyboard(
-                current=1,
-                max_page=page_count,
-                str_key=str_key + '-{}'
-            )
 
         bot.edit_message_text(
             text=formatted_issues,
@@ -317,8 +250,8 @@ class JiraBot:
     def __error_callback(bot, update, error):
         try:
             raise error
-        except Unauthorized:
-            pass
+        except Unauthorized as e:
+            logging.error('{}'.format(e))
         except BadRequest as e:
             logging.error('{}'.format(e))
         except TimedOut as e:
@@ -326,6 +259,6 @@ class JiraBot:
         except NetworkError as e:
             logging.error('{}'.format(e))
         except ChatMigrated as e:
-            pass
-        except TelegramError:
-            pass
+            logging.error('{}'.format(e))
+        except TelegramError as e:
+            logging.error('{}'.format(e))
