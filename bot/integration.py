@@ -230,7 +230,7 @@ class JiraBackend:
 
     @staticmethod
     def get_issues_id(issues: list) -> dict:
-        return {i.key: i.id for i in issues}
+        return {i.id: i.key for i in issues}
 
     @jira_connect
     def get_issues_worklogs(self, issues_ids: dict, *args, **kwargs) -> list:
@@ -241,7 +241,7 @@ class JiraBackend:
         """
         jira_conn = kwargs.get('jira_conn')
         _worklogs = list()
-        for key, _id in issues_ids.items():
+        for _id, key in issues_ids.items():
             try:
                 log = jira_conn.worklogs(issue=_id)
             except jira.JIRAError as e:
