@@ -11,7 +11,7 @@ class ShowCalendarCommand(AbstractCommand):
 
     def handler(self, bot, scope, year, month, pattern, *args, **kwargs):
         """Displays a calendar (inline keyboard)"""
-        calendar = utils.create_calendar(year, month, pattern)
+        calendar = utils.create_calendar(int(year), int(month), pattern + ':{}')
 
         bot.edit_message_text(
             chat_id=scope['chat_id'],
@@ -23,38 +23,21 @@ class ShowCalendarCommand(AbstractCommand):
 
 class ChooseDateIntervalCommand(AbstractCommand):
 
-    def handler(self, bot, scope, pattern, *args, **kwargs):
+    def handler(self, bot, scope, *args, **kwargs):
         """
         The choice of the time interval. Is called in two stages -
         to select start and end dates
         """
-        now = datetime.now()
-        data = scope['data']
+        change_month = ':change_m:'
 
         # user wants to change the month
-        if 'change_m' in data:
-            month, year = data.replace(':change_m:', '').split('.')
-            ShowCalendarCommand(self._bot_instance).handler(
-                bot, scope, int(year), int(month), pattern
-            )
-
-        # user was selected the date
-        elif 'date' in scope['data']:
-            date = data.replace(':date:', '')
-            day, month, year = date.split('.')
-
-            bot.edit_message_text(
-                chat_id=scope['chat_id'],
-                message_id=scope['message_id'],
-                text='You chose: {}'.format(data.replace(':date:', '')),
-            )
-
-            return dict(day=int(day), month=int(month), year=int(year))
-
+        if change_month in scope['data']:
+            pattern, date = scope['data'].split(change_month)
+            month, year = date.split('.')
+            ShowCalendarCommand(self._bot_instance).handler(bot, scope, year, month, pattern)
         else:
-            ShowCalendarCommand(self._bot_instance).handler(
-                bot, scope, now.year, now.month, pattern
-            )
+            now = datetime.now()
+            ShowCalendarCommand(self._bot_instance).handler(bot, scope, now.year, now.month, scope['data'])
 
 
 class TrackingUserWorklogCommand(AbstractCommand):
@@ -64,7 +47,7 @@ class TrackingUserWorklogCommand(AbstractCommand):
         bot.edit_message_text(
             chat_id=scope['chat_id'],
             message_id=scope['message_id'],
-            text='You chose: show my tracking time',
+            text='You chose: {start_date} {end_date}'.format(**scope),
         )
 
 
@@ -102,8 +85,22 @@ class TrackingCommandFactory(AbstractCommandFactory):
     }
 
     def command(self, bot, update, *args, **kwargs):
+        change_month = ':change_m:'
         scope = self._bot_instance.get_query_scope(update)
-        obj = self._command_factory_method(scope['data'])
+
+        # choice of time interval
+        if change_month in scope['data']:
+            ChooseDateIntervalCommand(self._bot_instance).handler(bot, scope)
+            return
+
+        cmd_scope = scope['data'].split(':')
+
+        if len(cmd_scope) != 3:  # must be [cmd, start_date, end_date]
+            ChooseDateIntervalCommand(self._bot_instance).handler(bot, scope)
+            return
+
+        obj = self._command_factory_method(cmd_scope[0])
+        scope.update({'start_date': cmd_scope[1], 'end_date': cmd_scope[2]})
         obj.handler(bot, scope)
 
     def command_callback(self):

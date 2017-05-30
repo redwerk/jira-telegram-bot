@@ -156,7 +156,7 @@ def create_calendar(year: int,
     for week in current_month:
         for day in week:
             if day:
-                date = 'date:{}.{}.{}'.format(day, month, year)
+                date = '{}-{}-{}'.format(year, month, day)
                 buttons.append(
                     InlineKeyboardButton(
                         str(day),
