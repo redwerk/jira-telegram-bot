@@ -8,8 +8,8 @@ OK_STATUS = 200
 
 def jira_connect(func):
     """
-    The decorator creates a connection for each request to Jira, 
-    handles the authorization errors and terminates the user session 
+    The decorator creates a connection for each request to Jira,
+    handles the authorization errors and terminates the user session
     upon completion of the action.
     :param func: function in which interacts with the Jira service
     :return: requested data and status code
@@ -205,3 +205,66 @@ class JiraBackend:
             return self._issues_formatting(issues)
 
         return list()
+
+    @jira_connect
+    def get_tracking_issues(self, *args, **kwargs) -> list:
+        """
+        Gets issues which were assigned to user or user are watching for it
+        :return: List of issues ids
+        """
+        jira_conn, username = self._getting_data(kwargs)
+        try:
+            issues = jira_conn.search_issues(
+                'assignee = "{username}" or  '
+                'watcher = "{username}"'.format(username=username),
+                maxResults=200
+            )
+        except jira.JIRAError as e:
+            logging.error(
+                'Failed to get assigned or '
+                'watched {} questions:\n{}'.format(username, e)
+            )
+        else:
+            return issues
+        return list()
+
+    @staticmethod
+    def get_issues_id(issues: list) -> dict:
+        return {i.key: i.id for i in issues}
+
+    @jira_connect
+    def get_issues_worklogs(self, issues_ids: dict, *args, **kwargs) -> list:
+        """
+        Gets worklogs by issue dict ids
+        :param issues_ids: {'PLS-62': '30407', 'PLS-61': '30356'}
+        :return: list with projects worklogs
+        """
+        jira_conn = kwargs.get('jira_conn')
+        _worklogs = list()
+        for key, _id in issues_ids.items():
+            try:
+                log = jira_conn.worklogs(issue=_id)
+            except jira.JIRAError as e:
+                logging.error(
+                    'Failed to get {} worklog:\n{}'.format(key, e)
+                )
+            else:
+                if log:
+                    _worklogs.append(log)
+        else:
+            return _worklogs
+
+    @staticmethod
+    def get_user_worklogs(_worklogs: list, username: str) -> list:
+        """
+        Gets the only selected user worklogs
+        :param _worklogs: list of lists worklogs
+        :param username:
+        :return: list of user worklogs
+        """
+        user_logs = list()
+        for issue in _worklogs:
+            for log in issue:
+                if log.author.name == username:
+                    user_logs.append(log)
+        return user_logs
