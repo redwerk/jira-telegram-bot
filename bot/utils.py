@@ -1,6 +1,9 @@
 import calendar
+import logging
+from datetime import datetime
 from typing import Generator, List
 
+import pytz
 from cryptography.fernet import Fernet
 from decouple import config
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -156,7 +159,7 @@ def create_calendar(year: int,
     for week in current_month:
         for day in week:
             if day:
-                date = 'date:{}.{}.{}'.format(day, month, year)
+                date = '{}-{}-{}'.format(year, month, day)
                 buttons.append(
                     InlineKeyboardButton(
                         str(day),
@@ -176,3 +179,24 @@ def create_calendar(year: int,
             footer_buttons=f_buttons
         )
     )
+
+
+def to_datetime(_time: str, _format: str) -> (datetime or bool):
+    """
+    Converts dates to a datetime object. If necessary, add an attribute tzinfo
+    :param _time: '2017-05-25'
+    :param _format: '%Y-%m-%d'
+    :return: datetime object or False
+    """
+    try:
+        dt = datetime.strptime(_time, _format)
+    except (TypeError, ValueError) as e:
+        logging.exception(
+            'Date conversion error: {}'.format(e)
+        )
+    else:
+        if not getattr(dt, 'tzinfo'):
+            return dt.replace(tzinfo=pytz.UTC)
+        return dt
+
+    return False
