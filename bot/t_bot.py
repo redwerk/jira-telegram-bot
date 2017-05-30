@@ -145,15 +145,6 @@ class JiraBot:
     def __error_callback(bot, update, error):
         try:
             raise error
-        except Unauthorized as e:
-            logging.error('{}'.format(e))
-        except BadRequest as e:
-            logging.error('{}'.format(e))
-        except TimedOut as e:
-            logging.error('{}'.format(e))
-        except NetworkError as e:
-            logging.error('{}'.format(e))
-        except ChatMigrated as e:
-            logging.error('{}'.format(e))
-        except TelegramError as e:
+        except (Unauthorized, BadRequest, TimedOut,
+                NetworkError, ChatMigrated, TelegramError) as e:
             logging.error('{}'.format(e))
