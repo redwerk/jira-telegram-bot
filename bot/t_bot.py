@@ -38,6 +38,7 @@ class JiraBot:
     commands_factories = [
         commands.IssueCommandFactory,
         commands.ProjectIssuesFactory,
+        commands.IssuesPaginatorFactory,
         commands.MainMenuCommandFactory,
         commands.MenuCommandFactory,
         commands.AuthCommandFactory
@@ -61,15 +62,8 @@ class JiraBot:
         self.__updater.dispatcher.add_handler(
             CallbackQueryHandler(self.tracking_handler, pattern=r'^tracking:')
         )
-        self.__updater.dispatcher.add_handler(
-            CallbackQueryHandler(
-                self.paginator_handler,
-                pattern=r'^paginator:'
-            )
-        )
         self.__updater.dispatcher.add_error_handler(self.__error_callback)
 
-        # TODO: create all commands from commands_factories
         for command in self.commands_factories:
             cb = command(self).command_callback()
             self.__updater.dispatcher.add_handler(cb)
@@ -88,36 +82,6 @@ class JiraBot:
         bot.send_message(
             chat_id=update.message.chat_id,
             text=message.format(first_name),
-        )
-
-    def paginator_handler(self, bot, update):
-        """
-        After the user clicked on the page number to be displayed, the handler
-        generates a message with the data from the specified page, creates
-        a new keyboard and modifies the last message (the one under which
-        the key with the page number was pressed)
-        """
-        scope = self.get_query_scope(update)
-        key, page = self.get_issue_data(scope['data'])
-        user_data = self.issue_cache.get(key)
-
-        if not user_data:
-            logging.info('There is no data in the cache for {}'.format(key))
-            return
-
-        str_key = 'paginator:{}'.format(key)
-        buttons = utils.get_pagination_keyboard(
-            current=page,
-            max_page=user_data['page_count'],
-            str_key=str_key + '-{}'
-        )
-        formatted_issues = '\n\n'.join(user_data['issues'][page - 1])
-
-        bot.edit_message_text(
-            text=formatted_issues,
-            chat_id=scope['chat_id'],
-            message_id=scope['message_id'],
-            reply_markup=buttons
         )
 
     def tracking_handler(self, bot, update):

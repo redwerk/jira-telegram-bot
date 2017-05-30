@@ -1,3 +1,5 @@
+import logging
+
 from telegram import ChatAction, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackQueryHandler
 
@@ -305,6 +307,34 @@ class ProjectStatusMenuCommand(AbstractCommand):
         )
 
 
+class IssuesPaginatorCommand(AbstractCommand):
+
+    def handler(self, bot, scope, user_data, *args, **kwargs):
+        """
+        After the user clicked on the page number to be displayed, the handler
+        generates a message with the data from the specified page, creates
+        a new keyboard and modifies the last message (the one under which
+        the key with the page number was pressed)
+        """
+        key = kwargs.get('key')
+        page = kwargs.get('page')
+        str_key = 'paginator:{}'.format(key)
+
+        buttons = utils.get_pagination_keyboard(
+            current=page,
+            max_page=user_data['page_count'],
+            str_key=str_key + '-{}'
+        )
+        formatted_issues = '\n\n'.join(user_data['issues'][page - 1])
+
+        bot.edit_message_text(
+            text=formatted_issues,
+            chat_id=scope['chat_id'],
+            message_id=scope['message_id'],
+            reply_markup=buttons
+        )
+
+
 class IssueCommandFactory(AbstractCommandFactory):
 
     commands = {
@@ -362,3 +392,23 @@ class ProjectIssuesFactory(AbstractCommandFactory):
 
     def command_callback(self):
         return CallbackQueryHandler(self.command, pattern=r'^project')
+
+
+class IssuesPaginatorFactory(AbstractCommandFactory):
+
+    def command(self, bot, update, *args, **kwargs):
+        scope = self._bot_instance.get_query_scope(update)
+        key, page = self._bot_instance.get_issue_data(scope['data'])
+        user_data = self._bot_instance.issue_cache.get(key)
+
+        if not user_data:
+            logging.info('There is no data in the cache for {}'.format(key))
+            return
+
+        IssuesPaginatorCommand(self._bot_instance).handler(
+            bot, scope, user_data,
+            key=key, page=page
+        )
+
+    def command_callback(self):
+        return CallbackQueryHandler(self.command, pattern=r'^paginator:')
