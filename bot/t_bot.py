@@ -1,5 +1,4 @@
 import logging
-from datetime import datetime
 
 from decouple import config
 from telegram.error import (BadRequest, ChatMigrated, NetworkError,
@@ -82,36 +81,6 @@ class JiraBot:
             text=message.format(first_name),
         )
 
-    def choose_date(self, bot, data: str, scope: dict, pattern: str) -> dict:
-        """
-        Show calendar. User can change a month or choose the date.
-        :param data: callback data
-        :param scope: current message data
-        :param pattern: callback pattern
-        """
-        now = datetime.now()
-
-        # user wants to change the month
-        if 'change_m' in data:
-            month, year = data.replace(':change_m:', '').split('.')
-            self.show_calendar(bot, scope, int(year), int(month), pattern)
-
-        # user was selected the date
-        elif 'date' in scope['data']:
-            date = data.replace(':date:', '')
-            day, month, year = date.split('.')
-
-            bot.edit_message_text(
-                chat_id=scope['chat_id'],
-                message_id=scope['message_id'],
-                text='You chose: {}'.format(data.replace(':date:', '')),
-            )
-
-            return dict(day=int(day), month=int(month), year=int(year))
-
-        else:
-            self.show_calendar(bot, scope, now.year, now.month, pattern)
-
     @staticmethod
     def get_query_scope(update) -> dict:
         """
@@ -142,24 +111,6 @@ class JiraBot:
         key, page = _data.split('-')
 
         return key, int(page)
-
-    def show_calendar(self, bot, scope: dict,
-                      year: int, month: int, pattern: str) -> None:
-        """
-        Shows calendar with selected month and year
-        :param scope: current message data
-        :param year:
-        :param month:
-        :param pattern: callback data
-        """
-        calendar = utils.create_calendar(year, month, pattern)
-
-        bot.edit_message_text(
-            chat_id=scope['chat_id'],
-            message_id=scope['message_id'],
-            text='Choose a date',
-            reply_markup=calendar
-        )
 
     def get_and_check_cred(self, telegram_id: str):
         """
