@@ -55,9 +55,9 @@ class TrackingMenuCommand(AbstractCommand):
 
     def handler(self, bot, scope):
         tracking_button_list = [
-            InlineKeyboardButton('My time', callback_data='tracking:my'),
-            InlineKeyboardButton('Project time', callback_data='tracking:p'),
-            InlineKeyboardButton('Project time by user', callback_data='tracking:pu')
+            InlineKeyboardButton('My time', callback_data='tracking-my'),
+            InlineKeyboardButton('Project time', callback_data='tracking-p'),
+            InlineKeyboardButton('Project time by user', callback_data='tracking-pu')
         ]
 
         reply_markup = InlineKeyboardMarkup(utils.build_menu(tracking_button_list, n_cols=2))

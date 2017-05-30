@@ -4,7 +4,7 @@ from datetime import datetime
 from decouple import config
 from telegram.error import (BadRequest, ChatMigrated, NetworkError,
                             TelegramError, TimedOut, Unauthorized)
-from telegram.ext import CallbackQueryHandler, CommandHandler, Updater
+from telegram.ext import CommandHandler, Updater
 
 import bot.commands as commands
 from bot import utils
@@ -41,7 +41,8 @@ class JiraBot:
         commands.IssuesPaginatorFactory,
         commands.MainMenuCommandFactory,
         commands.MenuCommandFactory,
-        commands.AuthCommandFactory
+        commands.AuthCommandFactory,
+        commands.TrackingCommandFactory,
     ]
 
     def __init__(self):
@@ -59,9 +60,6 @@ class JiraBot:
             CommandHandler('help', self.__help_command)
         )
 
-        self.__updater.dispatcher.add_handler(
-            CallbackQueryHandler(self.tracking_handler, pattern=r'^tracking:')
-        )
         self.__updater.dispatcher.add_error_handler(self.__error_callback)
 
         for command in self.commands_factories:
@@ -83,24 +81,6 @@ class JiraBot:
             chat_id=update.message.chat_id,
             text=message.format(first_name),
         )
-
-    def tracking_handler(self, bot, update):
-        """
-        Call order: /menu > Tracking > Any option
-        """
-        scope = self.get_query_scope(update)
-
-        if 'tracking:my' in scope['data']:
-            data = scope['data'].replace('tracking:my', '')
-            date = self.choose_date(bot, data, scope, 'tracking:my:{}')
-
-            if date:
-                # TODO: implement show time in this date
-                bot.edit_message_text(
-                    chat_id=scope['chat_id'],
-                    message_id=scope['message_id'],
-                    text='You chose: {day}.{month}.{year}'.format(**date),
-                )
 
     def choose_date(self, bot, data: str, scope: dict, pattern: str) -> dict:
         """
