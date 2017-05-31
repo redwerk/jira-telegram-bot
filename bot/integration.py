@@ -261,14 +261,7 @@ class JiraBackend:
         :param username:
         :return: list of user worklogs
         """
-        user_logs = list()
-
-        for issue in _worklogs:
-            for log in issue:
-                if log.author.name == username:
-                    user_logs.append(log)
-
-        return user_logs
+        return [log for issue in _worklogs for log in issue if log.author.name == username]
 
     @jira_connect
     def get_project_issues(self, project: str, *args, **kwargs) -> dict:
