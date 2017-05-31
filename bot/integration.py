@@ -178,11 +178,7 @@ class JiraBackend:
         return [status.name for status in statuses]
 
     @jira_connect
-    def get_project_status_issues(self,
-                                  project: str,
-                                  status: str,
-                                  *args,
-                                  **kwargs) -> list:
+    def get_project_status_issues(self, project: str, status: str, *args, **kwargs) -> list:
         """
         Gets issues by project with a selected status
         :param project: abbreviation name of the project
@@ -213,6 +209,8 @@ class JiraBackend:
         :return: List of issues ids
         """
         jira_conn, username = self._getting_data(kwargs)
+        issues = list()
+
         try:
             issues = jira_conn.search_issues(
                 'assignee = "{username}" or  '
@@ -224,9 +222,8 @@ class JiraBackend:
                 'Failed to get assigned or '
                 'watched {} questions:\n{}'.format(username, e)
             )
-        else:
-            return issues
-        return list()
+
+        return issues
 
     @staticmethod
     def get_issues_id(issues: list) -> dict:
@@ -236,11 +233,12 @@ class JiraBackend:
     def get_issues_worklogs(self, issues_ids: dict, *args, **kwargs) -> list:
         """
         Gets worklogs by issue dict ids
-        :param issues_ids: {'PLS-62': '30407', 'PLS-61': '30356'}
+        :param issues_ids: {'30407': 'PLS-62', '30356': 'PLS-61'}
         :return: list with projects worklogs
         """
         jira_conn = kwargs.get('jira_conn')
         _worklogs = list()
+
         for _id, key in issues_ids.items():
             try:
                 log = jira_conn.worklogs(issue=_id)
@@ -262,9 +260,22 @@ class JiraBackend:
         :param username:
         :return: list of user worklogs
         """
-        user_logs = list()
-        for issue in _worklogs:
-            for log in issue:
-                if log.author.name == username:
-                    user_logs.append(log)
-        return user_logs
+        return [log for issue in _worklogs for log in issue if log.author.name == username]
+
+    @jira_connect
+    def get_project_issues(self, project: str, *args, **kwargs) -> dict:
+        """
+        Returns the issues IDs of selected project
+        :param project: 'IHB'
+        :return: dict of ids or empty list
+        """
+        jira_conn = kwargs.get('jira_conn')
+
+        try:
+            p_issues = jira_conn.search_issues('project = "{}"'.format(project))
+        except jira.JIRAError as e:
+            logging.error('Failed to get issues of {}:\n{}'.format(project, e))
+        else:
+            return self.get_issues_id(p_issues)
+
+        return dict()

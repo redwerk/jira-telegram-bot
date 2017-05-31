@@ -1,6 +1,6 @@
 import logging
 
-from telegram import ChatAction, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackQueryHandler
 
 from bot import utils
@@ -10,38 +10,20 @@ from .base import AbstractCommand, AbstractCommandFactory
 
 class UserUnresolvedIssuesCommand(AbstractCommand):
 
-    def handler(self, bot, telegram_id, chat_id, message_id):
+    def handler(self, bot, scope, credentials, *args, **kwargs):
         """
         Receiving open user issues and modifying the current message
-        :param bot:
-        :param telegram_id: user id
-        :param chat_id: chat id with user
-        :param message_id: last message id
         :return: Message with a list of open user issues
         """
-        bot.send_chat_action(chat_id=chat_id, action=ChatAction.TYPING)
-        credentials, message = self._bot_instance.get_and_check_cred(telegram_id)
-
-        if not credentials:
-            bot.edit_message_text(
-                text=message,
-                chat_id=chat_id,
-                message_id=message_id
-            )
-            return
-
-        username = credentials.get('username')
-        password = credentials.get('password')
-
         issues, status = self._bot_instance.jira.get_open_issues(
-            username=username, password=password
+            username=credentials.get('username'), password=credentials.get('password')
         )
 
         if not issues:
             bot.edit_message_text(
                 text='You have no unresolved issues',
-                chat_id=chat_id,
-                message_id=message_id
+                chat_id=scope['chat_id'],
+                message_id=scope['message_id']
             )
             return
 
@@ -51,13 +33,13 @@ class UserUnresolvedIssuesCommand(AbstractCommand):
         else:
             user_issues = utils.split_by_pages(issues, self._bot_instance.issues_per_page)
             page_count = len(user_issues)
-            self._bot_instance.issue_cache[username] = dict(
+            self._bot_instance.issue_cache[credentials.get('username')] = dict(
                 issues=user_issues, page_count=page_count
             )
 
             # return the first page
             formatted_issues = '\n\n'.join(user_issues[0])
-            str_key = 'paginator:{}'.format(username)
+            str_key = 'paginator:{}'.format(credentials.get('username'))
             buttons = utils.get_pagination_keyboard(
                 current=1,
                 max_page=page_count,
@@ -66,54 +48,34 @@ class UserUnresolvedIssuesCommand(AbstractCommand):
 
         bot.edit_message_text(
             text=formatted_issues,
-            chat_id=chat_id,
-            message_id=message_id,
+            chat_id=scope['chat_id'],
+            message_id=scope['message_id'],
             reply_markup=buttons
         )
 
 
-class ChooseProjectCommand(AbstractCommand):
+class ChooseProjectMenuCommand(AbstractCommand):
 
-    def handler(self, bot, telegram_id, chat_id, message_id, status=False):
+    def handler(self, bot, scope, credentials, *args, **kwargs):
         """
         Call order: /menu > Issues > Unresolved by project
         Displaying inline keyboard with names of projects
-
-        :param bot:
-        :param telegram_id: user id in telegram
-        :param chat_id: current chat whith a user
-        :param message_id: last message
         """
-        credentials, message = self._bot_instance.get_and_check_cred(telegram_id)
-
-        if not credentials:
-            bot.edit_message_text(
-                text=message,
-                chat_id=chat_id,
-                message_id=message_id
-            )
-            return
-
-        username = credentials.get('username')
-        password = credentials.get('password')
+        _callback = kwargs.get('pattern')
+        _footer = kwargs.get('footer')
 
         projects_buttons = list()
         projects, status_code = self._bot_instance.jira.get_projects(
-            username=username, password=password
+            username=credentials.get('username'), password=credentials.get('password')
         )
 
         if not projects:
             bot.edit_message_text(
                 text="Sorry, can't get projects",
-                chat_id=chat_id,
-                message_id=message_id
+                chat_id=scope['chat_id'],
+                message_id=scope['message_id']
             )
             return
-
-        if status:
-            _callback = 'project_s_menu:{}'
-        else:
-            _callback = 'project:{}'
 
         # dynamic keyboard creation
         for project_name in projects:
@@ -125,7 +87,7 @@ class ChooseProjectCommand(AbstractCommand):
             )
 
         footer_button = [
-            InlineKeyboardButton('« Back', callback_data='issues_menu')
+            InlineKeyboardButton('« Back', callback_data=_footer)
         ]
         buttons = InlineKeyboardMarkup(
             utils.build_menu(
@@ -136,16 +98,10 @@ class ChooseProjectCommand(AbstractCommand):
 
         bot.edit_message_text(
             text='Choose one of the projects',
-            chat_id=chat_id,
-            message_id=message_id,
+            chat_id=scope['chat_id'],
+            message_id=scope['message_id'],
             reply_markup=buttons
         )
-
-
-class ChooseProjectMenuCommand(ChooseProjectCommand):
-
-    def handler(self, bot, telegram_id, chat_id, message_id, status=True):
-        super(ChooseProjectMenuCommand, self).handler(bot, telegram_id, chat_id, message_id, status=status)
 
 
 class ProjectUnresolvedIssuesCommand(AbstractCommand):
@@ -339,8 +295,14 @@ class IssueCommandFactory(AbstractCommandFactory):
 
     commands = {
         "issues:my": UserUnresolvedIssuesCommand,
-        "issues:p": ChooseProjectCommand,
+        "issues:p": ChooseProjectMenuCommand,
         "issues:ps": ChooseProjectMenuCommand
+    }
+
+    patterns = {
+        "issues:my": 'ignore',
+        "issues:p": 'project:{}',
+        "issues:ps": 'project_s_menu:{}'
     }
 
     def command(self, bot, update, *args, **kwargs):
@@ -348,8 +310,18 @@ class IssueCommandFactory(AbstractCommandFactory):
         Call order: /menu > Issues > Any option
         """
         scope = self._bot_instance.get_query_scope(update)
+        credentials, message = self._bot_instance.get_and_check_cred(scope['telegram_id'])
+
+        if not credentials:
+            bot.edit_message_text(
+                text=message,
+                chat_id=scope['chat_id'],
+                message_id=scope['message_id']
+            )
+            return
+
         obj = self._command_factory_method(scope['data'])
-        obj.handler(bot, scope['telegram_id'], scope['chat_id'], scope['message_id'])
+        obj.handler(bot, scope, credentials, pattern=self.patterns[scope['data']], footer='issues_menu')
 
     def command_callback(self):
         return CallbackQueryHandler(self.command, pattern=r'^issues:')
