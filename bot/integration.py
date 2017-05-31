@@ -279,3 +279,24 @@ class JiraBackend:
             return self.get_issues_id(p_issues)
 
         return dict()
+
+    @jira_connect
+    def check_admin_permissions(self, *args, **kwargs) -> bool:
+        """Checks if the user has administrator rights (must be added to a specific group)"""
+        jira_conn = kwargs.get('jira_conn')
+
+        return 'ADMINISTER' in jira_conn.my_permissions()['permissions']
+
+    @jira_connect
+    def get_developers(self, *args, **kwargs) -> list:
+        """Returns a list of developer names"""
+        jira_conn = kwargs.get('jira_conn')
+
+        try:
+            developers = jira_conn.group_members('jira-developers')
+        except jira.JIRAError as e:
+            logging.error('Failed to get developers:\n{}'.format(e))
+        else:
+            return [data['fullname'] for nick, data in developers.items()]
+
+        return list()
