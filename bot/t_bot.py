@@ -42,6 +42,7 @@ class JiraBot:
         commands.MenuCommandFactory,
         commands.AuthCommandFactory,
         commands.TrackingCommandFactory,
+        commands.TrackingProjectCommandFactory,
     ]
 
     def __init__(self):

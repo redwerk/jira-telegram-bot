@@ -5,6 +5,7 @@ from telegram.ext import CallbackQueryHandler
 from bot import utils
 
 from .base import AbstractCommand, AbstractCommandFactory
+from .issue import ChooseProjectMenuCommand
 
 
 class ShowCalendarCommand(AbstractCommand):
@@ -91,10 +92,12 @@ class TrackingProjectWorklogCommand(AbstractCommand):
 
     def handler(self, bot, scope, credentials, *args, **kwargs):
         """Shows all worklogs by selected project in selected date interval"""
+        project = kwargs.get('project')
+
         bot.edit_message_text(
             chat_id=scope['chat_id'],
             message_id=scope['message_id'],
-            text='You chose: show tracking time of selected project',
+            text='You chose: show tracking time of {}'.format(project),
         )
 
 
@@ -116,8 +119,14 @@ class TrackingCommandFactory(AbstractCommandFactory):
 
     commands = {
         'tracking-my': TrackingUserWorklogCommand,
-        'tracking-p': TrackingProjectWorklogCommand,
-        'tracking-pu': TrackingProjectUserWorklogCommand,
+        'tracking-p': ChooseProjectMenuCommand,
+        'tracking-pu': ChooseProjectMenuCommand,
+    }
+
+    patterns = {
+        'tracking-my': 'ignore',
+        'tracking-p': 'tproject:{}',
+        'tracking-pu': 'tproject_u_menu:{}',
     }
 
     def command(self, bot, update, *args, **kwargs):
@@ -158,7 +167,37 @@ class TrackingCommandFactory(AbstractCommandFactory):
                 'user_d_format': user_date_format
             }
         )
-        obj.handler(bot, scope, credentials)
+
+        _pattern = self.patterns[cmd_scope[0]].format(cmd_scope[1] + ':' + cmd_scope[2] + ':{}')
+        obj.handler(bot, scope, credentials, pattern=_pattern, footer='tracking_menu')
 
     def command_callback(self):
         return CallbackQueryHandler(self.command, pattern=r'^tracking')
+
+
+class TrackingProjectCommandFactory(AbstractCommandFactory):
+    commands = {
+        'tproject': TrackingProjectWorklogCommand,
+        'tproject_u': TrackingProjectUserWorklogCommand,
+        'tproject_u_menu': None,
+    }
+
+    def command(self, bot, update, *args, **kwargs):
+        scope = self._bot_instance.get_query_scope(update)
+        cmd, start_d, end_d, project = scope['data'].split(':')
+
+        obj = self._command_factory_method(cmd)
+
+        credentials, message = self._bot_instance.get_and_check_cred(scope['telegram_id'])
+        if not credentials:
+            bot.edit_message_text(
+                text=message,
+                chat_id=scope['chat_id'],
+                message_id=scope['message_id']
+            )
+            return
+
+        obj.handler(bot, scope, credentials, project=project)
+
+    def command_callback(self):
+        return CallbackQueryHandler(self.command, pattern=r'^tproject')
