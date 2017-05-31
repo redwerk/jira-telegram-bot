@@ -157,7 +157,7 @@ class ProjectUnresolvedIssuesCommand(AbstractCommand):
 
 class ProjectStatusIssuesCommand(AbstractCommand):
 
-    def handler(self, bot, update, scope, credentials, *args, **kwargs):
+    def handler(self, bot, scope, credentials, *args, **kwargs):
         """
         Call order: /menu > Issues > Open project issues >
                     > Some project  > Some status
@@ -211,14 +211,16 @@ class ProjectStatusIssuesCommand(AbstractCommand):
         )
 
 
-class ProjectStatusMenuCommand(AbstractCommand):
+class ChooseStatusMenuCommand(AbstractCommand):
 
-    def handler(self, bot, update, scope, credentials, *args, **kwargs):
+    def handler(self, bot, scope, credentials, *args, **kwargs):
         """
         Call order: /menu > Issues > Unresolved by project > Some project
         Displaying inline keyboard with available statuses
         """
         status_buttons = list()
+        _callback = kwargs.get('pattern')
+        _footer = kwargs.get('footer')
         project = kwargs.get('project')
 
         statuses, status = self._bot_instance.jira.get_statuses(
@@ -238,13 +240,11 @@ class ProjectStatusMenuCommand(AbstractCommand):
             status_buttons.append(
                 InlineKeyboardButton(
                     text=_status,
-                    callback_data='project_s:{}:{}'.format(
-                        project, _status
-                    )
+                    callback_data=_callback.format(_status)
                 )
             )
         footer_button = [
-            InlineKeyboardButton('« Back', callback_data='issues:ps')
+            InlineKeyboardButton('« Back', callback_data=_footer)
         ]
 
         buttons = InlineKeyboardMarkup(
@@ -331,7 +331,7 @@ class ProjectIssuesFactory(AbstractCommandFactory):
     commands = {
         'project': ProjectUnresolvedIssuesCommand,
         'project_s': ProjectStatusIssuesCommand,
-        'project_s_menu': ProjectStatusMenuCommand
+        'project_s_menu': ChooseStatusMenuCommand
     }
 
     def command(self, bot, update, *args, **kwargs):
@@ -357,10 +357,8 @@ class ProjectIssuesFactory(AbstractCommandFactory):
             )
             return
 
-        obj.handler(
-            bot, update, scope, credentials,
-            project=project, status=status
-        )
+        _pattern = 'project_s:' + project + ':{}'
+        obj.handler(bot, scope, credentials, project=project, status=status, pattern=_pattern, footer='issues:ps')
 
     def command_callback(self):
         return CallbackQueryHandler(self.command, pattern=r'^project')
