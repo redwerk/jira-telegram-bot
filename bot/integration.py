@@ -209,6 +209,7 @@ class JiraBackend:
         :return: List of issues ids
         """
         jira_conn, username = self._getting_data(kwargs)
+        issues = list()
 
         try:
             issues = jira_conn.search_issues(
@@ -221,10 +222,8 @@ class JiraBackend:
                 'Failed to get assigned or '
                 'watched {} questions:\n{}'.format(username, e)
             )
-        else:
-            return issues
 
-        return list()
+        return issues
 
     @staticmethod
     def get_issues_id(issues: list) -> dict:
