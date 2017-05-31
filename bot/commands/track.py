@@ -8,6 +8,10 @@ from .base import AbstractCommand, AbstractCommandFactory
 from .issue import ChooseProjectMenuCommand
 
 
+JIRA_DATE_FORMAT = '%Y-%m-%dT%H:%M:%S.%f%z'
+USER_DATE_FORMAT = '%Y-%m-%d'
+
+
 class ShowCalendarCommand(AbstractCommand):
 
     def handler(self, bot, scope, year, month, pattern, *args, **kwargs):
@@ -90,14 +94,49 @@ class TrackingUserWorklogCommand(AbstractCommand):
 
 class TrackingProjectWorklogCommand(AbstractCommand):
 
-    def handler(self, bot, scope, credentials, *args, **kwargs):
+    def handler(self, bot, scope: dict, credentials: dict, *args, **kwargs):
         """Shows all worklogs by selected project in selected date interval"""
-        project = kwargs.get('project')
+        start_date = utils.to_datetime(scope['start_date'], scope['user_d_format'])
+        end_date = utils.to_datetime(scope['end_date'], scope['user_d_format'])
+        project_worklogs = list()
+
+        if start_date > end_date:
+            bot.edit_message_text(
+                chat_id=scope['chat_id'],
+                message_id=scope['message_id'],
+                text='The end date can not be less than the start date',
+            )
+            return
+
+        issues_ids, status_code = self._bot_instance.jira.get_project_issues(
+            project=scope.get('project'), username=credentials.get('username'), password=credentials.get('password')
+        )
+        all_worklogs, status_code = self._bot_instance.jira.get_issues_worklogs(
+            issues_ids, username=credentials['username'], password=credentials['password']
+        )
+
+        # comparison of the time interval (the time of the log should be between the start and end dates)
+        for i_log in all_worklogs:
+            for log in i_log:
+                logged_time = utils.to_datetime(log.created, scope['jira_d_format'])
+
+                if (start_date <= logged_time) and (logged_time <= end_date):
+                    project_worklogs.append(
+                        '{} {} {}\n{}'.format(
+                            issues_ids[log.issueId], log.author.displayName, log.timeSpent, log.created
+                        )
+                    )
+
+        start_line = '{project} work log from {start_date} to {end_date}\n\n'.format(**scope)
+        if project_worklogs:
+            formatted = '\n\n'.join(project_worklogs)
+        else:
+            formatted = 'No data about worklogs in this time interval'
 
         bot.edit_message_text(
             chat_id=scope['chat_id'],
             message_id=scope['message_id'],
-            text='You chose: show tracking time of {}'.format(project),
+            text=start_line + formatted,
         )
 
 
@@ -131,8 +170,6 @@ class TrackingCommandFactory(AbstractCommandFactory):
 
     def command(self, bot, update, *args, **kwargs):
         change_month = ':change_m:'
-        jira_date_format = '%Y-%m-%dT%H:%M:%S.%f%z'
-        user_date_format = '%Y-%m-%d'
         scope = self._bot_instance.get_query_scope(update)
 
         # choice of time interval
@@ -163,8 +200,8 @@ class TrackingCommandFactory(AbstractCommandFactory):
             {
                 'start_date': cmd_scope[1],
                 'end_date': cmd_scope[2],
-                'jira_d_format': jira_date_format,
-                'user_d_format': user_date_format
+                'jira_d_format': JIRA_DATE_FORMAT,
+                'user_d_format': USER_DATE_FORMAT
             }
         )
 
@@ -197,7 +234,17 @@ class TrackingProjectCommandFactory(AbstractCommandFactory):
             )
             return
 
-        obj.handler(bot, scope, credentials, project=project)
+        scope.update(
+            {
+                'project': project,
+                'start_date': start_d,
+                'end_date': end_d,
+                'jira_d_format': JIRA_DATE_FORMAT,
+                'user_d_format': USER_DATE_FORMAT
+            }
+        )
+
+        obj.handler(bot, scope, credentials)
 
     def command_callback(self):
         return CallbackQueryHandler(self.command, pattern=r'^tproject')
