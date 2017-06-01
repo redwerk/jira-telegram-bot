@@ -33,6 +33,17 @@ DB_COLLECTION = <string>
 ```
 
 
+### Running via Docker Compose
+
+1. Set value `DB_HOST = mongo` to **.env** and file And fill in the remaining fields.
+
+2. Run:
+```
+docker-compose build
+docker-compose up
+```
+
+
 ### Code style and contribution guide
 - Install the [editorconfig](http://editorconfig.org/) plugin for your code editor.
 - Used Flake8 or PEP8 plugins in your console or code editor.

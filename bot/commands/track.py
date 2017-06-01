@@ -1,12 +1,12 @@
 from datetime import datetime
 
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackQueryHandler
 
 from bot import utils
 
 from .base import AbstractCommand, AbstractCommandFactory
 from .issue import ChooseProjectMenuCommand
-
 
 JIRA_DATE_FORMAT = '%Y-%m-%dT%H:%M:%S.%f%z'
 USER_DATE_FORMAT = '%Y-%m-%d'
@@ -43,6 +43,48 @@ class ChooseDateIntervalCommand(AbstractCommand):
         else:
             now = datetime.now()
             ShowCalendarCommand(self._bot_instance).handler(bot, scope, now.year, now.month, scope['data'])
+
+
+class ChooseDeveloperCommand(AbstractCommand):
+
+    def handler(self, bot, scope: dict, credentials: dict, *args, **kwargs):
+        """Displaying inline keyboard with developers names"""
+
+        buttons = list()
+        _callback = kwargs.get('pattern')
+        _footer = kwargs.get('footer')
+
+        developers, status = self._bot_instance.jira.get_developers(
+            username=credentials.get('username'), password=credentials.get('password')
+        )
+
+        if not developers:
+            bot.edit_message_text(
+                text="Sorry, can't get developers at this moment",
+                chat_id=scope['chat_id'],
+                message_id=scope['message_id']
+            )
+            return
+
+        for fullname in sorted(developers):
+            buttons.append(
+                InlineKeyboardButton(text=fullname, callback_data=_callback.format(fullname))
+            )
+
+        footer_button = [
+            InlineKeyboardButton('« Back', callback_data=_footer)
+        ]
+
+        buttons = InlineKeyboardMarkup(
+            utils.build_menu(buttons, n_cols=2, footer_buttons=footer_button)
+        )
+
+        bot.edit_message_text(
+            chat_id=scope['chat_id'],
+            message_id=scope['message_id'],
+            text='Choose one of the developer',
+            reply_markup=buttons
+        )
 
 
 class TrackingUserWorklogCommand(AbstractCommand):
@@ -147,10 +189,45 @@ class TrackingProjectUserWorklogCommand(AbstractCommand):
         Shows all worklogs by selected project for selected user
         in selected date interval
         """
+        start_date = utils.to_datetime(scope['start_date'], scope['user_d_format'])
+        end_date = utils.to_datetime(scope['end_date'], scope['user_d_format'])
+        user_worklogs = list()
+
+        if start_date > end_date:
+            bot.edit_message_text(
+                chat_id=scope['chat_id'],
+                message_id=scope['message_id'],
+                text='The end date can not be less than the start date',
+            )
+            return
+
+        issues_ids, status_code = self._bot_instance.jira.get_project_issues(
+            scope.get('project'), username=credentials['username'], password=credentials['password']
+        )
+        all_worklogs, status_code = self._bot_instance.jira.get_issues_worklogs(
+            issues_ids, username=credentials['username'], password=credentials['password']
+        )
+        user_logs = [log for issue in all_worklogs for log in issue if log.author.displayName == scope.get('user')]
+
+        # comparison of the time interval (the time of the log should be between the start and end dates)
+        for log in user_logs:
+            logged_time = utils.to_datetime(log.created, scope['jira_d_format'])
+
+            if (start_date <= logged_time) and (logged_time <= end_date):
+                user_worklogs.append(
+                    '{} {}\n{}'.format(issues_ids[log.issueId], log.timeSpent, log.created)
+                )
+
+        start_line = '{user} work log on {project} from {start_date} to {end_date}\n\n'.format(**scope)
+        if user_worklogs:
+            formatted = '\n\n'.join(user_worklogs)
+        else:
+            formatted = 'No data about {user} work logs on {project} from {start_date} to {end_date}'.format(**scope)
+
         bot.edit_message_text(
             chat_id=scope['chat_id'],
             message_id=scope['message_id'],
-            text='You chose: show tracking time by project and user',
+            text=start_line + formatted,
         )
 
 
@@ -216,12 +293,15 @@ class TrackingProjectCommandFactory(AbstractCommandFactory):
     commands = {
         'tproject': TrackingProjectWorklogCommand,
         'tproject_u': TrackingProjectUserWorklogCommand,
-        'tproject_u_menu': None,
+        'tproject_u_menu': ChooseDeveloperCommand,
     }
 
     def command(self, bot, update, *args, **kwargs):
         scope = self._bot_instance.get_query_scope(update)
-        cmd, start_d, end_d, project = scope['data'].split(':')
+        cmd, start_d, end_d, project, *user = scope['data'].split(':')
+
+        if user:
+            user = user[0]
 
         obj = self._command_factory_method(cmd)
 
@@ -240,11 +320,22 @@ class TrackingProjectCommandFactory(AbstractCommandFactory):
                 'start_date': start_d,
                 'end_date': end_d,
                 'jira_d_format': JIRA_DATE_FORMAT,
-                'user_d_format': USER_DATE_FORMAT
+                'user_d_format': USER_DATE_FORMAT,
+                'user': user
             }
         )
 
-        obj.handler(bot, scope, credentials)
+        # Protected feature. Only for users with administrator permissions
+        if isinstance(obj, ChooseDeveloperCommand):
+            if not self._bot_instance.jira.is_admin_permissions(
+                username=credentials.get('username'), password=credentials.get('password')
+            ):
+                message = 'You have no necessary permissions for use this function'
+                bot.edit_message_text(text=message, chat_id=scope['chat_id'], message_id=scope['message_id'])
+                return
+
+        _pattern = 'tproject_u:{start_date}:{end_date}:{project}'.format(**scope) + ':{}'
+        obj.handler(bot, scope, credentials, pattern=_pattern, footer='tracking-pu')
 
     def command_callback(self):
         return CallbackQueryHandler(self.command, pattern=r'^tproject')

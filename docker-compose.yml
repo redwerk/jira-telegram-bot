@@ -1,0 +1,12 @@
+version: '2'
+services:
+  telegram-bot:
+    build: .
+    volumes:
+     - .:/code
+    depends_on:
+    - mongo
+  mongo:
+    image: "mongo:latest"
+    volumes:
+    - /home/$USER/data:/data/db
