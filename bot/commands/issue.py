@@ -106,7 +106,7 @@ class ChooseProjectMenuCommand(AbstractCommand):
 
 class ProjectUnresolvedIssuesCommand(AbstractCommand):
 
-    def handler(self, bot, update, scope, credentials, *args, **kwargs):
+    def handler(self, bot, scope, credentials, *args, **kwargs):
         """
         Call order: /menu > Issues > Open project issues > Some project
         Shows unresolved issues by selected project
