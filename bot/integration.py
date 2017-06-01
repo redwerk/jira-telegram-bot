@@ -272,7 +272,7 @@ class JiraBackend:
         jira_conn = kwargs.get('jira_conn')
 
         try:
-            p_issues = jira_conn.search_issues('project = "{}"'.format(project))
+            p_issues = jira_conn.search_issues('project = "{}"'.format(project), maxResults=200)
         except jira.JIRAError as e:
             logging.error('Failed to get issues of {}:\n{}'.format(project, e))
         else:

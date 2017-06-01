@@ -189,10 +189,45 @@ class TrackingProjectUserWorklogCommand(AbstractCommand):
         Shows all worklogs by selected project for selected user
         in selected date interval
         """
+        start_date = utils.to_datetime(scope['start_date'], scope['user_d_format'])
+        end_date = utils.to_datetime(scope['end_date'], scope['user_d_format'])
+        user_worklogs = list()
+
+        if start_date > end_date:
+            bot.edit_message_text(
+                chat_id=scope['chat_id'],
+                message_id=scope['message_id'],
+                text='The end date can not be less than the start date',
+            )
+            return
+
+        issues_ids, status_code = self._bot_instance.jira.get_project_issues(
+            scope.get('project'), username=credentials['username'], password=credentials['password']
+        )
+        all_worklogs, status_code = self._bot_instance.jira.get_issues_worklogs(
+            issues_ids, username=credentials['username'], password=credentials['password']
+        )
+        user_logs = [log for issue in all_worklogs for log in issue if log.author.displayName == scope.get('user')]
+
+        # comparison of the time interval (the time of the log should be between the start and end dates)
+        for log in user_logs:
+            logged_time = utils.to_datetime(log.created, scope['jira_d_format'])
+
+            if (start_date <= logged_time) and (logged_time <= end_date):
+                user_worklogs.append(
+                    '{} {}\n{}'.format(issues_ids[log.issueId], log.timeSpent, log.created)
+                )
+
+        start_line = '{user} work log on {project} from {start_date} to {end_date}\n\n'.format(**scope)
+        if user_worklogs:
+            formatted = '\n\n'.join(user_worklogs)
+        else:
+            formatted = 'No data about {user} work logs on {project} from {start_date} to {end_date}'.format(**scope)
+
         bot.edit_message_text(
             chat_id=scope['chat_id'],
             message_id=scope['message_id'],
-            text='You chose: show tracking time by {project} and {user}'.format(**scope),
+            text=start_line + formatted,
         )
 
 
