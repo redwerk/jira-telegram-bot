@@ -281,7 +281,7 @@ class JiraBackend:
         return dict()
 
     @jira_connect
-    def check_admin_permissions(self, *args, **kwargs) -> bool:
+    def is_admin_permissions(self, *args, **kwargs) -> bool:
         """Checks if the user has administrator rights (must be added to a specific group)"""
         jira_conn = kwargs.get('jira_conn')
 
