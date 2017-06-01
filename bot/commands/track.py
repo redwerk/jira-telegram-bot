@@ -330,8 +330,8 @@ class TrackingProjectCommandFactory(AbstractCommandFactory):
             if not self._bot_instance.jira.is_admin_permissions(
                 username=credentials.get('username'), password=credentials.get('password')
             ):
-                message_ = 'You have no necessary permissions for use this function'
-                bot.edit_message_text(text=message_, chat_id=scope['chat_id'], message_id=scope['message_id'])
+                message = 'You have no necessary permissions for use this function'
+                bot.edit_message_text(text=message, chat_id=scope['chat_id'], message_id=scope['message_id'])
                 return
 
         _pattern = 'tproject_u:{start_date}:{end_date}:{project}'.format(**scope) + ':{}'
