@@ -312,3 +312,32 @@ class JiraBackend:
             return [data['fullname'] for nick, data in developers.items()]
 
         return list()
+
+    @jira_connect
+    def get_user_project_issues_by_worklog(self,
+                                           user: str,
+                                           project: str,
+                                           start_date: str,
+                                           end_date: str,
+                                           *args,
+                                           **kwargs) -> dict:
+        """
+        Gets issues by selected project in which user logged time in selected time interval
+        :return: {'issues_id': 'issue_key'}
+        """
+        jira_conn = kwargs.get('jira_conn')
+
+        try:
+            p_issues = jira_conn.search_issues(
+                'project = "{project}" and worklogAuthor = "{user}" and worklogDate >= {start_date} '
+                'and worklogDate <= {end_date}'.format(
+                    project=project, user=user, start_date=start_date, end_date=end_date
+                ),
+                maxResults=200
+            )
+        except jira.JIRAError as e:
+            logging.error('Failed to get issues of {} in {}:\n{}'.format(user, project, e))
+        else:
+            return self.get_issues_id(p_issues)
+
+        return dict()

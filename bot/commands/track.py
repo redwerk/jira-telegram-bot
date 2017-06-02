@@ -167,13 +167,14 @@ class TrackingProjectUserWorklogCommand(AbstractCommand):
             )
             return
 
-        issues_ids, status_code = self._bot_instance.jira.get_project_issues_by_worklog(
-            scope.get('project'), username=credentials['username'], password=credentials['password']
+        issues_ids, status_code = self._bot_instance.jira.get_user_project_issues_by_worklog(
+            scope.get('user'), scope.get('project'), scope.get('start_date'), scope.get('end_date'),
+            username=credentials.get('username'), password=credentials.get('password')
         )
         all_worklogs, status_code = self._bot_instance.jira.get_worklogs_by_id(
             issues_ids, username=credentials['username'], password=credentials['password']
         )
-        user_logs = [log for issue in all_worklogs for log in issue if log.author.displayName == scope.get('user')]
+        user_logs = self._bot_instance.jira.get_user_worklogs(all_worklogs, scope.get('user'), display_name=True)
 
         # comparison of the time interval (the time of the log should be between the start and end dates)
         for log in user_logs:
