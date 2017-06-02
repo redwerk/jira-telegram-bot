@@ -105,11 +105,11 @@ class JiraBot:
     def get_issue_data(query_data: str) -> (str, int):
         """
         Gets key and page for cached issues
-        :param query_data: 'paginator:IHB-13'
+        :param query_data: 'paginator:IHB#13'
         :return: ('IHB', 13)
         """
         _data = query_data.replace('paginator:', '')
-        key, page = _data.split('-')
+        key, page = _data.split('#')
 
         return key, int(page)
 
@@ -164,7 +164,7 @@ class JiraBot:
             buttons = utils.get_pagination_keyboard(
                 current=1,
                 max_page=page_count,
-                str_key=str_key + '-{}'
+                str_key=str_key + '#{}'
             )
 
         return formatted_issues, buttons

@@ -125,7 +125,7 @@ class IssuesPaginatorCommand(AbstractCommand):
         buttons = utils.get_pagination_keyboard(
             current=page,
             max_page=user_data['page_count'],
-            str_key=str_key + '-{}'
+            str_key=str_key + '#{}'
         )
         formatted_issues = '\n\n'.join(user_data['issues'][page - 1])
 
