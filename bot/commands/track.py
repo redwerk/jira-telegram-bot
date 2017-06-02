@@ -9,6 +9,7 @@ from .menu import ChooseDeveloperMenuCommand, ChooseProjectMenuCommand
 
 JIRA_DATE_FORMAT = '%Y-%m-%dT%H:%M:%S.%f%z'
 USER_DATE_FORMAT = '%Y-%m-%d'
+ALLOWED_TIME_INTERVAL = 14
 
 
 class ShowCalendarCommand(AbstractCommand):
@@ -60,11 +61,10 @@ class TrackingUserWorklogCommand(AbstractCommand):
             )
             return
 
-        issues, status_code = self._bot_instance.jira.get_tracking_issues(
-            username=credentials['username'], password=credentials['password']
+        issues_ids, status_code = self._bot_instance.jira.get_user_issues_by_worklog(
+            scope['start_date'], scope['end_date'], username=credentials['username'], password=credentials['password']
         )
-        issues_ids = self._bot_instance.jira.get_issues_id(issues)
-        all_worklogs, status_code = self._bot_instance.jira.get_issues_worklogs(
+        all_worklogs, status_code = self._bot_instance.jira.get_worklogs_by_id(
             issues_ids, username=credentials['username'], password=credentials['password']
         )
         user_logs = self._bot_instance.jira.get_user_worklogs(all_worklogs, credentials['username'])
@@ -111,10 +111,11 @@ class TrackingProjectWorklogCommand(AbstractCommand):
             )
             return
 
-        issues_ids, status_code = self._bot_instance.jira.get_project_issues(
-            project=scope.get('project'), username=credentials.get('username'), password=credentials.get('password')
+        issues_ids, status_code = self._bot_instance.jira.get_project_issues_by_worklog(
+            scope.get('project'), scope.get('start_date'), scope.get('end_date'),
+            username=credentials.get('username'), password=credentials.get('password')
         )
-        all_worklogs, status_code = self._bot_instance.jira.get_issues_worklogs(
+        all_worklogs, status_code = self._bot_instance.jira.get_worklogs_by_id(
             issues_ids, username=credentials['username'], password=credentials['password']
         )
 
@@ -166,13 +167,14 @@ class TrackingProjectUserWorklogCommand(AbstractCommand):
             )
             return
 
-        issues_ids, status_code = self._bot_instance.jira.get_project_issues(
-            scope.get('project'), username=credentials['username'], password=credentials['password']
+        issues_ids, status_code = self._bot_instance.jira.get_user_project_issues_by_worklog(
+            scope.get('user'), scope.get('project'), scope.get('start_date'), scope.get('end_date'),
+            username=credentials.get('username'), password=credentials.get('password')
         )
-        all_worklogs, status_code = self._bot_instance.jira.get_issues_worklogs(
+        all_worklogs, status_code = self._bot_instance.jira.get_worklogs_by_id(
             issues_ids, username=credentials['username'], password=credentials['password']
         )
-        user_logs = [log for issue in all_worklogs for log in issue if log.author.displayName == scope.get('user')]
+        user_logs = self._bot_instance.jira.get_user_worklogs(all_worklogs, scope.get('user'), display_name=True)
 
         # comparison of the time interval (the time of the log should be between the start and end dates)
         for log in user_logs:
@@ -228,6 +230,19 @@ class TrackingCommandFactory(AbstractCommandFactory):
 
         if len(cmd_scope) != 3:  # must be [cmd, start_date, end_date]
             ChooseDateIntervalCommand(self._bot_instance).handler(bot, scope)
+            return
+
+        # date interval is limited
+        start_date = utils.to_datetime(cmd_scope[1], USER_DATE_FORMAT)
+        end_date = utils.to_datetime(cmd_scope[2], USER_DATE_FORMAT)
+        date_interval = end_date - start_date
+
+        if date_interval.days > ALLOWED_TIME_INTERVAL:
+            bot.edit_message_text(
+                text='The time interval is limited to {} days'.format(ALLOWED_TIME_INTERVAL),
+                chat_id=scope['chat_id'],
+                message_id=scope['message_id']
+            )
             return
 
         credentials, message = self._bot_instance.get_and_check_cred(
