@@ -270,16 +270,21 @@ class JiraBackend:
             return [log for issue in _worklogs for log in issue if log.author.name == username]
 
     @jira_connect
-    def get_project_issues(self, project: str, *args, **kwargs) -> dict:
+    def get_project_issues_by_worklog(self, project: str, start_date: str, end_date: str, *args, **kwargs) -> dict:
         """
-        Returns the issues IDs of selected project
-        :param project: 'IHB'
-        :return: dict of ids or empty list
+        Gets issues by selected project in which someone logged time in selected time interval
+        :return: {'issues_id': 'issue_key'}
         """
         jira_conn = kwargs.get('jira_conn')
 
         try:
-            p_issues = jira_conn.search_issues('project = "{}"'.format(project), maxResults=200)
+            p_issues = jira_conn.search_issues(
+                'project = "{project}" and worklogDate >= {start_date} '
+                'and worklogDate <= {end_date}'.format(
+                    project=project, start_date=start_date, end_date=end_date
+                ),
+                maxResults=200
+            )
         except jira.JIRAError as e:
             logging.error('Failed to get issues of {}:\n{}'.format(project, e))
         else:

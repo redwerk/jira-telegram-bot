@@ -111,8 +111,9 @@ class TrackingProjectWorklogCommand(AbstractCommand):
             )
             return
 
-        issues_ids, status_code = self._bot_instance.jira.get_project_issues(
-            project=scope.get('project'), username=credentials.get('username'), password=credentials.get('password')
+        issues_ids, status_code = self._bot_instance.jira.get_project_issues_by_worklog(
+            scope.get('project'), scope.get('start_date'), scope.get('end_date'),
+            username=credentials.get('username'), password=credentials.get('password')
         )
         all_worklogs, status_code = self._bot_instance.jira.get_worklogs_by_id(
             issues_ids, username=credentials['username'], password=credentials['password']
@@ -166,7 +167,7 @@ class TrackingProjectUserWorklogCommand(AbstractCommand):
             )
             return
 
-        issues_ids, status_code = self._bot_instance.jira.get_project_issues(
+        issues_ids, status_code = self._bot_instance.jira.get_project_issues_by_worklog(
             scope.get('project'), username=credentials['username'], password=credentials['password']
         )
         all_worklogs, status_code = self._bot_instance.jira.get_worklogs_by_id(
