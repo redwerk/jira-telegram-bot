@@ -1,12 +1,11 @@
 from datetime import datetime
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackQueryHandler
 
 from bot import utils
 
 from .base import AbstractCommand, AbstractCommandFactory
-from .issue import ChooseProjectMenuCommand
+from .menu import ChooseDeveloperMenuCommand, ChooseProjectMenuCommand
 
 JIRA_DATE_FORMAT = '%Y-%m-%dT%H:%M:%S.%f%z'
 USER_DATE_FORMAT = '%Y-%m-%d'
@@ -43,48 +42,6 @@ class ChooseDateIntervalCommand(AbstractCommand):
         else:
             now = datetime.now()
             ShowCalendarCommand(self._bot_instance).handler(bot, scope, now.year, now.month, scope['data'])
-
-
-class ChooseDeveloperCommand(AbstractCommand):
-
-    def handler(self, bot, scope: dict, credentials: dict, *args, **kwargs):
-        """Displaying inline keyboard with developers names"""
-
-        buttons = list()
-        _callback = kwargs.get('pattern')
-        _footer = kwargs.get('footer')
-
-        developers, status = self._bot_instance.jira.get_developers(
-            username=credentials.get('username'), password=credentials.get('password')
-        )
-
-        if not developers:
-            bot.edit_message_text(
-                text="Sorry, can't get developers at this moment",
-                chat_id=scope['chat_id'],
-                message_id=scope['message_id']
-            )
-            return
-
-        for fullname in sorted(developers):
-            buttons.append(
-                InlineKeyboardButton(text=fullname, callback_data=_callback.format(fullname))
-            )
-
-        footer_button = [
-            InlineKeyboardButton('« Back', callback_data=_footer)
-        ]
-
-        buttons = InlineKeyboardMarkup(
-            utils.build_menu(buttons, n_cols=2, footer_buttons=footer_button)
-        )
-
-        bot.edit_message_text(
-            chat_id=scope['chat_id'],
-            message_id=scope['message_id'],
-            text='Choose one of the developer',
-            reply_markup=buttons
-        )
 
 
 class TrackingUserWorklogCommand(AbstractCommand):
@@ -293,7 +250,7 @@ class TrackingProjectCommandFactory(AbstractCommandFactory):
     commands = {
         'tproject': TrackingProjectWorklogCommand,
         'tproject_u': TrackingProjectUserWorklogCommand,
-        'tproject_u_menu': ChooseDeveloperCommand,
+        'tproject_u_menu': ChooseDeveloperMenuCommand,
     }
 
     def command(self, bot, update, *args, **kwargs):
@@ -326,7 +283,7 @@ class TrackingProjectCommandFactory(AbstractCommandFactory):
         )
 
         # Protected feature. Only for users with administrator permissions
-        if isinstance(obj, ChooseDeveloperCommand):
+        if isinstance(obj, ChooseDeveloperMenuCommand):
             if not self._bot_instance.jira.is_admin_permissions(
                 username=credentials.get('username'), password=credentials.get('password')
             ):

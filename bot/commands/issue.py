@@ -1,11 +1,11 @@
 import logging
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackQueryHandler
 
 from bot import utils
 
 from .base import AbstractCommand, AbstractCommandFactory
+from .menu import ChooseProjectMenuCommand, ChooseStatusMenuCommand
 
 
 class UserUnresolvedIssuesCommand(AbstractCommand):
@@ -48,56 +48,6 @@ class UserUnresolvedIssuesCommand(AbstractCommand):
 
         bot.edit_message_text(
             text=formatted_issues,
-            chat_id=scope['chat_id'],
-            message_id=scope['message_id'],
-            reply_markup=buttons
-        )
-
-
-class ChooseProjectMenuCommand(AbstractCommand):
-
-    def handler(self, bot, scope, credentials, *args, **kwargs):
-        """
-        Call order: /menu > Issues > Unresolved by project
-        Displaying inline keyboard with names of projects
-        """
-        _callback = kwargs.get('pattern')
-        _footer = kwargs.get('footer')
-
-        projects_buttons = list()
-        projects, status_code = self._bot_instance.jira.get_projects(
-            username=credentials.get('username'), password=credentials.get('password')
-        )
-
-        if not projects:
-            bot.edit_message_text(
-                text="Sorry, can't get projects",
-                chat_id=scope['chat_id'],
-                message_id=scope['message_id']
-            )
-            return
-
-        # dynamic keyboard creation
-        for project_name in projects:
-            projects_buttons.append(
-                InlineKeyboardButton(
-                    text=project_name,
-                    callback_data=_callback.format(project_name)
-                )
-            )
-
-        footer_button = [
-            InlineKeyboardButton('« Back', callback_data=_footer)
-        ]
-        buttons = InlineKeyboardMarkup(
-            utils.build_menu(
-                projects_buttons,
-                n_cols=3,
-                footer_buttons=footer_button)
-        )
-
-        bot.edit_message_text(
-            text='Choose one of the projects',
             chat_id=scope['chat_id'],
             message_id=scope['message_id'],
             reply_markup=buttons
@@ -207,58 +157,6 @@ class ProjectStatusIssuesCommand(AbstractCommand):
             text=formatted_issues,
             chat_id=scope['chat_id'],
             message_id=scope['message_id'],
-            reply_markup=buttons
-        )
-
-
-class ChooseStatusMenuCommand(AbstractCommand):
-
-    def handler(self, bot, scope, credentials, *args, **kwargs):
-        """
-        Call order: /menu > Issues > Unresolved by project > Some project
-        Displaying inline keyboard with available statuses
-        """
-        status_buttons = list()
-        _callback = kwargs.get('pattern')
-        _footer = kwargs.get('footer')
-        project = kwargs.get('project')
-
-        statuses, status = self._bot_instance.jira.get_statuses(
-            username=credentials['username'],
-            password=credentials['password']
-        )
-
-        if not statuses:
-            bot.edit_message_text(
-                text="Sorry, can't get statuses at this moment",
-                chat_id=scope['chat_id'],
-                message_id=scope['message_id']
-            )
-            return
-
-        for _status in statuses:
-            status_buttons.append(
-                InlineKeyboardButton(
-                    text=_status,
-                    callback_data=_callback.format(_status)
-                )
-            )
-        footer_button = [
-            InlineKeyboardButton('« Back', callback_data=_footer)
-        ]
-
-        buttons = InlineKeyboardMarkup(
-            utils.build_menu(
-                status_buttons,
-                n_cols=2,
-                footer_buttons=footer_button)
-        )
-        text = 'You chose {} project.\n' \
-               'Choose one of the statuses'.format(project)
-        bot.edit_message_text(
-            chat_id=scope['chat_id'],
-            message_id=scope['message_id'],
-            text=text,
             reply_markup=buttons
         )
 
