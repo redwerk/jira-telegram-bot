@@ -203,18 +203,19 @@ class JiraBackend:
         return list()
 
     @jira_connect
-    def get_tracking_issues(self, *args, **kwargs) -> list:
+    def get_user_issues_by_worklog(self, start_date: str, end_date: str, *args, **kwargs) -> dict:
         """
-        Gets issues which were assigned to user or user are watching for it
-        :return: List of issues ids
+        Gets issues in which user logged time in selected time interval
+        :return: {'issues_id': 'issue_key'}
         """
         jira_conn, username = self._getting_data(kwargs)
-        issues = list()
 
         try:
             issues = jira_conn.search_issues(
-                'assignee = "{username}" or  '
-                'watcher = "{username}"'.format(username=username),
+                'worklogAuthor = "{username}" and worklogDate >= {start_date} '
+                'and worklogDate <= {end_date}'.format(
+                    username=username, start_date=start_date, end_date=end_date
+                ),
                 maxResults=200
             )
         except jira.JIRAError as e:
@@ -222,15 +223,17 @@ class JiraBackend:
                 'Failed to get assigned or '
                 'watched {} questions:\n{}'.format(username, e)
             )
+        else:
+            return self.get_issues_id(issues)
 
-        return issues
+        return dict()
 
     @staticmethod
     def get_issues_id(issues: list) -> dict:
         return {i.id: i.key for i in issues}
 
     @jira_connect
-    def get_issues_worklogs(self, issues_ids: dict, *args, **kwargs) -> list:
+    def get_worklogs_by_id(self, issues_ids: dict, *args, **kwargs) -> list:
         """
         Gets worklogs by issue dict ids
         :param issues_ids: {'30407': 'PLS-62', '30356': 'PLS-61'}
@@ -253,14 +256,18 @@ class JiraBackend:
             return _worklogs
 
     @staticmethod
-    def get_user_worklogs(_worklogs: list, username: str) -> list:
+    def get_user_worklogs(_worklogs: list, username: str, display_name=False) -> list:
         """
         Gets the only selected user worklogs
         :param _worklogs: list of lists worklogs
         :param username:
+        :param display_name: the flag on what attribute to compare
         :return: list of user worklogs
         """
-        return [log for issue in _worklogs for log in issue if log.author.name == username]
+        if display_name:
+            return [log for issue in _worklogs for log in issue if log.author.displayName == username]
+        else:
+            return [log for issue in _worklogs for log in issue if log.author.name == username]
 
     @jira_connect
     def get_project_issues(self, project: str, *args, **kwargs) -> dict:
