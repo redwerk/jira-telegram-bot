@@ -27,24 +27,7 @@ class UserUnresolvedIssuesCommand(AbstractCommand):
             )
             return
 
-        buttons = None
-        if len(issues) < self._bot_instance.issues_per_page:
-            formatted_issues = '\n\n'.join(issues)
-        else:
-            user_issues = utils.split_by_pages(issues, self._bot_instance.issues_per_page)
-            page_count = len(user_issues)
-            self._bot_instance.issue_cache[credentials.get('username')] = dict(
-                issues=user_issues, page_count=page_count
-            )
-
-            # return the first page
-            formatted_issues = '\n\n'.join(user_issues[0])
-            str_key = 'paginator:{}'.format(credentials.get('username'))
-            buttons = utils.get_pagination_keyboard(
-                current=1,
-                max_page=page_count,
-                str_key=str_key + '-{}'
-            )
+        formatted_issues, buttons = self._bot_instance.save_into_cache(issues, credentials.get('username'))
 
         bot.edit_message_text(
             text=formatted_issues,
@@ -61,7 +44,6 @@ class ProjectUnresolvedIssuesCommand(AbstractCommand):
         Call order: /menu > Issues > Open project issues > Some project
         Shows unresolved issues by selected project
         """
-        buttons = None
         project = kwargs.get('project')
 
         issues, status_code = self._bot_instance.jira.get_open_project_issues(
@@ -78,25 +60,8 @@ class ProjectUnresolvedIssuesCommand(AbstractCommand):
             )
             return
 
-        if len(issues) < self._bot_instance.issues_per_page:
-            formatted_issues = '\n\n'.join(issues)
-        else:
-            project_issues = utils.split_by_pages(
-                issues,
-                self._bot_instance.issues_per_page
-            )
-            page_count = len(project_issues)
-            self._bot_instance.issue_cache[project] = dict(
-                issues=project_issues, page_count=page_count
-            )
-            # return the first page
-            formatted_issues = '\n\n'.join(project_issues[0])
-            str_key = 'paginator:{name}'.format(name=project)
-            buttons = utils.get_pagination_keyboard(
-                current=1,
-                max_page=page_count,
-                str_key=str_key + '-{}'
-            )
+        formatted_issues, buttons = self._bot_instance.save_into_cache(issues, project)
+
         bot.edit_message_text(
             text=formatted_issues,
             chat_id=scope['chat_id'],
@@ -134,24 +99,7 @@ class ProjectStatusIssuesCommand(AbstractCommand):
             )
             return
 
-        if len(issues) < self._bot_instance.issues_per_page:
-            formatted_issues = '\n\n'.join(issues)
-        else:
-            project_issues = utils.split_by_pages(
-                issues, self._bot_instance.issues_per_page
-            )
-            page_count = len(project_issues)
-            self._bot_instance.issue_cache[project_key] = dict(
-                issues=project_issues, page_count=page_count
-            )
-            # return the first page
-            formatted_issues = '\n\n'.join(project_issues[0])
-            str_key = 'paginator:{name}'.format(name=project_key)
-            buttons = utils.get_pagination_keyboard(
-                current=1,
-                max_page=page_count,
-                str_key=str_key + '-{}'
-            )
+        formatted_issues, buttons = self._bot_instance.save_into_cache(issues, project_key)
 
         bot.edit_message_text(
             text=formatted_issues,

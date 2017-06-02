@@ -137,6 +137,38 @@ class JiraBot:
 
         return False, 'You did not specify credentials'
 
+    def save_into_cache(self, data: list, key: str):
+        """
+        Creating a pagination list. Saving into a cache for further work with
+        it without redundant requests to JIRA.
+
+        If strings less than value per page just return a formatted string without buttons.
+        :param data: list of strings
+        :param key: key for stored it into cache dict
+        :return: formatted string with pagination buttons
+        """
+        buttons = None
+
+        if len(data) < self.issues_per_page:
+            formatted_issues = '\n\n'.join(data)
+        else:
+            splitted_data = utils.split_by_pages(data, self.issues_per_page)
+            page_count = len(splitted_data)
+            self.issue_cache[key] = dict(
+                issues=splitted_data, page_count=page_count
+            )
+
+            # return the first page
+            formatted_issues = '\n\n'.join(splitted_data[0])
+            str_key = 'paginator:{}'.format(key)
+            buttons = utils.get_pagination_keyboard(
+                current=1,
+                max_page=page_count,
+                str_key=str_key + '-{}'
+            )
+
+        return formatted_issues, buttons
+
     def __help_command(self, bot, update):
         bot.send_message(
             chat_id=update.message.chat_id, text='\n'.join(self.bot_commands)
@@ -146,6 +178,5 @@ class JiraBot:
     def __error_callback(bot, update, error):
         try:
             raise error
-        except (Unauthorized, BadRequest, TimedOut,
-                NetworkError, ChatMigrated, TelegramError) as e:
+        except (Unauthorized, BadRequest, TimedOut, NetworkError, ChatMigrated, TelegramError) as e:
             logging.error('{}'.format(e))
