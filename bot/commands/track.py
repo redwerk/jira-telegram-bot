@@ -79,15 +79,19 @@ class TrackingUserWorklogCommand(AbstractCommand):
                 )
 
         start_line = 'User work log from {start_date} to {end_date}\n\n'.format(**scope)
-        if user_worklogs:
-            formatted = '\n\n'.join(user_worklogs)
+        key = '{username}:{start_date}:{end_date}'.format(**scope, username=credentials['username'])
+        formatted, buttons = self._bot_instance.save_into_cache(user_worklogs, key)
+
+        if not formatted:
+            text = start_line + 'No data about worklogs in this time interval'
         else:
-            formatted = 'No data about worklogs in this time interval'
+            text = start_line + formatted
 
         bot.edit_message_text(
             chat_id=scope['chat_id'],
             message_id=scope['message_id'],
-            text=start_line + formatted,
+            text=text,
+            reply_markup=buttons
         )
 
 
@@ -127,15 +131,19 @@ class TrackingProjectWorklogCommand(AbstractCommand):
                     )
 
         start_line = '{project} work log from {start_date} to {end_date}\n\n'.format(**scope)
-        if project_worklogs:
-            formatted = '\n\n'.join(project_worklogs)
+        key = '{project}:{start_date}:{end_date}'.format(**scope)
+        formatted, buttons = self._bot_instance.save_into_cache(project_worklogs, key)
+
+        if not formatted:
+            text = start_line + 'No data about worklogs in this time interval'
         else:
-            formatted = 'No data about worklogs in this time interval'
+            text = start_line + formatted
 
         bot.edit_message_text(
             chat_id=scope['chat_id'],
             message_id=scope['message_id'],
-            text=start_line + formatted,
+            text=text,
+            reply_markup=buttons
         )
 
 
@@ -176,15 +184,20 @@ class TrackingProjectUserWorklogCommand(AbstractCommand):
                 )
 
         start_line = '{user} work log on {project} from {start_date} to {end_date}\n\n'.format(**scope)
-        if user_worklogs:
-            formatted = '\n\n'.join(user_worklogs)
+        key = '{username}:{project}:{start_date}:{end_date}'.format(**scope, username=scope.get('user'))
+        formatted, buttons = self._bot_instance.save_into_cache(user_worklogs, key)
+
+        if not formatted:
+            text = start_line + 'No data about {user} work logs on {project} from ' \
+                                '{start_date} to {end_date}'.format(**scope)
         else:
-            formatted = 'No data about {user} work logs on {project} from {start_date} to {end_date}'.format(**scope)
+            text = start_line + formatted
 
         bot.edit_message_text(
             chat_id=scope['chat_id'],
             message_id=scope['message_id'],
-            text=start_line + formatted,
+            text=text,
+            reply_markup=buttons
         )
 
 
