@@ -7,7 +7,7 @@ from .base import AbstractCommand, AbstractCommandFactory
 
 class UserAuthenticatedCommand(AbstractCommand):
 
-    def handler(self, bot, update, *args, **kwatgs):
+    def handler(self, bot, update, *args, **kwargs):
         """
         /authorization <username> <password>
 
@@ -21,7 +21,7 @@ class UserAuthenticatedCommand(AbstractCommand):
         telegram_id = str(update.message.from_user.id)
 
         try:
-            username, password = args
+            username, password = kwargs.get('args')
         except ValueError:
             bot.send_message(
                 chat_id=update.message.chat_id,
@@ -51,7 +51,7 @@ class UserAuthenticatedCommand(AbstractCommand):
             user_data = dict(telegram_id=telegram_id, jira=jira_cred)
 
             # create user or update his credentials
-            transaction_status = self._bot_instance.__db.save_credentials(user_data)
+            transaction_status = self._bot_instance.db.save_credentials(user_data)
 
             if not transaction_status:
                 bot.send_message(
