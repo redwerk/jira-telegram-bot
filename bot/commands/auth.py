@@ -25,8 +25,8 @@ class UserAuthenticatedCommand(AbstractCommand):
         except ValueError:
             bot.send_message(
                 chat_id=update.message.chat_id,
-                text='Incorrectly entered data (use the following '
-                     'command format: /authorization <username> <password>)'
+                text='Incorrectly entered data. Use the following '
+                     'command format:\n/authorization <username> <password>'
             )
         else:
             # Verification of credentials. The data will be stored only

@@ -75,7 +75,7 @@ class TrackingUserWorklogCommand(AbstractCommand):
 
             if (start_date <= logged_time) and (logged_time <= end_date):
                 user_worklogs.append(
-                    '{} {}\n{}'.format(issues_ids[log.issueId], log.timeSpent, log.created)
+                    '{} {}\n{}'.format(issues_ids[log.issueId], log.timeSpent, utils.to_human_date(logged_time))
                 )
 
         start_line = 'User work log from {start_date} to {end_date}\n\n'.format(**scope)
@@ -127,7 +127,8 @@ class TrackingProjectWorklogCommand(AbstractCommand):
                 if (start_date <= logged_time) and (logged_time <= end_date):
                     project_worklogs.append(
                         '{} {} {}\n{}'.format(
-                            issues_ids[log.issueId], log.author.displayName, log.timeSpent, log.created
+                            issues_ids[log.issueId], log.author.displayName,
+                            log.timeSpent, utils.to_human_date(logged_time)
                         )
                     )
 
@@ -182,7 +183,7 @@ class TrackingProjectUserWorklogCommand(AbstractCommand):
 
             if (start_date <= logged_time) and (logged_time <= end_date):
                 user_worklogs.append(
-                    '{} {}\n{}'.format(issues_ids[log.issueId], log.timeSpent, log.created)
+                    '{} {}\n{}'.format(issues_ids[log.issueId], log.timeSpent, utils.to_human_date(logged_time))
                 )
 
         start_line = '{user} work log on {project} from {start_date} to {end_date}\n\n'.format(**scope)

@@ -200,3 +200,17 @@ def to_datetime(_time: str, _format: str) -> (datetime or bool):
         return dt
 
     return False
+
+
+def to_human_date(_time: datetime) -> str:
+    """
+    Represent date in human readable format
+    :param _time: datetime object
+    :return: 2017-6-6 16:45
+    """
+    try:
+        return '{}-{}-{} {}:{}'.format(_time.year, _time.month, _time.day, _time.hour, _time.minute)
+    except AttributeError as e:
+        logging.exception("Can't parse entered date: {}, {}".format(_time, e))
+
+    return 'No date'
