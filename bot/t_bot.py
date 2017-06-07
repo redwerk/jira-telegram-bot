@@ -46,7 +46,7 @@ class JiraBot:
     ]
 
     def __init__(self):
-        self.__updater = Updater(config('BOT_TOKEN'))
+        self.__updater = Updater(config('BOT_TOKEN'), workers=2)
         self.issue_cache = dict()
 
         self.db = MongoBackend()
