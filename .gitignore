@@ -8,7 +8,6 @@ __pycache__/
 
 # Distribution / packaging
 .Python
-env/
 
 # dotenv
 .env
@@ -16,6 +15,10 @@ env/
 # virtualenv
 .venv
 venv/
+env/
 ENV/
 
 .idea/
+
+# tmp files
+tmp/
