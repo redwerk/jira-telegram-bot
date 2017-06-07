@@ -3,7 +3,7 @@ import logging
 from bson import ObjectId
 from decouple import config
 from pymongo import MongoClient
-from pymongo.errors import ServerSelectionTimeoutError, WriteError
+from pymongo.errors import OperationFailure, ServerSelectionTimeoutError, WriteError
 
 
 def mongodb_connect(func):
@@ -20,16 +20,16 @@ def mongodb_connect(func):
         db_name = config('DB_NAME')
         collection = config('DB_COLLECTION')
         data = False
-
-        client = MongoClient(
-            host=config('DB_HOST'),
-            port=config('DB_PORT', cast=int),
-            serverSelectionTimeoutMS=1
+        uri = 'mongodb://{user}:{password}@{host}:{port}/{db_name}'.format(
+            user=config('DB_USER'), password=config('DB_PASS'), host=config('DB_HOST'),
+            port=config('DB_PORT'), db_name=db_name
         )
+
+        client = MongoClient(uri, serverSelectionTimeoutMS=1)
 
         try:
             client.server_info()  # checking a connection to DB
-        except ServerSelectionTimeoutError as error:
+        except (ServerSelectionTimeoutError, OperationFailure) as error:
             logging.error("Can't connect to DB: {}".format(error))
         else:
             db = client[db_name][collection]
@@ -75,10 +75,7 @@ class MongoBackend:
         """
         db = kwargs.get('db')
 
-        user = self.get_user_data(
-            user_data.get('telegram_id'),
-            db
-        )
+        user = self.get_user_data(user_data.get('telegram_id'), db)
 
         if user:
             user_id = user.get('_id')
@@ -102,7 +99,7 @@ class MongoBackend:
             else:
                 logging.info(
                     'User {} was created '
-                    'successfully'.format(user_data.get('username', ''))
+                    'successfully'.format(user_data['jira']['username'])
                 )
                 return True
 

@@ -27,7 +27,10 @@ SECRET_KEY = <string> # from cryptography.fernet import Fernet; Fernet.generate_
 JIRA_HOST = <string>
 
 DB_HOST = <string>
-DB_PORT = <integer>
+DB_PORT = <string>
+
+DB_USER = <string>
+DB_PASS = <string>
 DB_NAME = <string>
 DB_COLLECTION = <string>
 ```
