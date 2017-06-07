@@ -206,10 +206,10 @@ def to_human_date(_time: datetime) -> str:
     """
     Represent date in human readable format
     :param _time: datetime object
-    :return: 2017-6-6 16:45
+    :return: 2017-06-06 16:45
     """
     try:
-        return '{}-{}-{} {}:{}'.format(_time.year, _time.month, _time.day, _time.hour, _time.minute)
+        return _time.strftime('%Y-%m-%d %H:%M')
     except AttributeError as e:
         logging.exception("Can't parse entered date: {}, {}".format(_time, e))
 
