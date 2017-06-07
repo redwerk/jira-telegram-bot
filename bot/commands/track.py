@@ -21,7 +21,7 @@ class ShowCalendarCommand(AbstractCommand):
         bot.edit_message_text(
             chat_id=scope['chat_id'],
             message_id=scope['message_id'],
-            text='Choose a date',
+            text='Choose a date (choose start date then end date)',
             reply_markup=calendar
         )
 
