@@ -55,3 +55,9 @@ docker-compose up
 - For every task create a branch from current `master`.
 - Prefer small commits and branches.
 - Read this [docs]
+
+
+
+### Deploy changes
+- Add ssh key to server.
+- Run `fab deploy`.
