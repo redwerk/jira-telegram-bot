@@ -70,16 +70,15 @@ class JiraBot:
         self.__updater.start_polling()
         self.__updater.idle()
 
-    @staticmethod
-    def start_command(bot, update):
+    def start_command(self, bot, update):
         first_name = update.message.from_user.first_name
-        message = 'Hi, {}! List of basic commands can look through /help. '
-        'Be sure to specify your credentials using the '
-        'command /authorization.'
+        message = 'Hi, {}! List of basic commands can look through /help. ' \
+                  'Be sure to specify your credentials using the ' \
+                  'command /authorization.\n\n'.format(first_name)
 
         bot.send_message(
             chat_id=update.message.chat_id,
-            text=message.format(first_name),
+            text=message + '\n'.join(self.bot_commands),
         )
 
     @staticmethod
