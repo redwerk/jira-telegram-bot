@@ -18,7 +18,7 @@ class JiraBot:
     Commands (synopsis and description):
     /start
         Start to work with user
-    /authorization <username> <password>
+    /auth <username> <password>
         Save or update user credentials into DB
     /menu
         Displaying menu with main functions
@@ -28,7 +28,7 @@ class JiraBot:
 
     bot_commands = [
         '/start - Start to work with user',
-        '/authorization <username> <password> - Save or update user '
+        '/auth <username> <password> - Save or update user '
         'credentials into DB',
         '/menu - Displaying menu with main functions',
         '/help - Returns commands and its descriptions'
@@ -74,7 +74,7 @@ class JiraBot:
         first_name = update.message.from_user.first_name
         message = 'Hi, {}! List of basic commands can look through /help. ' \
                   'Be sure to specify your credentials using the ' \
-                  'command /authorization.\n\n'.format(first_name)
+                  'command /auth.\n\n'.format(first_name)
 
         bot.send_message(
             chat_id=update.message.chat_id,
