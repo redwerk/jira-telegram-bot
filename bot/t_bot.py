@@ -18,7 +18,7 @@ class JiraBot:
     Commands (synopsis and description):
     /start
         Start to work with user
-    /authorization <username> <password>
+    /auth <username> <password>
         Save or update user credentials into DB
     /menu
         Displaying menu with main functions
@@ -28,9 +28,9 @@ class JiraBot:
 
     bot_commands = [
         '/start - Start to work with user',
-        '/authorization <username> <password> - Save or update user '
+        '/auth <username> <password> - Save or update user '
         'credentials into DB',
-        '/menu - Displaying menu with main functions',
+        '/menu - Displays menu with main functions',
         '/help - Returns commands and its descriptions'
     ]
     issues_per_page = 10
@@ -72,9 +72,8 @@ class JiraBot:
 
     def start_command(self, bot, update):
         first_name = update.message.from_user.first_name
-        message = 'Hi, {}! List of basic commands can look through /help. ' \
-                  'Be sure to specify your credentials using the ' \
-                  'command /authorization.\n\n'.format(first_name)
+        message = 'Hi, {}! You can see the list of commands using /help. ' \
+                  'Please, enter your credentials using /auth.\n\n'.format(first_name)
 
         bot.send_message(
             chat_id=update.message.chat_id,
@@ -134,7 +133,7 @@ class JiraBot:
 
             return dict(username=username, password=password), ''
 
-        return False, 'You did not specify credentials'
+        return False, "You didn't enter credentials"
 
     def save_into_cache(self, data: list, key: str):
         """

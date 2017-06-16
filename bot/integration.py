@@ -297,7 +297,7 @@ class JiraBackend:
         """Checks if the user has administrator rights (must be added to a specific group)"""
         jira_conn = kwargs.get('jira_conn')
 
-        return 'ADMINISTER' in jira_conn.my_permissions()['permissions']
+        return jira_conn.my_permissions()['permissions']['ADMINISTER']['havePermission']
 
     @jira_connect
     def get_developers(self, *args, **kwargs) -> list:

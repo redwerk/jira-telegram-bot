@@ -9,7 +9,7 @@ class UserAuthenticatedCommand(AbstractCommand):
 
     def handler(self, bot, update, *args, **kwargs):
         """
-        /authorization <username> <password>
+        /auth <username> <password>
 
         Saving user credentials. Credentials are verified through user
         authorization, if validation is completed, data is saved.
@@ -26,7 +26,7 @@ class UserAuthenticatedCommand(AbstractCommand):
             bot.send_message(
                 chat_id=update.message.chat_id,
                 text='Incorrectly entered data. Use the following '
-                     'command format:\n/authorization <username> <password>'
+                     'command format:\n/auth <username> <password>'
             )
         else:
             # Verification of credentials. The data will be stored only
@@ -56,14 +56,14 @@ class UserAuthenticatedCommand(AbstractCommand):
             if not transaction_status:
                 bot.send_message(
                     chat_id=update.message.chat_id,
-                    text='Internal error. Please try again after some time.'
+                    text='Internal error. Please try again later.'
                 )
             else:
                 bot.send_message(
                     chat_id=update.message.chat_id,
                     text='Your credentials are saved successfully.\n'
-                         'Please, delete all messages which contains your '
-                         'credentials (even if the credentials are incorrect).'
+                         'Please, delete all messages that contain your '
+                         'credentials (even if they are incorrect).'
                 )
 
 
@@ -73,4 +73,4 @@ class AuthCommandFactory(AbstractCommandFactory):
         UserAuthenticatedCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
 
     def command_callback(self):
-        return CommandHandler('authorization', self.command, pass_args=True)
+        return CommandHandler('auth', self.command, pass_args=True)

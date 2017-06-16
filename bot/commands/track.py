@@ -21,7 +21,7 @@ class ShowCalendarCommand(AbstractCommand):
         bot.edit_message_text(
             chat_id=scope['chat_id'],
             message_id=scope['message_id'],
-            text='Choose a date (choose start date then end date)',
+            text='Choose start date & end date',
             reply_markup=calendar
         )
 
@@ -57,7 +57,7 @@ class TrackingUserWorklogCommand(AbstractCommand):
             bot.edit_message_text(
                 chat_id=scope['chat_id'],
                 message_id=scope['message_id'],
-                text='The end date can not be less than the start date',
+                text='End date can not be less than the start date',
             )
             return
 
@@ -83,7 +83,7 @@ class TrackingUserWorklogCommand(AbstractCommand):
         formatted, buttons = self._bot_instance.save_into_cache(user_worklogs, key)
 
         if not formatted:
-            text = start_line + 'No data about worklogs in this time interval'
+            text = start_line + 'No worklog data in chosen time interval'
         else:
             text = start_line + formatted
 
@@ -107,7 +107,7 @@ class TrackingProjectWorklogCommand(AbstractCommand):
             bot.edit_message_text(
                 chat_id=scope['chat_id'],
                 message_id=scope['message_id'],
-                text='The end date can not be less than the start date',
+                text='End date can not be less than the start date',
             )
             return
 
@@ -132,12 +132,12 @@ class TrackingProjectWorklogCommand(AbstractCommand):
                         )
                     )
 
-        start_line = '{project} work log from {start_date} to {end_date}\n\n'.format(**scope)
+        start_line = '{project} worklog from {start_date} to {end_date}\n\n'.format(**scope)
         key = '{project}:{start_date}:{end_date}'.format(**scope)
         formatted, buttons = self._bot_instance.save_into_cache(project_worklogs, key)
 
         if not formatted:
-            text = start_line + 'No data about worklogs in this time interval'
+            text = start_line + 'No worklog data in chosen time interval'
         else:
             text = start_line + formatted
 
@@ -164,7 +164,7 @@ class TrackingProjectUserWorklogCommand(AbstractCommand):
             bot.edit_message_text(
                 chat_id=scope['chat_id'],
                 message_id=scope['message_id'],
-                text='The end date can not be less than the start date',
+                text='End date can not be less than the start date',
             )
             return
 
@@ -186,12 +186,12 @@ class TrackingProjectUserWorklogCommand(AbstractCommand):
                     '{} {}\n{}'.format(issues_ids[log.issueId], log.timeSpent, utils.to_human_date(logged_time))
                 )
 
-        start_line = '{user} work log on {project} from {start_date} to {end_date}\n\n'.format(**scope)
+        start_line = '{user} worklog on {project} from {start_date} to {end_date}\n\n'.format(**scope)
         key = '{username}:{project}:{start_date}:{end_date}'.format(**scope, username=scope.get('user'))
         formatted, buttons = self._bot_instance.save_into_cache(user_worklogs, key)
 
         if not formatted:
-            text = start_line + 'No data about {user} work logs on {project} from ' \
+            text = start_line + 'No data about {user} worklogs on {project} from ' \
                                 '{start_date} to {end_date}'.format(**scope)
         else:
             text = start_line + formatted
@@ -313,10 +313,12 @@ class TrackingProjectCommandFactory(AbstractCommandFactory):
 
         # Protected feature. Only for users with administrator permissions
         if isinstance(obj, ChooseDeveloperMenuCommand):
-            if not self._bot_instance.jira.is_admin_permissions(
+            permission, status = self._bot_instance.jira.is_admin_permissions(
                 username=credentials.get('username'), password=credentials.get('password')
-            ):
-                message = 'You have no necessary permissions for use this function'
+            )
+
+            if not permission:
+                message = 'You have no permissions to use this function'
                 bot.edit_message_text(text=message, chat_id=scope['chat_id'], message_id=scope['message_id'])
                 return
 

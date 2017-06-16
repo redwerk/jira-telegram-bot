@@ -21,7 +21,7 @@ class UserUnresolvedIssuesCommand(AbstractCommand):
 
         if not issues:
             bot.edit_message_text(
-                text='You have no unresolved issues',
+                text='You have no unresolved tasks',
                 chat_id=scope['chat_id'],
                 message_id=scope['message_id']
             )
@@ -54,7 +54,7 @@ class ProjectUnresolvedIssuesCommand(AbstractCommand):
 
         if not issues:
             bot.edit_message_text(
-                text="Project doesn't have any open issues",
+                text="Project doesn't have any unresolved tasks",
                 chat_id=scope['chat_id'],
                 message_id=scope['message_id']
             )
@@ -93,7 +93,7 @@ class ProjectStatusIssuesCommand(AbstractCommand):
         if not issues:
             bot.edit_message_text(
                 text="Project {} doesn't have any "
-                     "issues with {} status".format(project, status),
+                     "tasks with {} status".format(project, status),
                 chat_id=scope['chat_id'],
                 message_id=scope['message_id']
             )
