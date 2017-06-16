@@ -56,14 +56,14 @@ class UserAuthenticatedCommand(AbstractCommand):
             if not transaction_status:
                 bot.send_message(
                     chat_id=update.message.chat_id,
-                    text='Internal error. Please try again after some time.'
+                    text='Internal error. Please try again later.'
                 )
             else:
                 bot.send_message(
                     chat_id=update.message.chat_id,
                     text='Your credentials are saved successfully.\n'
-                         'Please, delete all messages which contains your '
-                         'credentials (even if the credentials are incorrect).'
+                         'Please, delete all messages that contain your '
+                         'credentials (even if they are incorrect).'
                 )
 
 

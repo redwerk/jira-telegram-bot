@@ -46,7 +46,7 @@ class IssuesMenuCommand(AbstractCommand):
         bot.edit_message_text(
             chat_id=scope['chat_id'],
             message_id=scope['message_id'],
-            text='What issues do you want to see?',
+            text='What tasks do you want to see?',
             reply_markup=reply_markup
         )
 
@@ -65,7 +65,7 @@ class TrackingMenuCommand(AbstractCommand):
         bot.edit_message_text(
             chat_id=scope['chat_id'],
             message_id=scope['message_id'],
-            text='What kind of time do you want to see?',
+            text='What you want to see?',
             reply_markup=reply_markup
         )
 
@@ -110,7 +110,7 @@ class ChooseDeveloperMenuCommand(AbstractCommand):
 
         if not developers:
             bot.edit_message_text(
-                text="Sorry, can't get developers at this moment",
+                text="Sorry, can't get developers at the moment",
                 chat_id=scope['chat_id'],
                 message_id=scope['message_id']
             )
@@ -132,7 +132,7 @@ class ChooseDeveloperMenuCommand(AbstractCommand):
         bot.edit_message_text(
             chat_id=scope['chat_id'],
             message_id=scope['message_id'],
-            text='Choose one of the developer',
+            text='Pick a developer',
             reply_markup=buttons
         )
 
@@ -175,12 +175,12 @@ class ChooseProjectMenuCommand(AbstractCommand):
         buttons = InlineKeyboardMarkup(
             utils.build_menu(
                 projects_buttons,
-                n_cols=3,
+                n_cols=4,
                 footer_buttons=footer_button)
         )
 
         bot.edit_message_text(
-            text='Choose one of the projects',
+            text='Pick a project',
             chat_id=scope['chat_id'],
             message_id=scope['message_id'],
             reply_markup=buttons
@@ -206,7 +206,7 @@ class ChooseStatusMenuCommand(AbstractCommand):
 
         if not statuses:
             bot.edit_message_text(
-                text="Sorry, can't get statuses at this moment",
+                text="Sorry, can't get statuses at the moment",
                 chat_id=scope['chat_id'],
                 message_id=scope['message_id']
             )
@@ -226,11 +226,11 @@ class ChooseStatusMenuCommand(AbstractCommand):
         buttons = InlineKeyboardMarkup(
             utils.build_menu(
                 status_buttons,
-                n_cols=2,
+                n_cols=3,
                 footer_buttons=footer_button)
         )
-        text = 'You chose {} project.\n' \
-               'Choose one of the statuses'.format(project)
+        text = "You've chosen {} project.\n" \
+               "Pick a status".format(project)
         bot.edit_message_text(
             chat_id=scope['chat_id'],
             message_id=scope['message_id'],
