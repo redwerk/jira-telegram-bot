@@ -22,3 +22,6 @@ ENV/
 
 # tmp files
 tmp/
+
+*.pem
+*.cer
