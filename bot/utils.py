@@ -214,3 +214,16 @@ def to_human_date(_time: datetime) -> str:
         logging.exception("Can't parse entered date: {}, {}".format(_time, e))
 
     return 'No date'
+
+
+def read_private_key(path):
+    """Read private RSA key for requests via OAuth"""
+    key_cert = None
+
+    try:
+        file = open(path, 'r')
+        key_cert = file.read()
+    except FileNotFoundError as e:
+        logging.warning('RSA private key did not found by path: {}'.format(path))
+
+    return key_cert
