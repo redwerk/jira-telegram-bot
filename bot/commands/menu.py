@@ -1,3 +1,4 @@
+from decouple import config
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackQueryHandler, CommandHandler
 
@@ -236,4 +237,35 @@ class ChooseStatusMenuCommand(AbstractCommand):
             message_id=scope['message_id'],
             text=text,
             reply_markup=buttons
+        )
+
+
+class ChooseJiraHostMenuCommand(AbstractCommand):
+
+    def handler(self, bot, update, *args, **kwargs):
+        """Displays supported JIRA hosts for further authorization"""
+
+        # an alpha version support only one Jira host
+        host = self._bot_instance.db.get_host_data(config('JIRA_HOST'))
+
+        if not host:
+            bot.send_message(
+                chat_id=update.message.chat_id,
+                text="Bot doesn't support working with this host: {}".format(config('JIRA_HOST'))
+            )
+            return
+
+        button_list = [
+            InlineKeyboardButton(
+                host['readable_name'], callback_data='oauth:{}'.format(host['url']))
+        ]
+
+        reply_markup = InlineKeyboardMarkup(utils.build_menu(
+            button_list, n_cols=2
+        ))
+
+        bot.send_message(
+            chat_id=update.message.chat_id,
+            text='On which host do you want to log in?',
+            reply_markup=reply_markup
         )

@@ -1,3 +1,4 @@
+import logging
 from logging.config import fileConfig
 
 import jira
@@ -43,7 +44,11 @@ def authorize(telegram_id):
     session['telegram_id'] = telegram_id
     callback = url_for('oauth_authorized', next=request.args.get('next') or request.referrer or None)
 
-    return jira_app.authorize(callback=callback)
+    try:
+        return jira_app.authorize(callback=callback)
+    except OAuthException as e:
+        logging.warning(e.message)
+        return '{}<br><a href={}>Return to Telegram Bot</a>'.format(e.message, bot_url)
 
 
 @app.route('/oauth_authorized')

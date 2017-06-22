@@ -20,6 +20,7 @@ class JiraBot:
         Start to work with user
     /auth <username> <password>
         Save or update user credentials into DB
+    /oauth - Authorizing via OAuth
     /menu
         Displaying menu with main functions
     /help
@@ -30,6 +31,7 @@ class JiraBot:
         '/start - Start to work with user',
         '/auth <username> <password> - Save or update user '
         'credentials into DB',
+        '/oauth - Authorizing via OAuth',
         '/menu - Displays menu with main functions',
         '/help - Returns commands and its descriptions'
     ]
@@ -41,6 +43,8 @@ class JiraBot:
         commands.MainMenuCommandFactory,
         commands.MenuCommandFactory,
         commands.AuthCommandFactory,
+        commands.OAuthMenuCommandFactory,
+        commands.OAuthCommandFactory,
         commands.TrackingCommandFactory,
         commands.TrackingProjectCommandFactory,
     ]

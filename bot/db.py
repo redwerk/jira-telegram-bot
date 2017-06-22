@@ -114,3 +114,11 @@ class MongoBackend:
             return host['id']
 
         return False
+
+    @mongodb_connect
+    def get_host_data(self, url, **kwargs):
+        """Returns host data according to host URL"""
+        collection = self.get_host_collection(kwargs)
+        host = collection.find_one({'url': url})
+
+        return host
