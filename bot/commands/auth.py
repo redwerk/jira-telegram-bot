@@ -1,3 +1,4 @@
+from decouple import config
 from telegram.ext import CommandHandler
 
 from bot import utils
@@ -29,6 +30,11 @@ class UserAuthenticatedCommand(AbstractCommand):
                      'command format:\n/auth <username> <password>'
             )
         else:
+            bot.send_message(
+                chat_id=update.message.chat_id,
+                text='Processing, please wait...'
+            )
+
             # Verification of credentials. The data will be stored only
             # if there is confirmed authorization in Jira.
             confirmed, status_code = self._bot_instance.jira.check_credentials(
@@ -47,11 +53,39 @@ class UserAuthenticatedCommand(AbstractCommand):
 
             encrypted_password = utils.encrypt_password(password)
 
-            jira_cred = dict(username=username, password=encrypted_password)
-            user_data = dict(telegram_id=telegram_id, jira=jira_cred)
+            user_exists = self._bot_instance.db.is_user_exists(telegram_id)
+            host_id = self._bot_instance.db.get_host_id(config('JIRA_HOST'))
 
-            # create user or update his credentials
-            transaction_status = self._bot_instance.db.save_credentials(user_data)
+            if not host_id:
+                bot.send_message(
+                    chat_id=update.message.chat_id,
+                    text="Bot doesn't support working with this host: {}".format(config('JIRA_HOST'))
+                )
+                return
+
+            transaction_status = None
+
+            if user_exists:
+                data = {
+                    '{}.active'.format(host_id): True,
+                    '{}.username'.format(host_id): username,
+                    '{}.base.password'.format(host_id): encrypted_password
+                }
+                transaction_status = self._bot_instance.db.update_user(telegram_id, data)
+            else:
+                user_data = {
+                    'telegram_id': telegram_id,
+                    host_id: {
+                        'active': True,
+                        'username': username,
+                        'base': {
+                            'password': encrypted_password
+                        }
+                    }
+                }
+
+                # create a new user
+                transaction_status = self._bot_instance.db.create_user(user_data)
 
             if not transaction_status:
                 bot.send_message(
