@@ -49,19 +49,19 @@ class MongoBackend:
     user_collection = config('DB_USER_COLLECTION')
     host_collection = config('DB_HOST_COLLECTION')
 
-    def get_user_collection(self, kwargs: dict) -> MongoClient:
+    def _get_user_collection(self, kwargs: dict) -> MongoClient:
         """Returns MongoClient object which links to user collection"""
         db = kwargs.get('db')
         return db[self.user_collection]
 
-    def get_host_collection(self, kwargs: dict) -> MongoClient:
+    def _get_host_collection(self, kwargs: dict) -> MongoClient:
         """Returns MongoClient object which links to host collection"""
         db = kwargs.get('db')
         return db[self.host_collection]
 
     @mongodb_connect
     def create_user(self, user_data: dict, **kwargs) -> bool:
-        collection = self.get_user_collection(kwargs)
+        collection = self._get_user_collection(kwargs)
         status = collection.insert(user_data)
 
         return True if status else False
@@ -72,14 +72,14 @@ class MongoBackend:
         Updates only the specified fields.
         Can update the embedded fields like: '0.base.password'
         """
-        collection = self.get_user_collection(kwargs)
+        collection = self._get_user_collection(kwargs)
         status = collection.update({'telegram_id': telegram_id}, {'$set': user_data})
 
         return True if status else False
 
     @mongodb_connect
     def is_user_exists(self, telegram_id: str, **kwargs) -> bool:
-        collection = self.get_user_collection(kwargs)
+        collection = self._get_user_collection(kwargs)
         return collection.count({"telegram_id": telegram_id}) > 0
 
     @staticmethod
@@ -93,7 +93,7 @@ class MongoBackend:
 
     @mongodb_connect
     def get_user_credentials(self, telegram_id: str, *args, **kwargs) -> dict:
-        collection = self.get_user_collection(kwargs)
+        collection = self._get_user_collection(kwargs)
         user = collection.find_one({'telegram_id': telegram_id})
 
         # an alpha version support only one Jira host
@@ -113,7 +113,7 @@ class MongoBackend:
     @mongodb_connect
     def get_host_id(self, url, **kwargs):
         """Returns host id according to host URL"""
-        collection = self.get_host_collection(kwargs)
+        collection = self._get_host_collection(kwargs)
         host = collection.find_one({'url': url})
 
         if host:
@@ -124,7 +124,7 @@ class MongoBackend:
     @mongodb_connect
     def get_host_data(self, url, **kwargs):
         """Returns host data according to host URL"""
-        collection = self.get_host_collection(kwargs)
+        collection = self._get_host_collection(kwargs)
         host = collection.find_one({'url': url})
 
         return host

@@ -1,6 +1,7 @@
 import logging
 
 import jira
+import os
 from decouple import config
 
 from bot.utils import read_private_key
@@ -56,7 +57,7 @@ class JiraBackend:
     @staticmethod
     def getting_credentials(kwargs: dict) -> (str, str):
         """Forms a dictionary for OAuth authorization"""
-        rsa_key = config('PRIVATE_KEYS_PATH') + kwargs.get('key_sert')
+        rsa_key = os.path.join(config('PRIVATE_KEYS_PATH'), kwargs.get('key_sert'))
         oauth_dict = {
             'access_token': kwargs.get('access_token'),
             'access_token_secret': kwargs.get('access_token_secret'),

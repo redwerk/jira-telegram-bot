@@ -2,6 +2,7 @@ import logging
 from logging.config import fileConfig
 
 import jira
+import os
 import requests
 from decouple import config
 from flask import Flask, redirect, request, session, url_for
@@ -30,7 +31,7 @@ app.secret_key = config('SECRET_KEY')
 
 # Flask-OAuthlib settings
 consumer_key = jira_settings['settings']['consumer_key']
-rsa_key_path = '../private_keys/{}'.format(jira_settings['settings']['key_sert'])
+rsa_key_path = os.path.join(config('PRIVATE_KEYS_PATH'), jira_settings['settings']['key_sert'])
 base_server_url = config('JIRA_HOST')
 request_token_url = '/plugins/servlet/oauth/request-token'
 access_token_url = '/plugins/servlet/oauth/access-token'
