@@ -23,16 +23,16 @@ python -m flask run
 - Пример добавления с Flask приложением открытым через ngrok:
 
 Добавление ссылки **OAUTH_SERVICE_URL**:
-- ![alt 1][1.png]
+![][1.png]
 
-- ![alt 2][2.png]
-    - request_token_url: **JIRA_HOST** + **/plugins/servlet/oauth/request-token**
-    - access_token_url: **JIRA_HOST** + **/plugins/servlet/oauth/access-token**
-    - authorize_url: **JIRA_HOST** + **/plugins/servlet/oauth/authorize**
-    - Обазятельно выбрать **Create incoming link**
+![][2.png]
+- request_token_url: **JIRA_HOST** + **/plugins/servlet/oauth/request-token**
+- access_token_url: **JIRA_HOST** + **/plugins/servlet/oauth/access-token**
+- authorize_url: **JIRA_HOST** + **/plugins/servlet/oauth/authorize**
+- Обазятельно выбрать **Create incoming link**
 
-- ![alt 3][3.png]
-    - Consumer Key будет сохранено в **DB_HOST_COLLECTION** в настройках хоста
+![][3.png]
+- Consumer Key будет сохранено в **DB_HOST_COLLECTION** в настройках хоста
 
 - В **DB_HOST_COLLECTION** создать документ:
 ```
