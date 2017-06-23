@@ -32,9 +32,15 @@ DB_PORT = <string>
 DB_USER = <string>
 DB_PASS = <string>
 DB_NAME = <string>
-DB_COLLECTION = <string>
+DB_USER_COLLECTION = <string>
+DB_HOST_COLLECTION = <string>
+
+BOT_URL = https://t.me/<bot_name>
+OAUTH_SERVICE_URL = http://url.to.flask.service
+PRIVATE_KEYS_PATH = /absolute/path/to/private_keys/folder/
 ```
 
+For further deployment see [/docs](docs) folder
 
 ### Running via Docker Compose
 
