@@ -68,7 +68,6 @@ class UserAuthenticatedCommand(AbstractCommand):
 
             if user_exists:
                 data = {
-                    '{}.active'.format(host_id): True,
                     '{}.username'.format(host_id): username,
                     '{}.base.password'.format(host_id): encrypted_password
                 }
@@ -77,7 +76,6 @@ class UserAuthenticatedCommand(AbstractCommand):
                 user_data = {
                     'telegram_id': telegram_id,
                     host_id: {
-                        'active': True,
                         'username': username,
                         'base': {
                             'password': encrypted_password
