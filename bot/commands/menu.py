@@ -105,9 +105,7 @@ class ChooseDeveloperMenuCommand(AbstractCommand):
         _callback = kwargs.get('pattern')
         _footer = kwargs.get('footer')
 
-        developers, status = self._bot_instance.jira.get_developers(
-            username=credentials.get('username'), password=credentials.get('password')
-        )
+        developers, status = self._bot_instance.jira.get_developers(**credentials)
 
         if not developers:
             bot.edit_message_text(
@@ -149,9 +147,7 @@ class ChooseProjectMenuCommand(AbstractCommand):
         _footer = kwargs.get('footer')
 
         projects_buttons = list()
-        projects, status_code = self._bot_instance.jira.get_projects(
-            username=credentials.get('username'), password=credentials.get('password')
-        )
+        projects, status_code = self._bot_instance.jira.get_projects(**credentials)
 
         if not projects:
             bot.edit_message_text(
@@ -200,10 +196,7 @@ class ChooseStatusMenuCommand(AbstractCommand):
         _footer = kwargs.get('footer')
         project = kwargs.get('project')
 
-        statuses, status = self._bot_instance.jira.get_statuses(
-            username=credentials['username'],
-            password=credentials['password']
-        )
+        statuses, status = self._bot_instance.jira.get_statuses(**credentials)
 
         if not statuses:
             bot.edit_message_text(

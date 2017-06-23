@@ -122,17 +122,12 @@ class JiraBot:
         credentials = self.db.get_user_credentials(telegram_id)
 
         if credentials:
-            username = credentials.get('username')
-            password = utils.decrypt_password(credentials.get('password'))
-
-            confirmed, status_code = self.jira.check_credentials(
-                username, password
-            )
+            confirmed, status_code = self.jira.check_credentials(credentials)
 
             if not confirmed:
                 return False, 'Credentials are incorrect'
 
-            return dict(username=username, password=password), ''
+            return credentials, ''
 
         return False, "You didn't enter credentials"
 

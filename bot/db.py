@@ -93,14 +93,20 @@ class MongoBackend:
 
     @mongodb_connect
     def get_user_credentials(self, telegram_id: str, *args, **kwargs) -> dict:
-        db = kwargs.get('db')
+        collection = self.get_user_collection(kwargs)
+        user = collection.find_one({'telegram_id': telegram_id})
 
-        user = self.get_user_data(telegram_id, db)
+        # an alpha version support only one Jira host
+        host = self.get_host_data(config('JIRA_HOST'))
 
         if user:
-            username = user['jira']['username']
-            password = user['jira']['password']
-            return dict(username=username, password=password)
+            return {
+                'username': user[host['id']]['username'],
+                'access_token': user[host['id']]['access_token'],
+                'access_token_secret': user[host['id']]['access_token_secret'],
+                'consumer_key': host['settings']['consumer_key'],
+                'key_sert': host['settings']['key_sert']
+            }
 
         return dict()
 

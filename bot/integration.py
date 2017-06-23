@@ -3,6 +3,8 @@ import logging
 import jira
 from decouple import config
 
+from bot.utils import read_private_key
+
 OK_STATUS = 200
 
 
@@ -15,12 +17,12 @@ def jira_connect(func):
     :return: requested data and status code
     """
     def wrapper(*args, **kwargs) -> (list or bool, int):
-        username, password = JiraBackend.getting_credentials(kwargs)
+        oauth_dict = JiraBackend.getting_credentials(kwargs)
 
         try:
             jira_conn = jira.JIRA(
                 server=config('JIRA_HOST'),
-                basic_auth=(username, password),
+                oauth=oauth_dict,
                 max_retries=1
             )
         except jira.JIRAError as e:
@@ -53,23 +55,27 @@ class JiraBackend:
 
     @staticmethod
     def getting_credentials(kwargs: dict) -> (str, str):
-        username = kwargs.get('username', False)
-        password = kwargs.get('password', False)
+        """Forms a dictionary for OAuth authorization"""
+        rsa_key = config('PRIVATE_KEYS_PATH') + kwargs.get('key_sert')
+        oauth_dict = {
+            'access_token': kwargs.get('access_token'),
+            'access_token_secret': kwargs.get('access_token_secret'),
+            'consumer_key': kwargs.get('consumer_key'),
+            'key_cert': read_private_key(rsa_key)
+        }
 
-        return username, password
+        return oauth_dict
 
-    @staticmethod
-    def check_credentials(username: str, password: str) -> (bool, int):
+    def check_credentials(self, credentials: dict) -> (bool, int):
         """
         Attempt to authorize the user in the JIRA service.
-        :param username: username at Jira
-        :param password: password at Jira
         :return: Status and code
         """
+        oauth_dict = self.getting_credentials(credentials)
         try:
             jira_conn = jira.JIRA(
                 server=config('JIRA_HOST'),
-                basic_auth=(username, password),
+                oauth=oauth_dict,
                 max_retries=1
             )
         except jira.JIRAError as e:
