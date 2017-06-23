@@ -62,11 +62,9 @@ class TrackingUserWorklogCommand(AbstractCommand):
             return
 
         issues_ids, status_code = self._bot_instance.jira.get_user_issues_by_worklog(
-            scope['start_date'], scope['end_date'], username=credentials['username'], password=credentials['password']
+            scope['start_date'], scope['end_date'], **credentials
         )
-        all_worklogs, status_code = self._bot_instance.jira.get_worklogs_by_id(
-            issues_ids, username=credentials['username'], password=credentials['password']
-        )
+        all_worklogs, status_code = self._bot_instance.jira.get_worklogs_by_id(issues_ids, **credentials)
         user_logs = self._bot_instance.jira.get_user_worklogs(all_worklogs, credentials['username'])
 
         # comparison of the time interval (the time of the log should be between the start and end dates)
@@ -112,12 +110,9 @@ class TrackingProjectWorklogCommand(AbstractCommand):
             return
 
         issues_ids, status_code = self._bot_instance.jira.get_project_issues_by_worklog(
-            scope.get('project'), scope.get('start_date'), scope.get('end_date'),
-            username=credentials.get('username'), password=credentials.get('password')
+            scope.get('project'), scope.get('start_date'), scope.get('end_date'), **credentials
         )
-        all_worklogs, status_code = self._bot_instance.jira.get_worklogs_by_id(
-            issues_ids, username=credentials['username'], password=credentials['password']
-        )
+        all_worklogs, status_code = self._bot_instance.jira.get_worklogs_by_id(issues_ids, **credentials)
 
         # comparison of the time interval (the time of the log should be between the start and end dates)
         for i_log in all_worklogs:
@@ -169,12 +164,9 @@ class TrackingProjectUserWorklogCommand(AbstractCommand):
             return
 
         issues_ids, status_code = self._bot_instance.jira.get_user_project_issues_by_worklog(
-            scope.get('user'), scope.get('project'), scope.get('start_date'), scope.get('end_date'),
-            username=credentials.get('username'), password=credentials.get('password')
+            scope.get('user'), scope.get('project'), scope.get('start_date'), scope.get('end_date'), **credentials
         )
-        all_worklogs, status_code = self._bot_instance.jira.get_worklogs_by_id(
-            issues_ids, username=credentials['username'], password=credentials['password']
-        )
+        all_worklogs, status_code = self._bot_instance.jira.get_worklogs_by_id(issues_ids, **credentials)
         user_logs = self._bot_instance.jira.get_user_worklogs(all_worklogs, scope.get('user'), display_name=True)
 
         # comparison of the time interval (the time of the log should be between the start and end dates)
@@ -313,9 +305,7 @@ class TrackingProjectCommandFactory(AbstractCommandFactory):
 
         # Protected feature. Only for users with administrator permissions
         if isinstance(obj, ChooseDeveloperMenuCommand):
-            permission, status = self._bot_instance.jira.is_admin_permissions(
-                username=credentials.get('username'), password=credentials.get('password')
-            )
+            permission, status = self._bot_instance.jira.is_admin_permissions(**credentials)
 
             if not permission:
                 message = 'You have no permissions to use this function'
