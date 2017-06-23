@@ -23,7 +23,7 @@ python -m flask run
 - Пример добавления с Flask приложением открытым через ngrok:
 
 Добавление ссылки **OAUTH_SERVICE_URL**:
-![step 1](1.png])
+![step 1](1.png)
 
 ![step 2](2.png)
 - request_token_url: **JIRA_HOST** + **/plugins/servlet/oauth/request-token**
