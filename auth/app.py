@@ -2,6 +2,7 @@ import logging
 from logging.config import fileConfig
 
 import jira
+import requests
 from decouple import config
 from flask import Flask, redirect, request, session, url_for
 from flask_oauthlib.client import OAuthException
@@ -14,9 +15,9 @@ from bot.utils import read_private_key
 # commong settings
 fileConfig('../logging_config.ini')
 bot_url = config('BOT_URL')
-to_bot_html = '<br><a href={}>Return to Telegram Bot</a>'.format(bot_url)
 db = MongoBackend()
 jira_settings = db.get_host_data(config('JIRA_HOST'))
+api_bot_url = 'https://api.telegram.org/bot{}'.format(config('BOT_TOKEN'))
 
 if not jira_settings:
     logging.warning('No setting for {}'.format(config('JIRA_HOST')))
@@ -55,20 +56,25 @@ def create_user_data(telegram_id, username, host_id, access_token, access_token_
         'telegram_id': telegram_id,
         host_id: {
             'username': username,
-            'oauth': {
-                'access_token': access_token,
-                'access_token_secret': access_token_secret
-            }
+            'access_token': access_token,
+            'access_token_secret': access_token_secret
         }
     }
 
 
-def update_token_data(host_id, access_token, access_token_secret) -> dict:
+def update_token_data(username, host_id, access_token, access_token_secret) -> dict:
     """Generates dict of data for updating access tokens"""
     return {
-        '{}.oauth.access_token'.format(host_id): access_token,
-        '{}.oauth.access_token_secret'.format(host_id): access_token_secret,
+        '{}.username'.format(host_id): username,
+        '{}.access_token'.format(host_id): access_token,
+        '{}.access_token_secret'.format(host_id): access_token_secret,
     }
+
+
+def send_to_chat(chat_id, message):
+    """Sends message to user into chat"""
+    url = api_bot_url + '/sendMessage?chat_id={}&text={}'.format(chat_id, message)
+    requests.get(url)
 
 
 @app.route('/authorize/<string:telegram_id>/')
@@ -82,8 +88,8 @@ def authorize(telegram_id):
         return jira_app.authorize(callback=callback)
     except OAuthException as e:
         logging.warning(e.message)
-        message = e.message
-        return message + to_bot_html, 400
+        send_to_chat(session['telegram_id'], e.message)
+        return redirect(bot_url)
 
 
 @app.route('/oauth_authorized')
@@ -96,7 +102,8 @@ def oauth_authorized():
     except OAuthException as e:
         # if the user declined an authorization request
         message = 'Access denied: {}'.format(e.message)
-        return message + to_bot_html, 401
+        send_to_chat(session['telegram_id'], message)
+        return redirect(bot_url)
 
     oauth_dict = {
         'access_token': resp.get('oauth_token'),
@@ -111,19 +118,22 @@ def oauth_authorized():
     if not jira_host:
         message = 'Settings for the {} are not found in the database'.format(session['host'])
         logging.warning(message)
-        return message + to_bot_html, 400
+        send_to_chat(session['telegram_id'], message)
+        return redirect(bot_url)
 
     try:
         authed_jira = jira.JIRA(base_server_url, oauth=oauth_dict)
     except jira.JIRAError as e:
         print(e.status_code)
     else:
+        username = authed_jira.myself().get('key')
         if user_exists:
-            data = update_token_data(jira_host['id'], oauth_dict['access_token'], oauth_dict['access_token_secret'])
+            data = update_token_data(username, jira_host['id'],
+                                     oauth_dict['access_token'], oauth_dict['access_token_secret'])
             transaction_status = db.update_user(session['telegram_id'], data)
         else:
             data = create_user_data(
-                session['telegram_id'], authed_jira.myself().get('key'), jira_host['id'],
+                session['telegram_id'], username, jira_host['id'],
                 oauth_dict['access_token'], oauth_dict['access_token_secret']
             )
             transaction_status = db.create_user(data)
@@ -132,8 +142,10 @@ def oauth_authorized():
         message = 'Data cannot save into DB. Please try again later.'
         logging.warning("Data didn't save into DB. "
                         "telegram_id: {}, jira_host: {}".format(session['telegram_id'], jira_host['url']))
-        return message + to_bot_html, 500
+        send_to_chat(session['telegram_id'], message)
+        return redirect(bot_url)
 
+    send_to_chat(session['telegram_id'], 'You were successfully authorized.')
     return redirect(bot_url)
 
 
