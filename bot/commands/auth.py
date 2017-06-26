@@ -34,6 +34,7 @@ class UserOAuthCommand(AbstractCommand):
 
 
 class OAuthCommandFactory(AbstractCommandFactory):
+
     def command(self, bot, update, *args, **kwargs):
         UserOAuthCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
 
@@ -59,7 +60,7 @@ class LogoutCommand(AbstractCommand):
         scope = self._bot_instance.get_query_scope(update)
         answer = scope['data'].replace('logout:', '')
 
-        if answer == 'y':
+        if answer == LogoutMenuCommand.positive_answer:
             status = self._bot_instance.db.delete_user(scope['telegram_id'])
 
             if status:
@@ -87,6 +88,7 @@ class LogoutCommand(AbstractCommand):
 
 
 class LogoutCommandFactory(AbstractCommandFactory):
+
     def command(self, bot, update, *args, **kwargs):
         LogoutCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
 

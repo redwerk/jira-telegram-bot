@@ -265,6 +265,8 @@ class ChooseJiraHostMenuCommand(AbstractCommand):
 
 
 class LogoutMenuCommand(AbstractCommand):
+    positive_answer = 'Yes'
+    negative_answer = 'No'
 
     def handler(self, bot, update, *args, **kwargs):
         """
@@ -272,10 +274,10 @@ class LogoutMenuCommand(AbstractCommand):
         """
         button_list = [
             InlineKeyboardButton(
-                'Yes', callback_data='logout:y'
+                'Yes', callback_data='logout:{}'.format(self.positive_answer)
             ),
             InlineKeyboardButton(
-                'No', callback_data='logout:n'
+                'No', callback_data='logout:{}'.format(self.negative_answer)
             ),
         ]
 

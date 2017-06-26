@@ -4,6 +4,7 @@ from werkzeug import url_quote
 
 
 class ModifiedOAuth(OAuth):
+
     def remote_app(self, name, register=True, **kwargs):
         """Registers a new remote application.
 
