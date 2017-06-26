@@ -1,15 +1,14 @@
 import logging
+import os
 from logging.config import fileConfig
 
 import jira
-import os
 import requests
 from decouple import config
 from flask import Flask, redirect, request, session, url_for
-from flask_oauthlib.client import OAuthException
+from flask_oauthlib.client import OAuth, OAuthException
 from oauthlib.oauth1 import SIGNATURE_RSA
 
-from auth.modification import ModifiedOAuth
 from bot.db import MongoBackend
 from bot.utils import read_private_key
 
@@ -25,7 +24,7 @@ if not jira_settings:
     raise SystemExit
 
 # Flask settings
-oauth = ModifiedOAuth()
+oauth = OAuth()
 app = Flask(__name__)
 app.secret_key = config('SECRET_KEY')
 
@@ -46,7 +45,8 @@ jira_app = oauth.remote_app(
     authorize_url=base_server_url + authorize_url,
     consumer_key=consumer_key,
     request_token_method='POST',
-    request_token_params={'signature_method': SIGNATURE_RSA, 'rsa_key': read_private_key(rsa_key_path)},
+    signature_method=SIGNATURE_RSA,
+    rsa_key=read_private_key(rsa_key_path),
     access_token_method='POST',
 )
 
