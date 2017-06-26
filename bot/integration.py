@@ -1,7 +1,7 @@
 import logging
+import os
 
 import jira
-import os
 from decouple import config
 
 from bot.utils import read_private_key

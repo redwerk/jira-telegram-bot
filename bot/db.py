@@ -128,3 +128,10 @@ class MongoBackend:
         host = collection.find_one({'url': url})
 
         return host
+
+    @mongodb_connect
+    def delete_user(self, telegram_id: str, **kwargs) -> bool:
+        collection = self._get_user_collection(kwargs)
+        status = collection.delete_one({'telegram_id': telegram_id})
+
+        return True if status else False

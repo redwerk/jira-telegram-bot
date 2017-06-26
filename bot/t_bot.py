@@ -18,9 +18,10 @@ class JiraBot:
     Commands (synopsis and description):
     /start
         Start to work with user
-    /auth <username> <password>
-        Save or update user credentials into DB
-    /oauth - Authorizing via OAuth
+    /oauth
+        Authorizing via OAuth
+    /logout
+        Deleted user credentials from DB
     /menu
         Displaying menu with main functions
     /help
@@ -29,8 +30,9 @@ class JiraBot:
 
     bot_commands = [
         '/start - Start to work with user',
-        '/oauth - Authorizing via OAuth',
         '/menu - Displays menu with main functions',
+        '/oauth - Authorizing via OAuth',
+        '/logout - Deleted user credentials from DB',
         '/help - Returns commands and its descriptions'
     ]
     issues_per_page = 10
@@ -42,6 +44,8 @@ class JiraBot:
         commands.MenuCommandFactory,
         commands.OAuthMenuCommandFactory,
         commands.OAuthCommandFactory,
+        commands.LogoutMenuCommandFactory,
+        commands.LogoutCommandFactory,
         commands.TrackingCommandFactory,
         commands.TrackingProjectCommandFactory,
     ]
@@ -125,7 +129,7 @@ class JiraBot:
             confirmed, status_code = self.jira.check_credentials(credentials)
 
             if not confirmed:
-                return False, 'Credentials are incorrect'
+                return False, self.jira.login_error.get(status_code, 'Credentials are incorrect')
 
             return credentials, ''
 

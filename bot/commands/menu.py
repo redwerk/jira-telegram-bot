@@ -262,3 +262,30 @@ class ChooseJiraHostMenuCommand(AbstractCommand):
             text='On which host do you want to log in?',
             reply_markup=reply_markup
         )
+
+
+class LogoutMenuCommand(AbstractCommand):
+
+    def handler(self, bot, update, *args, **kwargs):
+        """
+        Call order: /logout
+        """
+        button_list = [
+            InlineKeyboardButton(
+                'Yes', callback_data='logout:y'
+            ),
+            InlineKeyboardButton(
+                'No', callback_data='logout:n'
+            ),
+        ]
+
+        reply_markup = InlineKeyboardMarkup(utils.build_menu(
+            button_list, n_cols=2
+        ))
+
+        bot.send_message(
+            chat_id=update.message.chat_id,
+            text='Are you sure you want to logout? If approved, all credentials '
+                 'associated with this user will be deleted.',
+            reply_markup=reply_markup
+        )
