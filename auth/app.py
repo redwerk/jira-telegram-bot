@@ -125,7 +125,7 @@ def oauth_authorized():
     try:
         authed_jira = jira.JIRA(base_server_url, oauth=oauth_dict)
     except jira.JIRAError as e:
-        print(e.status_code)
+        logging.warning('Status: {}, message: {}'.format(e.status_code, e.text))
     else:
         username = authed_jira.myself().get('key')
         if user_exists:
