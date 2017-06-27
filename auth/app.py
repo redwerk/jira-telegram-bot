@@ -41,7 +41,7 @@ class JiraOAuthApp:
         if not self._jira_settings:
             msg = 'No setting for {}'.format(host)
             logging.warning(msg)
-            raise AttributeError(msg)
+            raise AttributeError
 
     @property
     def rsa_key_path(self):
@@ -70,6 +70,7 @@ class JiraOAuthApp:
             access_token_method='POST',
         )
         # set attributes
+        app.base_server_url = self._base_server_url
         app.rsa_key_path = self.rsa_key_path
         app.consumer_key = self.consumer_key
 
@@ -80,7 +81,7 @@ class OAuthJiraBaseView(View):
 
     def get_jira_app(self):
         # create new remote jira app
-        host = session.get('jira_token')
+        host = session.get('host')
         jira_app = JiraOAuthApp(host).create_remote_app()
         jira_app.tokengetter(self.get_jira_token)
         return jira_app
@@ -102,6 +103,7 @@ class SendToChatMixin:
     Send message to user into chat.
     """
     querystring = '/sendMessage?chat_id={}&text={}'
+    api_bot_url = 'https://api.telegram.org/bot{}'.format(config('BOT_TOKEN'))
 
     def send_to_chat(self, chat_id, message):
         url = self.api_bot_url + self.querystring.format(chat_id, message)
@@ -110,7 +112,6 @@ class SendToChatMixin:
 
 class AuthorizeView(SendToChatMixin, OAuthJiraBaseView):
     methods = ['GET']
-    api_bot_url = 'https://api.telegram.org/bot{}'.format(config('BOT_TOKEN'))
 
     def dispatch_request(self, telegram_id):
         # Endpoint which saves telegram_id into session and
@@ -143,7 +144,7 @@ class OAuthAuthorizedView(SendToChatMixin, OAuthJiraBaseView):
         except OAuthException as e:
             # if the user declined an authorization request
             message = 'Access denied: {}'.format(e.message)
-            AuthorizeView.send_to_chat(session['telegram_id'], message)
+            self.send_to_chat(session['telegram_id'], message)
             return redirect(bot_url)
 
         oauth_dict = {
@@ -163,7 +164,7 @@ class OAuthAuthorizedView(SendToChatMixin, OAuthJiraBaseView):
             return redirect(bot_url)
 
         try:
-            authed_jira = jira.JIRA(self.jira_app._base_server_url, oauth=oauth_dict)
+            authed_jira = jira.JIRA(self.jira_app.base_server_url, oauth=oauth_dict)
         except jira.JIRAError as e:
             logging.warning('Status: {}, message: {}'.format(e.status_code, e.text))
         else:
