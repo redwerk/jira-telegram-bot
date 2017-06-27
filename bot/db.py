@@ -68,12 +68,9 @@ class MongoBackend:
 
     @mongodb_connect
     def update_user(self, telegram_id: str, user_data: dict, **kwargs) -> bool:
-        """
-        Updates only the specified fields.
-        Can update the embedded fields like: '0.base.password'
-        """
+        """Completely overwrites the entry in the database"""
         collection = self._get_user_collection(kwargs)
-        status = collection.update({'telegram_id': telegram_id}, {'$set': user_data})
+        status = collection.update({'telegram_id': telegram_id}, user_data)
 
         return True if status else False
 
@@ -82,9 +79,10 @@ class MongoBackend:
         collection = self._get_user_collection(kwargs)
         return collection.count({"telegram_id": telegram_id}) > 0
 
-    @staticmethod
-    def get_user_data(user_id: str, db: MongoClient) -> dict:
-        user = db.find_one({'telegram_id': user_id})
+    @mongodb_connect
+    def get_user_data(self, user_id: str, **kwargs) -> dict:
+        collection = self._get_user_collection(kwargs)
+        user = collection.find_one({'telegram_id': user_id})
 
         if user:
             return user
@@ -93,17 +91,20 @@ class MongoBackend:
 
     @mongodb_connect
     def get_user_credentials(self, telegram_id: str, *args, **kwargs) -> dict:
-        collection = self._get_user_collection(kwargs)
-        user = collection.find_one({'telegram_id': telegram_id})
-
-        # an alpha version support only one Jira host
-        host = self.get_host_data(config('JIRA_HOST'))
+        """Returns data for OAuth authorization and further processing"""
+        collection = self._get_host_collection(kwargs)
+        user = self.get_user_data(telegram_id)
+        host = None
 
         if user:
+            host = collection.find_one({'id': user.get('host_id')})
+
+        if user and host:
             return {
-                'username': user[host['id']]['username'],
-                'access_token': user[host['id']]['access_token'],
-                'access_token_secret': user[host['id']]['access_token_secret'],
+                'username': user['username'],
+                'url': host['url'],
+                'access_token': user['access_token'],
+                'access_token_secret': user['access_token_secret'],
                 'consumer_key': host['settings']['consumer_key'],
                 'key_sert': host['settings']['key_sert']
             }
@@ -135,3 +136,11 @@ class MongoBackend:
         status = collection.delete_one({'telegram_id': telegram_id})
 
         return True if status else False
+
+    @mongodb_connect
+    def get_all_hosts(self, **kwargs):
+        """Returns all supports Jira hosts"""
+        collection = self._get_host_collection(kwargs)
+        hosts = collection.find()
+
+        return hosts

@@ -2,13 +2,12 @@ import logging
 import os
 from logging.config import fileConfig
 
-from flask import Flask, redirect, request, session, url_for
-from flask.views import View
-from flask_oauthlib.client import OAuth, OAuthException
-
 import jira
 import requests
 from decouple import config
+from flask import Flask, redirect, request, session, url_for
+from flask.views import View
+from flask_oauthlib.client import OAuth, OAuthException
 from oauthlib.oauth1 import SIGNATURE_RSA
 
 from bot.db import MongoBackend
@@ -169,22 +168,16 @@ class OAuthAuthorizedView(SendToChatMixin, OAuthJiraBaseView):
             logging.warning('Status: {}, message: {}'.format(e.status_code, e.text))
         else:
             username = authed_jira.myself().get('key')
+            data = self.save_token_data(
+                session['telegram_id'],
+                username,
+                jira_host['id'],
+                oauth_dict['access_token'],
+                oauth_dict['access_token_secret']
+            )
             if user_exists:
-                data = self.update_token_data(
-                    username,
-                    jira_host['id'],
-                    oauth_dict['access_token'],
-                    oauth_dict['access_token_secret']
-                )
                 transaction_status = db.update_user(session['telegram_id'], data)
             else:
-                data = self.create_user_data(
-                    session['telegram_id'],
-                    username,
-                    jira_host['id'],
-                    oauth_dict['access_token'],
-                    oauth_dict['access_token_secret']
-                )
                 transaction_status = db.create_user(data)
 
         if not transaction_status:
@@ -196,26 +189,20 @@ class OAuthAuthorizedView(SendToChatMixin, OAuthJiraBaseView):
             self.send_to_chat(session['telegram_id'], message)
             return redirect(bot_url)
 
-        self.send_to_chat(session['telegram_id'], 'You were successfully authorized.')
+        self.send_to_chat(
+            session['telegram_id'],
+            'You were successfully authorized in {}'.format(session.get('host', 'Jira'))
+        )
         return redirect(bot_url)
 
-    def update_token_data(self, username, host_id, access_token, access_token_secret):
-        # Generates dict of data for updating access tokens
-        return {
-            '{}.username'.format(host_id): username,
-            '{}.access_token'.format(host_id): access_token,
-            '{}.access_token_secret'.format(host_id): access_token_secret,
-        }
-
-    def create_user_data(self, telegram_id, username, host_id, access_token, access_token_secret):
-        # Generates dict of data for creating a new user
+    def save_token_data(self, telegram_id, username, host_id, access_token, access_token_secret):
+        """Generates dict for creating or updating data about access tokens"""
         return {
             'telegram_id': telegram_id,
-            host_id: {
-                'username': username,
-                'access_token': access_token,
-                'access_token_secret': access_token_secret
-            }
+            'host_id': host_id,
+            'username': username,
+            'access_token': access_token,
+            'access_token_secret': access_token_secret
         }
 
 

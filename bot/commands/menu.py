@@ -1,4 +1,3 @@
-from decouple import config
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackQueryHandler, CommandHandler
 
@@ -237,21 +236,34 @@ class ChooseJiraHostMenuCommand(AbstractCommand):
 
     def handler(self, bot, update, *args, **kwargs):
         """Displays supported JIRA hosts for further authorization"""
+        button_list = list()
+        telegram_id = str(update.message.chat_id)
+        hosts = self._bot_instance.db.get_all_hosts()
 
-        # an alpha version support only one Jira host
-        host = self._bot_instance.db.get_host_data(config('JIRA_HOST'))
-
-        if not host:
+        if not hosts:
             bot.send_message(
                 chat_id=update.message.chat_id,
-                text="Bot doesn't support working with this host: {}".format(config('JIRA_HOST'))
+                text="Cannot get data about supports hosts at this moment. Please, try again later"
             )
             return
 
-        button_list = [
-            InlineKeyboardButton(
-                host['readable_name'], callback_data='oauth:{}'.format(host['url']))
-        ]
+        user_exists = self._bot_instance.db.is_user_exists(telegram_id)
+        authorized_host_id = None
+
+        if user_exists:
+            authorized_host_id = self._bot_instance.db.get_user_data(telegram_id).get('host_id')
+
+        for host in hosts:
+            name = host['readable_name']
+
+            # visually highlight if the user is already authorized on the host
+            if authorized_host_id == host['id']:
+                name = '· {} ·'.format(name)
+
+            button_list.append(
+                InlineKeyboardButton(
+                    name, callback_data='oauth:{}'.format(host['url']))
+            )
 
         reply_markup = InlineKeyboardMarkup(utils.build_menu(
             button_list, n_cols=2
