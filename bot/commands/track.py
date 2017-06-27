@@ -9,7 +9,7 @@ from .menu import ChooseDeveloperMenuCommand, ChooseProjectMenuCommand
 
 JIRA_DATE_FORMAT = '%Y-%m-%dT%H:%M:%S.%f%z'
 USER_DATE_FORMAT = '%Y-%m-%d'
-ALLOWED_TIME_INTERVAL = 14
+ALLOWED_TIME_INTERVAL = 30
 
 
 class ShowCalendarCommand(AbstractCommand):
