@@ -1,3 +1,4 @@
+from decouple import config
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackQueryHandler, CommandHandler
 
@@ -104,9 +105,7 @@ class ChooseDeveloperMenuCommand(AbstractCommand):
         _callback = kwargs.get('pattern')
         _footer = kwargs.get('footer')
 
-        developers, status = self._bot_instance.jira.get_developers(
-            username=credentials.get('username'), password=credentials.get('password')
-        )
+        developers, status = self._bot_instance.jira.get_developers(**credentials)
 
         if not developers:
             bot.edit_message_text(
@@ -148,9 +147,7 @@ class ChooseProjectMenuCommand(AbstractCommand):
         _footer = kwargs.get('footer')
 
         projects_buttons = list()
-        projects, status_code = self._bot_instance.jira.get_projects(
-            username=credentials.get('username'), password=credentials.get('password')
-        )
+        projects, status_code = self._bot_instance.jira.get_projects(**credentials)
 
         if not projects:
             bot.edit_message_text(
@@ -199,10 +196,7 @@ class ChooseStatusMenuCommand(AbstractCommand):
         _footer = kwargs.get('footer')
         project = kwargs.get('project')
 
-        statuses, status = self._bot_instance.jira.get_statuses(
-            username=credentials['username'],
-            password=credentials['password']
-        )
+        statuses, status = self._bot_instance.jira.get_statuses(**credentials)
 
         if not statuses:
             bot.edit_message_text(
@@ -236,4 +230,64 @@ class ChooseStatusMenuCommand(AbstractCommand):
             message_id=scope['message_id'],
             text=text,
             reply_markup=buttons
+        )
+
+
+class ChooseJiraHostMenuCommand(AbstractCommand):
+
+    def handler(self, bot, update, *args, **kwargs):
+        """Displays supported JIRA hosts for further authorization"""
+
+        # an alpha version support only one Jira host
+        host = self._bot_instance.db.get_host_data(config('JIRA_HOST'))
+
+        if not host:
+            bot.send_message(
+                chat_id=update.message.chat_id,
+                text="Bot doesn't support working with this host: {}".format(config('JIRA_HOST'))
+            )
+            return
+
+        button_list = [
+            InlineKeyboardButton(
+                host['readable_name'], callback_data='oauth:{}'.format(host['url']))
+        ]
+
+        reply_markup = InlineKeyboardMarkup(utils.build_menu(
+            button_list, n_cols=2
+        ))
+
+        bot.send_message(
+            chat_id=update.message.chat_id,
+            text='On which host do you want to log in?',
+            reply_markup=reply_markup
+        )
+
+
+class LogoutMenuCommand(AbstractCommand):
+    positive_answer = 'Yes'
+    negative_answer = 'No'
+
+    def handler(self, bot, update, *args, **kwargs):
+        """
+        Call order: /logout
+        """
+        button_list = [
+            InlineKeyboardButton(
+                'Yes', callback_data='logout:{}'.format(self.positive_answer)
+            ),
+            InlineKeyboardButton(
+                'No', callback_data='logout:{}'.format(self.negative_answer)
+            ),
+        ]
+
+        reply_markup = InlineKeyboardMarkup(utils.build_menu(
+            button_list, n_cols=2
+        ))
+
+        bot.send_message(
+            chat_id=update.message.chat_id,
+            text='Are you sure you want to logout? If approved, all credentials '
+                 'associated with this user will be deleted.',
+            reply_markup=reply_markup
         )

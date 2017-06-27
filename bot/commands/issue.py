@@ -15,9 +15,7 @@ class UserUnresolvedIssuesCommand(AbstractCommand):
         Receiving open user issues and modifying the current message
         :return: Message with a list of open user issues
         """
-        issues, status = self._bot_instance.jira.get_open_issues(
-            username=credentials.get('username'), password=credentials.get('password')
-        )
+        issues, status = self._bot_instance.jira.get_open_issues(**credentials)
 
         if not issues:
             bot.edit_message_text(
@@ -46,11 +44,7 @@ class ProjectUnresolvedIssuesCommand(AbstractCommand):
         """
         project = kwargs.get('project')
 
-        issues, status_code = self._bot_instance.jira.get_open_project_issues(
-            project=project,
-            username=credentials.get('username'),
-            password=credentials.get('password')
-        )
+        issues, status_code = self._bot_instance.jira.get_open_project_issues(project=project, **credentials)
 
         if not issues:
             bot.edit_message_text(
@@ -84,10 +78,7 @@ class ProjectStatusIssuesCommand(AbstractCommand):
         project_key = '{}:{}'.format(project, status)
 
         issues, status_code = self._bot_instance.jira.get_project_status_issues(
-            project=project,
-            status=status,
-            username=credentials.get('username'),
-            password=credentials.get('password')
+            project=project, status=status, **credentials
         )
 
         if not issues:

@@ -1,76 +1,96 @@
-from telegram.ext import CommandHandler
-
-from bot import utils
+from decouple import config
+from telegram.ext import CallbackQueryHandler, CommandHandler
 
 from .base import AbstractCommand, AbstractCommandFactory
+from .menu import ChooseJiraHostMenuCommand, LogoutMenuCommand
 
 
-class UserAuthenticatedCommand(AbstractCommand):
+class OAuthMenuCommandFactory(AbstractCommandFactory):
+    """
+    /oauth - displays supported JIRA hosts for further authorization
+    """
+    def command(self, bot, update, *args, **kwargs):
+        ChooseJiraHostMenuCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
+
+    def command_callback(self):
+        return CommandHandler('oauth', self.command)
+
+
+class UserOAuthCommand(AbstractCommand):
 
     def handler(self, bot, update, *args, **kwargs):
-        """
-        /auth <username> <password>
+        """Command generates URL for further authorization via Flask OAuth service"""
+        scope = self._bot_instance.get_query_scope(update)
+        host_url = scope['data'].replace('oauth:', '')
+        host = self._bot_instance.db.get_host_data(host_url)
 
-        Saving user credentials. Credentials are verified through user
-        authorization, if validation is completed, data is saved.
+        service_url = '{}/authorize/{}/?host={}'.format(config('OAUTH_SERVICE_URL'), scope['telegram_id'], host['url'])
 
-        :return: Error message or message about successful saving of data
-        """
-        username = None
-        password = None
-        telegram_id = str(update.message.from_user.id)
+        bot.edit_message_text(
+            chat_id=scope['chat_id'],
+            message_id=scope['message_id'],
+            text='Follow the link to confirm authorization\n{}'.format(service_url),
+        )
 
-        try:
-            username, password = kwargs.get('args')
-        except ValueError:
-            bot.send_message(
-                chat_id=update.message.chat_id,
-                text='Incorrectly entered data. Use the following '
-                     'command format:\n/auth <username> <password>'
-            )
-        else:
-            # Verification of credentials. The data will be stored only
-            # if there is confirmed authorization in Jira.
-            confirmed, status_code = self._bot_instance.jira.check_credentials(
-                username, password
-            )
 
-            if not confirmed:
-                message = self._bot_instance.jira.login_error.get(
-                    status_code, 'Unknown error'
+class OAuthCommandFactory(AbstractCommandFactory):
+
+    def command(self, bot, update, *args, **kwargs):
+        UserOAuthCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
+
+    def command_callback(self):
+        return CallbackQueryHandler(self.command, pattern=r'^oauth:')
+
+
+class LogoutMenuCommandFactory(AbstractCommandFactory):
+    """
+    /logout - request to delete credentials from the database
+    """
+    def command(self, bot, update, *args, **kwargs):
+        LogoutMenuCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
+
+    def command_callback(self):
+        return CommandHandler('logout', self.command)
+
+
+class LogoutCommand(AbstractCommand):
+
+    def handler(self, bot, update, *args, **kwargs):
+        """Deletes user credentials from DB"""
+        scope = self._bot_instance.get_query_scope(update)
+        answer = scope['data'].replace('logout:', '')
+
+        if answer == LogoutMenuCommand.positive_answer:
+            status = self._bot_instance.db.delete_user(scope['telegram_id'])
+
+            if status:
+                bot.edit_message_text(
+                    chat_id=scope['chat_id'],
+                    message_id=scope['message_id'],
+                    text='User successfully deleted from database',
                 )
-                bot.send_message(
-                    chat_id=update.message.chat_id,
-                    text=message
+                return
+            else:
+                bot.edit_message_text(
+                    chat_id=scope['chat_id'],
+                    message_id=scope['message_id'],
+                    text='The user was not removed from the database, please try again later.',
                 )
                 return
 
-            encrypted_password = utils.encrypt_password(password)
-
-            jira_cred = dict(username=username, password=encrypted_password)
-            user_data = dict(telegram_id=telegram_id, jira=jira_cred)
-
-            # create user or update his credentials
-            transaction_status = self._bot_instance.db.save_credentials(user_data)
-
-            if not transaction_status:
-                bot.send_message(
-                    chat_id=update.message.chat_id,
-                    text='Internal error. Please try again later.'
-                )
-            else:
-                bot.send_message(
-                    chat_id=update.message.chat_id,
-                    text='Your credentials are saved successfully.\n'
-                         'Please, delete all messages that contain your '
-                         'credentials (even if they are incorrect).'
-                )
+        else:
+            bot.edit_message_text(
+                chat_id=scope['chat_id'],
+                message_id=scope['message_id'],
+                text='Deleting user is not confirmed',
+            )
+            return
 
 
-class AuthCommandFactory(AbstractCommandFactory):
+class LogoutCommandFactory(AbstractCommandFactory):
 
     def command(self, bot, update, *args, **kwargs):
-        UserAuthenticatedCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
+        LogoutCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
 
     def command_callback(self):
-        return CommandHandler('auth', self.command, pass_args=True)
+        return CallbackQueryHandler(self.command, pattern=r'^logout:')

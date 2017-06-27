@@ -18,8 +18,10 @@ class JiraBot:
     Commands (synopsis and description):
     /start
         Start to work with user
-    /auth <username> <password>
-        Save or update user credentials into DB
+    /oauth
+        Authorizing via OAuth
+    /logout
+        Deleted user credentials from DB
     /menu
         Displaying menu with main functions
     /help
@@ -28,9 +30,9 @@ class JiraBot:
 
     bot_commands = [
         '/start - Start to work with user',
-        '/auth <username> <password> - Save or update user '
-        'credentials into DB',
         '/menu - Displays menu with main functions',
+        '/oauth - Authorizing via OAuth',
+        '/logout - Deleted user credentials from DB',
         '/help - Returns commands and its descriptions'
     ]
     issues_per_page = 10
@@ -40,7 +42,10 @@ class JiraBot:
         commands.IssuesPaginatorFactory,
         commands.MainMenuCommandFactory,
         commands.MenuCommandFactory,
-        commands.AuthCommandFactory,
+        commands.OAuthMenuCommandFactory,
+        commands.OAuthCommandFactory,
+        commands.LogoutMenuCommandFactory,
+        commands.LogoutCommandFactory,
         commands.TrackingCommandFactory,
         commands.TrackingProjectCommandFactory,
     ]
@@ -121,17 +126,12 @@ class JiraBot:
         credentials = self.db.get_user_credentials(telegram_id)
 
         if credentials:
-            username = credentials.get('username')
-            password = utils.decrypt_password(credentials.get('password'))
-
-            confirmed, status_code = self.jira.check_credentials(
-                username, password
-            )
+            confirmed, status_code = self.jira.check_credentials(credentials)
 
             if not confirmed:
-                return False, 'Credentials are incorrect'
+                return False, self.jira.login_error.get(status_code, 'Credentials are incorrect')
 
-            return dict(username=username, password=password), ''
+            return credentials, ''
 
         return False, "You didn't enter credentials"
 
