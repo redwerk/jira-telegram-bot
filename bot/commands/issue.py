@@ -1,5 +1,6 @@
 import logging
 
+from telegram import ParseMode
 from telegram.ext import CallbackQueryHandler
 
 from bot import utils
@@ -120,11 +121,15 @@ class IssuesPaginatorCommand(AbstractCommand):
         )
         formatted_issues = '\n\n'.join(user_data['issues'][page - 1])
 
+        if page == user_data.get('page_count'):
+            formatted_issues += user_data.get('footer')
+
         bot.edit_message_text(
             text=formatted_issues,
             chat_id=scope['chat_id'],
             message_id=scope['message_id'],
-            reply_markup=buttons
+            reply_markup=buttons,
+            parse_mode=ParseMode.HTML
         )
 
 
