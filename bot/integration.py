@@ -43,6 +43,7 @@ class JiraBackend:
     """
     Interface for working with Jira service
     """
+    issue_data = namedtuple('IssueData', 'key permalink')
 
     # description of the error for each action
     login_error = {
@@ -238,9 +239,12 @@ class JiraBackend:
 
         return dict()
 
-    @staticmethod
-    def get_issues_id(issues: list) -> dict:
-        return {i.id: i.key for i in issues}
+    def get_issues_id(self, issues: list) -> dict:
+        """
+        Returen issue data
+        {issue_id: namedtuple.key, namedtuple.permalink
+        """
+        return {i.id: self.issue_data(key=i.key, permalink=i.permalink()) for i in issues}
 
     @jira_connect
     def get_worklogs_by_id(self, issues_ids: dict, *args, **kwargs) -> list:

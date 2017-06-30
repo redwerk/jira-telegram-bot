@@ -135,7 +135,7 @@ class JiraBot:
 
         return False, "You didn't enter credentials"
 
-    def save_into_cache(self, data: list, key: str):
+    def save_into_cache(self, data: list, key: str, footer=''):
         """
         Creating a pagination list. Saving into a cache for further work with
         it without redundant requests to JIRA.
@@ -143,17 +143,19 @@ class JiraBot:
         If strings less than value per page just return a formatted string without buttons.
         :param data: list of strings
         :param key: key for stored it into cache dict
+        :param footer: message for the last page
         :return: formatted string with pagination buttons
         """
         buttons = None
 
-        if len(data) < self.issues_per_page:
+        if len(data) < self.issues_per_page + 1:
             formatted_issues = '\n\n'.join(data)
+            formatted_issues += footer
         else:
             splitted_data = utils.split_by_pages(data, self.issues_per_page)
             page_count = len(splitted_data)
             self.issue_cache[key] = dict(
-                issues=splitted_data, page_count=page_count
+                issues=splitted_data, page_count=page_count, footer=footer
             )
 
             # return the first page

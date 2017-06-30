@@ -1,5 +1,7 @@
+import logging
 from datetime import datetime
 
+from telegram import ParseMode
 from telegram.ext import CallbackQueryHandler
 
 from bot import utils
@@ -47,6 +49,37 @@ class ChooseDateIntervalCommand(AbstractCommand):
 
 class TrackingUserWorklogCommand(AbstractCommand):
 
+    @staticmethod
+    def report_data(log, logged_time, issues_ids, template='user') -> str:
+        """Generates a message for report"""
+        templates = {
+            'user': '<a href="{permalink}">{key}</a> {time_spent}\n{date}',
+            'project': '<a href="{permalink}">{key}</a> <b>{author}</b> {time_spent}\n{date}',
+        }
+
+        data = {
+            'key': issues_ids[log.issueId].key,
+            'time_spent': log.timeSpent,
+            'permalink': issues_ids[log.issueId].permalink,
+            'date': utils.to_human_date(logged_time),
+            'author': log.author.displayName
+        }
+
+        return templates.get(template).format(**data)
+
+    @staticmethod
+    def calculate_total_time(seconds: int, start_date: str, end_date: str) -> str:
+        """Calculates time spent for issues in time interval"""
+        hours = 0
+        hour_in_seconds = 3600
+
+        try:
+            hours = seconds / hour_in_seconds
+        except TypeError:
+            logging.warning('Seconds are not a numeric type: {} {}'.format(type(seconds), seconds))
+
+        return '\n\nAll time spent from {} to {}: <b>{}h</b>'.format(start_date, end_date, round(hours, 2))
+
     def handler(self, bot, scope, credentials, *args, **kwargs):
         """Shows all worklog of the user in selected date interval"""
         start_date = utils.to_datetime(scope['start_date'], scope['user_d_format'])
@@ -68,17 +101,23 @@ class TrackingUserWorklogCommand(AbstractCommand):
         user_logs = self._bot_instance.jira.get_user_worklogs(all_worklogs, credentials['username'])
 
         # comparison of the time interval (the time of the log should be between the start and end dates)
+        seconds = 0
         for log in user_logs:
             logged_time = utils.to_datetime(log.created, scope['jira_d_format'])
 
             if (start_date <= logged_time) and (logged_time <= end_date):
                 user_worklogs.append(
-                    '{} {}\n{}'.format(issues_ids[log.issueId], log.timeSpent, utils.to_human_date(logged_time))
+                    self.report_data(log, logged_time, issues_ids)
                 )
+                seconds += log.timeSpentSeconds
 
         start_line = 'User work log from {start_date} to {end_date}\n\n'.format(**scope)
         key = '{username}:{start_date}:{end_date}'.format(**scope, username=credentials['username'])
-        formatted, buttons = self._bot_instance.save_into_cache(user_worklogs, key)
+        formatted, buttons = self._bot_instance.save_into_cache(
+            user_worklogs,
+            key,
+            footer=self.calculate_total_time(seconds, scope['start_date'], scope['end_date'])
+        )
 
         if not formatted:
             text = start_line + 'No worklog data in chosen time interval'
@@ -89,7 +128,8 @@ class TrackingUserWorklogCommand(AbstractCommand):
             chat_id=scope['chat_id'],
             message_id=scope['message_id'],
             text=text,
-            reply_markup=buttons
+            reply_markup=buttons,
+            parse_mode=ParseMode.HTML
         )
 
 
@@ -115,21 +155,24 @@ class TrackingProjectWorklogCommand(AbstractCommand):
         all_worklogs, status_code = self._bot_instance.jira.get_worklogs_by_id(issues_ids, **credentials)
 
         # comparison of the time interval (the time of the log should be between the start and end dates)
+        seconds = 0
         for i_log in all_worklogs:
             for log in i_log:
                 logged_time = utils.to_datetime(log.created, scope['jira_d_format'])
 
                 if (start_date <= logged_time) and (logged_time <= end_date):
                     project_worklogs.append(
-                        '{} {} {}\n{}'.format(
-                            issues_ids[log.issueId], log.author.displayName,
-                            log.timeSpent, utils.to_human_date(logged_time)
-                        )
+                        TrackingUserWorklogCommand.report_data(log, logged_time, issues_ids, template='project')
                     )
+                    seconds += log.timeSpentSeconds
 
         start_line = '{project} worklog from {start_date} to {end_date}\n\n'.format(**scope)
         key = '{project}:{start_date}:{end_date}'.format(**scope)
-        formatted, buttons = self._bot_instance.save_into_cache(project_worklogs, key)
+        formatted, buttons = self._bot_instance.save_into_cache(
+            project_worklogs,
+            key,
+            footer=TrackingUserWorklogCommand.calculate_total_time(seconds, scope['start_date'], scope['end_date'])
+        )
 
         if not formatted:
             text = start_line + 'No worklog data in chosen time interval'
@@ -140,7 +183,8 @@ class TrackingProjectWorklogCommand(AbstractCommand):
             chat_id=scope['chat_id'],
             message_id=scope['message_id'],
             text=text,
-            reply_markup=buttons
+            reply_markup=buttons,
+            parse_mode=ParseMode.HTML
         )
 
 
@@ -170,17 +214,23 @@ class TrackingProjectUserWorklogCommand(AbstractCommand):
         user_logs = self._bot_instance.jira.get_user_worklogs(all_worklogs, scope.get('user'), display_name=True)
 
         # comparison of the time interval (the time of the log should be between the start and end dates)
+        seconds = 0
         for log in user_logs:
             logged_time = utils.to_datetime(log.created, scope['jira_d_format'])
 
             if (start_date <= logged_time) and (logged_time <= end_date):
                 user_worklogs.append(
-                    '{} {}\n{}'.format(issues_ids[log.issueId], log.timeSpent, utils.to_human_date(logged_time))
+                    TrackingUserWorklogCommand.report_data(log, logged_time, issues_ids)
                 )
+                seconds += log.timeSpentSeconds
 
         start_line = '{user} worklog on {project} from {start_date} to {end_date}\n\n'.format(**scope)
         key = '{username}:{project}:{start_date}:{end_date}'.format(**scope, username=scope.get('user'))
-        formatted, buttons = self._bot_instance.save_into_cache(user_worklogs, key)
+        formatted, buttons = self._bot_instance.save_into_cache(
+            user_worklogs,
+            key,
+            footer=TrackingUserWorklogCommand.calculate_total_time(seconds, scope['start_date'], scope['end_date'])
+        )
 
         if not formatted:
             text = start_line + 'No data about {user} worklogs on {project} from ' \
@@ -192,7 +242,8 @@ class TrackingProjectUserWorklogCommand(AbstractCommand):
             chat_id=scope['chat_id'],
             message_id=scope['message_id'],
             text=text,
-            reply_markup=buttons
+            reply_markup=buttons,
+            parse_mode=ParseMode.HTML
         )
 
 
