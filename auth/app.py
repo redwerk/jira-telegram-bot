@@ -209,6 +209,3 @@ class OAuthAuthorizedView(SendToChatMixin, OAuthJiraBaseView):
 
 app.add_url_rule('/authorize/<string:telegram_id>/', view_func=AuthorizeView.as_view('authorize'))
 app.add_url_rule('/oauth_authorized', view_func=OAuthAuthorizedView.as_view('oauth_authorized'))
-
-if __name__ == '__main__':
-    app.run()
