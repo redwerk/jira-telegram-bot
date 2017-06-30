@@ -3,20 +3,29 @@ appnope==0.1.0
 asn1crypto==0.22.0
 certifi==2017.4.17
 cffi==1.10.0
+click==6.7
 cryptography==1.8.1
 decorator==4.0.11
 defusedxml==0.5.0
--e git+https://github.com/redwerk/flask-oauthlib.git#egg=Flask-OAuthlib
 Fabric3==1.13.1.post1
 flake8==3.3.0
 Flask==0.12.2
+-e git+https://github.com/redwerk/flask-oauthlib.git@8b4c75de73feba0062e59b1c335e52335e731dd3#egg=Flask_OAuthlib
 future==0.16.0
+gevent==1.2.2
+greenlet==0.4.12
+gunicorn==19.7.1
+httplib2==0.10.3
 idna==2.5
 ipython==6.1.0
 ipython-genutils==0.2.0
+itsdangerous==0.24
 jedi==0.10.2
+Jinja2==2.9.6
 jira==1.0.10
+MarkupSafe==1.0
 mccabe==0.6.1
+oauth2==1.9.0.post1
 oauthlib==2.0.2
 packaging==16.8
 paramiko==2.1.2
@@ -34,6 +43,7 @@ pymongo==3.4.0
 pyparsing==2.2.0
 python-decouple==3.0
 python-telegram-bot==5.3.1
+pytz==2017.2
 requests==2.14.2
 requests-oauthlib==0.8.0
 requests-toolbelt==0.8.0
@@ -43,3 +53,4 @@ traitlets==4.3.2
 ujson==1.35
 urllib3==1.20
 wcwidth==0.1.7
+Werkzeug==0.12.2
