@@ -1,5 +1,6 @@
 import logging
 import os
+from collections import namedtuple
 
 import jira
 from decouple import config
@@ -18,12 +19,12 @@ def jira_connect(func):
     :return: requested data and status code
     """
     def wrapper(*args, **kwargs) -> (list or bool, int):
-        oauth_dict = JiraBackend.getting_credentials(kwargs)
+        auth_data = JiraBackend.getting_credentials(kwargs)
 
         try:
             jira_conn = jira.JIRA(
-                server=config('JIRA_HOST'),
-                oauth=oauth_dict,
+                server=auth_data.jira_host,
+                oauth=auth_data.credentials,
                 max_retries=1
             )
         except jira.JIRAError as e:
@@ -55,8 +56,10 @@ class JiraBackend:
     }
 
     @staticmethod
-    def getting_credentials(kwargs: dict) -> (str, str):
-        """Forms a dictionary for OAuth authorization"""
+    def getting_credentials(kwargs: dict) -> namedtuple:
+        """Forms a namedtuple for OAuth authorization"""
+        AuthData = namedtuple('AuthData', 'jira_host credentials')
+
         rsa_key = os.path.join(config('PRIVATE_KEYS_PATH'), kwargs.get('key_sert'))
         oauth_dict = {
             'access_token': kwargs.get('access_token'),
@@ -65,18 +68,18 @@ class JiraBackend:
             'key_cert': read_private_key(rsa_key)
         }
 
-        return oauth_dict
+        return AuthData(jira_host=kwargs.get('url'), credentials=oauth_dict)
 
     def check_credentials(self, credentials: dict) -> (bool, int):
         """
         Attempt to authorize the user in the JIRA service.
         :return: Status and code
         """
-        oauth_dict = self.getting_credentials(credentials)
+        auth_data = self.getting_credentials(credentials)
         try:
             jira_conn = jira.JIRA(
-                server=config('JIRA_HOST'),
-                oauth=oauth_dict,
+                server=auth_data.jira_host,
+                oauth=auth_data.credentials,
                 max_retries=1
             )
         except jira.JIRAError as e:
