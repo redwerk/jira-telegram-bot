@@ -2,12 +2,13 @@ import logging
 import os
 from logging.config import fileConfig
 
-import jira
-import requests
-from decouple import config
 from flask import Flask, redirect, request, session, url_for
 from flask.views import View
 from flask_oauthlib.client import OAuth, OAuthException
+
+import jira
+import requests
+from decouple import config
 from oauthlib.oauth1 import SIGNATURE_RSA
 
 from bot.db import MongoBackend
