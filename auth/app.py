@@ -15,7 +15,7 @@ from bot.db import MongoBackend
 from bot.utils import read_private_key
 
 # commong settings
-fileConfig('../logging_config.ini')
+fileConfig('./logging_config.ini')
 bot_url = config('BOT_URL')
 db = MongoBackend()
 
