@@ -1,6 +1,6 @@
 import os
 
-TMP = os.path.expanduser("~/tmp/")
+TMP = os.path.expanduser("~/jira-telegram-bot/tmp/")
 
 
 def numCPUs():
