@@ -7,13 +7,13 @@ from .menu import ChooseJiraHostMenuCommand, LogoutMenuCommand
 
 class OAuthMenuCommandFactory(AbstractCommandFactory):
     """
-    /oauth - displays supported JIRA hosts for further authorization
+    /login - displays supported JIRA hosts for further authorization
     """
     def command(self, bot, update, *args, **kwargs):
         ChooseJiraHostMenuCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
 
     def command_callback(self):
-        return CommandHandler('oauth', self.command)
+        return CommandHandler('login', self.command)
 
 
 class UserOAuthCommand(AbstractCommand):
