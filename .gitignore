@@ -19,6 +19,7 @@ env/
 ENV/
 
 .idea/
+.vscode/
 
 # tmp files
 tmp/
