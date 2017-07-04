@@ -169,7 +169,7 @@ class OAuthAuthorizedView(SendToChatMixin, OAuthJiraBaseView):
             data = self.save_token_data(
                 session['telegram_id'],
                 username,
-                jira_host['id'],
+                jira_host['url'],
                 oauth_dict['access_token'],
                 oauth_dict['access_token_secret']
             )
@@ -193,11 +193,11 @@ class OAuthAuthorizedView(SendToChatMixin, OAuthJiraBaseView):
         )
         return redirect(bot_url)
 
-    def save_token_data(self, telegram_id, username, host_id, access_token, access_token_secret):
+    def save_token_data(self, telegram_id, username, host_url, access_token, access_token_secret):
         """Generates dict for creating or updating data about access tokens"""
         return {
             'telegram_id': telegram_id,
-            'host_id': host_id,
+            'host_url': host_url,
             'username': username,
             'access_token': access_token,
             'access_token_secret': access_token_secret

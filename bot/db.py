@@ -48,6 +48,7 @@ class MongoBackend:
     """An interface that contains basic methods for working with the database"""
     user_collection = config('DB_USER_COLLECTION')
     host_collection = config('DB_HOST_COLLECTION')
+    permission_collection = config('DB_PERMISSIONS_COLLECTION')
 
     def _get_user_collection(self, kwargs: dict) -> MongoClient:
         """Returns MongoClient object which links to user collection"""
@@ -58,6 +59,11 @@ class MongoBackend:
         """Returns MongoClient object which links to host collection"""
         db = kwargs.get('db')
         return db[self.host_collection]
+
+    def _get_permission_collection(self, kwargs: dict) -> MongoClient:
+        """Returns MongoClient object which links to permission collection"""
+        db = kwargs.get('db')
+        return db[self.permission_collection]
 
     @mongodb_connect
     def create_user(self, user_data: dict, **kwargs) -> bool:
@@ -92,12 +98,11 @@ class MongoBackend:
     @mongodb_connect
     def get_user_credentials(self, telegram_id: str, *args, **kwargs) -> dict:
         """Returns data for OAuth authorization and further processing"""
-        collection = self._get_host_collection(kwargs)
         user = self.get_user_data(telegram_id)
         host = None
 
         if user:
-            host = collection.find_one({'id': user.get('host_id')})
+            host = self.get_host_data(user.get('host_url'))
 
         if user and host:
             return {
@@ -110,17 +115,6 @@ class MongoBackend:
             }
 
         return dict()
-
-    @mongodb_connect
-    def get_host_id(self, url, **kwargs):
-        """Returns host id according to host URL"""
-        collection = self._get_host_collection(kwargs)
-        host = collection.find_one({'url': url})
-
-        if host:
-            return host['id']
-
-        return False
 
     @mongodb_connect
     def get_host_data(self, url, **kwargs):
@@ -138,9 +132,20 @@ class MongoBackend:
         return True if status else False
 
     @mongodb_connect
-    def get_all_hosts(self, **kwargs):
-        """Returns all supports Jira hosts"""
+    def get_hosts(self, url_list: list, **kwargs):
+        """Returns matched hosts"""
         collection = self._get_host_collection(kwargs)
-        hosts = collection.find()
+        hosts = collection.find({'url': {'$in': url_list}})
 
         return hosts
+
+    @mongodb_connect
+    def get_user_allowed_hosts(self, telegram_id: str, **kwargs) -> list:
+        """Return hosts which user can use"""
+        collection = self._get_permission_collection(kwargs)
+        permissions = collection.find_one({'telegram_id': telegram_id})
+
+        if permissions:
+            return permissions.get('allowed_hosts')
+
+        return list()

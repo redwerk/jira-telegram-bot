@@ -233,37 +233,34 @@ class ChooseStatusMenuCommand(AbstractCommand):
 
 
 class ChooseJiraHostMenuCommand(AbstractCommand):
+    add_new_host = 'Add host'
 
     def handler(self, bot, update, *args, **kwargs):
         """Displays supported JIRA hosts for further authorization"""
         button_list = list()
+        button_list.append(
+            InlineKeyboardButton(
+                self.add_new_host, callback_data='oauth:{}'.format(self.add_new_host)
+            ))
+
         telegram_id = str(update.message.chat_id)
-        hosts = self._bot_instance.db.get_all_hosts()
+        allowed_hosts = self._bot_instance.db.get_user_allowed_hosts(telegram_id)
 
-        if not hosts:
-            bot.send_message(
-                chat_id=update.message.chat_id,
-                text="Cannot get data about supports hosts at this moment. Please, try again later"
-            )
-            return
+        if allowed_hosts:
+            authorized_host_url = self._bot_instance.db.get_user_data(telegram_id).get('host_url')
+            hosts = self._bot_instance.db.get_hosts(allowed_hosts)
 
-        user_exists = self._bot_instance.db.is_user_exists(telegram_id)
-        authorized_host_id = None
+            for host in hosts:
+                name = host['readable_name']
 
-        if user_exists:
-            authorized_host_id = self._bot_instance.db.get_user_data(telegram_id).get('host_id')
+                # visually highlight if the user is already authorized on the host
+                if authorized_host_url == host['url']:
+                    name = '· {} ·'.format(name)
 
-        for host in hosts:
-            name = host['readable_name']
-
-            # visually highlight if the user is already authorized on the host
-            if authorized_host_id == host['id']:
-                name = '· {} ·'.format(name)
-
-            button_list.append(
-                InlineKeyboardButton(
-                    name, callback_data='oauth:{}'.format(host['url']))
-            )
+                button_list.append(
+                    InlineKeyboardButton(
+                        name, callback_data='oauth:{}'.format(host['url']))
+                )
 
         reply_markup = InlineKeyboardMarkup(utils.build_menu(
             button_list, n_cols=2

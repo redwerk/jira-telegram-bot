@@ -22,6 +22,15 @@ class UserOAuthCommand(AbstractCommand):
         """Command generates URL for further authorization via Flask OAuth service"""
         scope = self._bot_instance.get_query_scope(update)
         host_url = scope['data'].replace('oauth:', '')
+
+        if host_url == ChooseJiraHostMenuCommand.add_new_host:
+            # Call a method that generates data to add a new host
+            bot.edit_message_text(
+                chat_id=scope['chat_id'],
+                message_id=scope['message_id'],
+                text='This functionality will be adding in future',
+            )
+
         host = self._bot_instance.db.get_host_data(host_url)
 
         service_url = '{}/authorize/{}/?host={}'.format(config('OAUTH_SERVICE_URL'), scope['telegram_id'], host['url'])
