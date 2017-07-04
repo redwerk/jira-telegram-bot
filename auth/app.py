@@ -118,10 +118,7 @@ class AuthorizeView(SendToChatMixin, OAuthJiraBaseView):
         # generates an authorization request
         session['telegram_id'] = telegram_id
         session['host'] = request.args.get('host')
-        callback = url_for(
-            'oauth_authorized', next=request.args.get('next') or request.referrer or None
-        )
-
+        callback = '{}/oauth_authorized'.format(config('OAUTH_SERVICE_URL'))
         try:
             return self.jira_app.authorize(callback=callback)
         except OAuthException as e:
