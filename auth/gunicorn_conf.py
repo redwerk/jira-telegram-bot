@@ -10,7 +10,7 @@ def numCPUs():
 
 
 port = os.environ.get('GUNICORN_PORT', 9000)
-bind = "127.0.0.1:%s" % port
+bind = "unix:/var/tmp/gunicorn.sock"
 workers = numCPUs() + 1
 worker_class = "gevent"
 max_requests = 1000
