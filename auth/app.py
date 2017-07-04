@@ -2,7 +2,7 @@ import logging
 import os
 from logging.config import fileConfig
 
-from flask import Flask, redirect, request, session, url_for
+from flask import Flask, redirect, request, session
 from flask.views import View
 from flask_oauthlib.client import OAuth, OAuthException
 
