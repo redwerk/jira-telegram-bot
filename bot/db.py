@@ -126,20 +126,9 @@ class MongoBackend:
         return True if status else False
 
     @mongodb_connect
-    def get_hosts(self, url_list: list, **kwargs):
+    def get_hosts(self, ids_list: list, **kwargs):
         """Returns matched hosts"""
         collection = self._get_host_collection(kwargs)
-        hosts = collection.find({'url': {'$in': url_list}})
+        hosts = collection.find({'_id': {'$in': ids_list}})
 
         return hosts
-
-    @mongodb_connect
-    def get_user_allowed_hosts(self, telegram_id: str, **kwargs) -> list:
-        """Return hosts which user can use"""
-        collection = self._get_permission_collection(kwargs)
-        permissions = collection.find_one({'telegram_id': telegram_id})
-
-        if permissions:
-            return permissions.get('allowed_hosts')
-
-        return list()
