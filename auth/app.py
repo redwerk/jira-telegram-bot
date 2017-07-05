@@ -2,7 +2,7 @@ import logging
 import os
 from logging.config import fileConfig
 
-from flask import Flask, redirect, request, session
+from flask import Flask, redirect, request, session, url_for
 from flask.views import View
 from flask_oauthlib.client import OAuth, OAuthException
 
@@ -118,7 +118,10 @@ class AuthorizeView(SendToChatMixin, OAuthJiraBaseView):
         # generates an authorization request
         session['telegram_id'] = telegram_id
         session['host'] = request.args.get('host')
-        callback = '{}/oauth_authorized'.format(config('OAUTH_SERVICE_URL'))
+        callback = url_for(
+            'oauth_authorized',
+            next=request.args.get('next') or request.referrer or None
+        )
         try:
             return self.jira_app.authorize(callback=callback)
         except OAuthException as e:
