@@ -20,6 +20,8 @@ class JiraBot:
         Start to work with user
     /login
         Authorizing via OAuth
+    /add_host
+        Adding your own host
     /logout
         Deleted user credentials from DB
     /menu
@@ -32,6 +34,7 @@ class JiraBot:
         '/start - Start to work with user',
         '/menu - Displays menu with main functions',
         '/login - Authorizing via OAuth',
+        '/add_host - Adding your own host'
         '/logout - Deleted user credentials from DB',
         '/help - Returns commands and its descriptions'
     ]
@@ -48,6 +51,8 @@ class JiraBot:
         commands.LogoutCommandFactory,
         commands.TrackingCommandFactory,
         commands.TrackingProjectCommandFactory,
+        commands.AddHostCommandFactory,
+        commands.AddHostProcessCommandFactory,
     ]
 
     def __init__(self):
