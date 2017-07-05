@@ -48,7 +48,6 @@ class MongoBackend:
     """An interface that contains basic methods for working with the database"""
     user_collection = config('DB_USER_COLLECTION')
     host_collection = config('DB_HOST_COLLECTION')
-    permission_collection = config('DB_PERMISSIONS_COLLECTION')
 
     def _get_user_collection(self, kwargs: dict) -> MongoClient:
         """Returns MongoClient object which links to user collection"""
@@ -59,11 +58,6 @@ class MongoBackend:
         """Returns MongoClient object which links to host collection"""
         db = kwargs.get('db')
         return db[self.host_collection]
-
-    def _get_permission_collection(self, kwargs: dict) -> MongoClient:
-        """Returns MongoClient object which links to permission collection"""
-        db = kwargs.get('db')
-        return db[self.permission_collection]
 
     @mongodb_connect
     def create_user(self, user_data: dict, **kwargs) -> bool:
