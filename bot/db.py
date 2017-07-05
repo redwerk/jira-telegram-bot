@@ -70,7 +70,7 @@ class MongoBackend:
     def update_user(self, telegram_id: str, user_data: dict, **kwargs) -> bool:
         """Completely overwrites the entry in the database"""
         collection = self._get_user_collection(kwargs)
-        status = collection.update({'telegram_id': telegram_id}, user_data)
+        status = collection.update({'telegram_id': telegram_id}, {'$set': user_data})
 
         return True if status else False
 

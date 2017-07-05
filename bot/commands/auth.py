@@ -61,7 +61,13 @@ class LogoutCommand(AbstractCommand):
         answer = scope['data'].replace('logout:', '')
 
         if answer == LogoutMenuCommand.positive_answer:
-            status = self._bot_instance.db.delete_user(scope['telegram_id'])
+            reset_dict = {
+                'username': None,
+                'host_url': None,
+                'access_token': None,
+                'access_token_secret': None
+            }
+            status = self._bot_instance.db.update_user(scope['telegram_id'], reset_dict)
 
             if status:
                 bot.edit_message_text(

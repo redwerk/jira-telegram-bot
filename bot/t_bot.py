@@ -110,7 +110,7 @@ class JiraBot:
         """
         Gets scope data for current message
         """
-        telegram_id = str(update.callback_query.from_user.id)
+        telegram_id = update.callback_query.from_user.id
 
         query = update.callback_query
         chat_id = query.message.chat_id
