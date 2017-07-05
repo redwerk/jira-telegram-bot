@@ -35,7 +35,6 @@ DB_NAME = <string>
 
 DB_USER_COLLECTION = <string>
 DB_HOST_COLLECTION = <string>
-DB_PERMISSIONS_COLLECTION = <string>
 
 BOT_URL = https://t.me/<bot_name>
 OAUTH_SERVICE_URL = http://url.to.flask.service

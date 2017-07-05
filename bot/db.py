@@ -67,20 +67,34 @@ class MongoBackend:
         return True if status else False
 
     @mongodb_connect
-    def update_user(self, telegram_id: str, user_data: dict, **kwargs) -> bool:
-        """Completely overwrites the entry in the database"""
+    def update_user(self, telegram_id: int, user_data: dict, **kwargs) -> bool:
+        """
+        Updates the specified fields in user collection
+        Matching by: telegram id
+        """
         collection = self._get_user_collection(kwargs)
         status = collection.update({'telegram_id': telegram_id}, {'$set': user_data})
 
         return True if status else False
 
     @mongodb_connect
-    def is_user_exists(self, telegram_id: str, **kwargs) -> bool:
+    def update_host(self, url: str, host_data: dict, **kwargs) -> bool:
+        """
+        Updates the specified fields in host collection
+        Matching by: host url
+        """
+        collection = self._get_host_collection(kwargs)
+        status = collection.update({'url': url}, {'$set': host_data})
+
+        return True if status else False
+
+    @mongodb_connect
+    def is_user_exists(self, telegram_id: int, **kwargs) -> bool:
         collection = self._get_user_collection(kwargs)
         return collection.count({"telegram_id": telegram_id}) > 0
 
     @mongodb_connect
-    def get_user_data(self, user_id: str, **kwargs) -> dict:
+    def get_user_data(self, user_id: int, **kwargs) -> dict:
         collection = self._get_user_collection(kwargs)
         user = collection.find_one({'telegram_id': user_id})
 
@@ -90,7 +104,7 @@ class MongoBackend:
         return dict()
 
     @mongodb_connect
-    def get_user_credentials(self, telegram_id: str, *args, **kwargs) -> dict:
+    def get_user_credentials(self, telegram_id: int, *args, **kwargs) -> dict:
         """Returns data for OAuth authorization and further processing"""
         user = self.get_user_data(telegram_id)
         host = None
@@ -104,8 +118,8 @@ class MongoBackend:
                 'url': host['url'],
                 'access_token': user['access_token'],
                 'access_token_secret': user['access_token_secret'],
-                'consumer_key': host['settings']['consumer_key'],
-                'key_sert': host['settings']['key_sert']
+                'consumer_key': host['consumer_key'],
+                'key_sert': host['key_sert']
             }
 
         return dict()
@@ -119,7 +133,7 @@ class MongoBackend:
         return host
 
     @mongodb_connect
-    def delete_user(self, telegram_id: str, **kwargs) -> bool:
+    def delete_user(self, telegram_id: int, **kwargs) -> bool:
         collection = self._get_user_collection(kwargs)
         status = collection.delete_one({'telegram_id': telegram_id})
 
@@ -127,7 +141,10 @@ class MongoBackend:
 
     @mongodb_connect
     def get_hosts(self, ids_list: list, **kwargs):
-        """Returns matched hosts"""
+        """
+        Returns matched hosts
+        Matching by: ObjectId
+        """
         collection = self._get_host_collection(kwargs)
         hosts = collection.find({'_id': {'$in': ids_list}})
 

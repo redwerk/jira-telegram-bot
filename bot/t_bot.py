@@ -136,7 +136,7 @@ class JiraBot:
 
         return key, int(page)
 
-    def get_and_check_cred(self, telegram_id: str):
+    def get_and_check_cred(self, telegram_id: int):
         """
         Gets the user's credentials from the database and
         checks them (tries to authorize the user in JIRA)
