@@ -13,7 +13,7 @@
 
 2. Navigate into *jira-telegram-bot* folder
 
-3. Create a virtualenv: `python3.5 -m venv .venv`
+3. Create a virtualenv: `python3.6 -m venv .venv`
 
 4. Install requirements: `pip install -r requirements.txt`
 
