@@ -125,6 +125,13 @@ class MongoBackend:
         return dict()
 
     @mongodb_connect
+    def create_host(self, host_data: dict, **kwargs) -> bool:
+        collection = self._get_host_collection(kwargs)
+        status = collection.insert(host_data)
+
+        return True if status else False
+
+    @mongodb_connect
     def get_host_data(self, url, **kwargs):
         """Returns host data according to host URL"""
         collection = self._get_host_collection(kwargs)

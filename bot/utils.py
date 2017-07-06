@@ -1,3 +1,4 @@
+import base64
 import calendar
 import logging
 import os
@@ -254,10 +255,26 @@ def is_jira_app(url: str) -> bool:
     return False
 
 
+def generate_consumer_key(host_url: str) -> str:
+    """Generates a consumer key from hostname and timestamp"""
+    data = '{}{:.2f}'.format(host_url, datetime.now().timestamp())
+    b64_data = base64.b64encode(data.encode())
+
+    return b64_data.decode()[-32:]
+
+
 def generate_key_name(host_url: str) -> str:
     """Generates a name for private key from host name"""
     name = http_ptotocol.sub('', host_url)
     return '{}_key.pem'.format(name.replace('.', '_'))
+
+
+def generate_readable_name(host_url: str) -> str:
+    """Generates a readable name for Jira host in DB"""
+    name = http_ptotocol.sub('', host_url)
+    name_list = name.replace('.com', '').split('.')
+
+    return ' '.join([word[0].upper() + word[1:] for word in name_list])
 
 
 def generate_private_key(key_name: str) -> bool:
@@ -267,7 +284,7 @@ def generate_private_key(key_name: str) -> bool:
     path = os.path.join(config('PRIVATE_KEYS_PATH') + key_name)
 
     try:
-        file_out = open(path, 'w')
+        file_out = open(path, 'wb')
         file_out.write(encrypted_key)
     except FileNotFoundError as e:
         logging.warning('Cannot save data into file: {}'.format(e))
