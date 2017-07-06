@@ -1,13 +1,19 @@
 import calendar
 import logging
+import os
 import re
 from datetime import datetime
-from typing import Generator, List
 
 import pytz
+import requests
+from Cryptodome.PublicKey import RSA
+from decouple import config
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
+from typing import Generator, List
+
 hostname_re = re.compile(r'^http[s]?://([^:/\s]+)?$')
+http_ptotocol = re.compile(r'^http[s]?://')
 
 
 def build_menu(buttons: List,
@@ -227,3 +233,61 @@ def validates_hostname(url: str) -> bool:
     https://test.com                         True
     """
     return True if hostname_re.match(url) else False
+
+
+def is_jira_app(url: str) -> bool:
+    """Determines the ownership of the Jira application using the main templates in the HTML code"""
+    key_templates = [
+        'name="application-name" content="JIRA" data-name="jira"',
+        'id="atlassian-token" name="atlassian-token"'
+    ]
+
+    response = requests.get(url)
+    body = response.content.decode()
+
+    for temp in key_templates:
+        if temp not in body:
+            break
+    else:
+        return True
+
+    return False
+
+
+def generate_key_name(host_url: str) -> str:
+    """Generates a name for private key from host name"""
+    name = http_ptotocol.sub('', host_url)
+    return '{}_key.pem'.format(name.replace('.', '_'))
+
+
+def generate_private_key(key_name: str) -> bool:
+    """Generates a private RSA-key and saves it on disk"""
+    key = RSA.generate(1024)
+    encrypted_key = key.exportKey(pkcs=8)
+    path = os.path.join(config('PRIVATE_KEYS_PATH') + key_name)
+
+    try:
+        file_out = open(path, 'w')
+        file_out.write(encrypted_key)
+    except FileNotFoundError as e:
+        logging.warning('Cannot save data into file: {}'.format(e))
+    else:
+        return True
+
+    return False
+
+
+def get_public_key(key_name: str) -> (str, bool):
+    """Extracts a public key from a private key"""
+    path = os.path.join(config('PRIVATE_KEYS_PATH') + key_name)
+
+    try:
+        private_key = open(path).read()
+        raw_key = RSA.import_key(private_key)
+    except FileNotFoundError as e:
+        logging.warning('Cannot read a private key: {}'.format(e))
+    else:
+        key = raw_key.publickey().exportKey()
+        return key.decode()
+
+    return False

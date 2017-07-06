@@ -29,16 +29,46 @@ class AddHostCommand(AbstractCommand):
             )
             return
 
-        host_exists = self._bot_instance.db.get_host_data(data)
+        jira_host = self._bot_instance.db.get_host_data(data)
 
-        if host_exists:
+        if jira_host and jira_host.get('is_confirmed'):
             message = 'Follow the link to confirm authorization\n{}'.format(
-                UserOAuthCommand.generate_auth_link(telegram_id=chat_id, host_url=host_exists.get('url'))
+                UserOAuthCommand.generate_auth_link(telegram_id=chat_id, host_url=jira_host.get('url'))
             )
             bot.send_message(
                 chat_id=chat_id,
                 text=message,
             )
+            return
+
+        elif jira_host:
+            user = self._bot_instance.db.get_user_data(user_id=chat_id)
+            allowed_hosts = user.get('allowed_hosts')
+
+            # bind the jira host to the user
+            if jira_host.get('_id') not in allowed_hosts:
+                allowed_hosts.append(jira_host.get('_id'))
+                self._bot_instance.db.update_user(telegram_id=chat_id, user_data={'allowed_hosts': allowed_hosts})
+
+            data = {
+                'consumer_key': jira_host.get('consumer_key'),
+                'public_key': utils.get_public_key(jira_host.get('key_sert'))
+            }
+            message = 'The host is already added to the database, but it is not activated. ' \
+                      'To activate the host, add the following information to the Application links.\n' \
+                      '<b>NOTE:</b> you must have administrator permissions\n\n' \
+                      '<b>Consumer Key:</b> {consumer_key}\n' \
+                      '<b>Public Key:</b> {public_key}\n\n' \
+                      'This host was attached to you. After adding the specified data try to ' \
+                      'authorize via the command /login'.format(**data)
+
+            bot.send_message(
+                chat_id=chat_id,
+                text=message,
+                parse_mode=ParseMode.HTML
+            )
+            return
+
         else:
             button_list = [
                 InlineKeyboardButton(
@@ -61,6 +91,7 @@ class AddHostCommand(AbstractCommand):
                 reply_markup=reply_markup,
                 parse_mode=ParseMode.HTML
             )
+            return
 
 
 class AddHostCommandFactory(AbstractCommandFactory):
