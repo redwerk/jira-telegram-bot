@@ -1,10 +1,13 @@
 import calendar
 import logging
+import re
 from datetime import datetime
 from typing import Generator, List
 
 import pytz
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
+hostname_re = re.compile(r'^http[s]?://([^:/\s]+)?$')
 
 
 def build_menu(buttons: List,
@@ -208,3 +211,19 @@ def read_private_key(path):
         logging.warning('RSA private key did not found by path: {}'.format(path))
 
     return key_cert
+
+
+def validates_hostname(url: str) -> bool:
+    """
+    Validates hostname by next patterns:
+
+    https://jira.redwerk.com                 True
+    https://jira.test.redwerk.com            True
+    https://jira.test.redwerk.com/           False
+    test                                     False
+    www.test.com                             False
+    http//test.com                           False
+    https//test.com                          False
+    https://test.com                         True
+    """
+    return True if hostname_re.match(url) else False
