@@ -17,6 +17,15 @@ class AddHostCommand(AbstractCommand):
         """
         chat_id = update.message.chat_id
         data = kwargs.get('args')[0]
+        user_exists = self._bot_instance.db.is_user_exists(chat_id)
+
+        if not user_exists:
+            bot.send_message(
+                chat_id=chat_id,
+                text='You are not in the database. Just call the /start command and '
+                     'repeat the procedure to add the host.',
+            )
+            return
 
         if not data:
             return

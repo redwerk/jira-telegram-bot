@@ -140,13 +140,6 @@ class MongoBackend:
         return host
 
     @mongodb_connect
-    def delete_user(self, telegram_id: int, **kwargs) -> bool:
-        collection = self._get_user_collection(kwargs)
-        status = collection.delete_one({'telegram_id': telegram_id})
-
-        return True if status else False
-
-    @mongodb_connect
     def get_hosts(self, ids_list: list, **kwargs):
         """
         Returns matched hosts

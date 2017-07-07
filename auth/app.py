@@ -126,7 +126,8 @@ class AuthorizeView(SendToChatMixin, OAuthJiraBaseView):
             return self.jira_app.authorize(callback=callback)
         except OAuthException as e:
             logging.warning(e.message)
-            self.send_to_chat(session['telegram_id'], e.message)
+            message = '{}\nDid you create an Application link in your Jira?'.format(e.message)
+            self.send_to_chat(session['telegram_id'], message)
             return redirect(bot_url)
 
 

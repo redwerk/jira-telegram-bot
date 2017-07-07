@@ -34,7 +34,7 @@ class JiraBot:
         '/start - Start to work with user',
         '/menu - Displays menu with main functions',
         '/login - Authorizing via OAuth',
-        '/add_host - Adding your own host'
+        '/add_host - Adding your own host',
         '/logout - Deleted user credentials from DB',
         '/help - Returns commands and its descriptions'
     ]

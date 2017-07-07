@@ -7,6 +7,7 @@ from datetime import datetime
 
 import pytz
 import requests
+from requests.exceptions import ConnectionError
 from Cryptodome.PublicKey import RSA
 from decouple import config
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -243,14 +244,19 @@ def is_jira_app(url: str) -> bool:
         'id="atlassian-token" name="atlassian-token"'
     ]
 
-    response = requests.get(url)
-    body = response.content.decode()
-
-    for temp in key_templates:
-        if temp not in body:
-            break
+    try:
+        response = requests.get(url)
+    except ConnectionError:
+        logging.warning('Failed to establish a new connection: {}'.format(url))
     else:
-        return True
+        if response.status_code == 200:
+            body = response.content.decode()
+
+            for temp in key_templates:
+                if temp not in body:
+                    break
+            else:
+                return True
 
     return False
 
@@ -296,7 +302,7 @@ def generate_private_key(key_name: str) -> bool:
 
 def get_public_key(key_name: str) -> (str, bool):
     """Extracts a public key from a private key"""
-    path = os.path.join(config('PRIVATE_KEYS_PATH') + key_name)
+    path = os.path.join(config('PRIVATE_KEYS_PATH'), key_name)
 
     try:
         private_key = open(path).read()
