@@ -77,14 +77,14 @@ class LogoutCommand(AbstractCommand):
                 bot.edit_message_text(
                     chat_id=scope['chat_id'],
                     message_id=scope['message_id'],
-                    text='User successfully deleted from database',
+                    text='Credentials were successfully reset.',
                 )
                 return
             else:
                 bot.edit_message_text(
                     chat_id=scope['chat_id'],
                     message_id=scope['message_id'],
-                    text='The user was not removed from the database, please try again later.',
+                    text='Credentials were not removed from the database, please try again later.',
                 )
                 return
 
@@ -92,7 +92,7 @@ class LogoutCommand(AbstractCommand):
             bot.edit_message_text(
                 chat_id=scope['chat_id'],
                 message_id=scope['message_id'],
-                text='Deleting user is not confirmed',
+                text='Resetting credentials was not confirmed',
             )
             return
 
