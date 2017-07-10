@@ -1,5 +1,4 @@
 import logging
-import os
 from logging.config import fileConfig
 
 from flask import Flask, redirect, request, session, url_for
@@ -12,9 +11,9 @@ from decouple import config
 from oauthlib.oauth1 import SIGNATURE_RSA
 
 from bot.db import MongoBackend
-from bot.utils import read_private_key
+from bot.utils import read_rsa_key
 
-# commong settings
+# common settings
 fileConfig('./logging_config.ini')
 bot_url = config('BOT_URL')
 db = MongoBackend()
@@ -45,11 +44,7 @@ class JiraOAuthApp:
 
     @property
     def rsa_key_path(self):
-        rsa_key = os.path.join(
-            config('PRIVATE_KEYS_PATH'),
-            self._jira_settings['key_sert']
-        )
-        return rsa_key
+        return config('PRIVATE_KEY_PATH')
 
     @property
     def consumer_key(self):
@@ -66,7 +61,7 @@ class JiraOAuthApp:
             consumer_key=self.consumer_key,
             request_token_method='POST',
             signature_method=SIGNATURE_RSA,
-            rsa_key=read_private_key(self.rsa_key_path),
+            rsa_key=read_rsa_key(self.rsa_key_path),
             access_token_method='POST',
         )
         # set attributes
@@ -152,7 +147,7 @@ class OAuthAuthorizedView(SendToChatMixin, OAuthJiraBaseView):
             'access_token': resp.get('oauth_token'),
             'access_token_secret': resp.get('oauth_token_secret'),
             'consumer_key': self.jira_app.consumer_key,
-            'key_cert': read_private_key(self.jira_app.rsa_key_path)
+            'key_cert': read_rsa_key(self.jira_app.rsa_key_path)
         }
 
         jira_host = db.get_host_data(session['host'])

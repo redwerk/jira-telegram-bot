@@ -1,15 +1,10 @@
-import base64
 import calendar
 import logging
-import os
 import re
+import uuid
 from datetime import datetime
 
 import pytz
-import requests
-from requests.exceptions import ConnectionError
-from Cryptodome.PublicKey import RSA
-from decouple import config
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 from typing import Generator, List
@@ -208,17 +203,17 @@ def to_human_date(_time: datetime) -> str:
     return 'No date'
 
 
-def read_private_key(path):
-    """Read private RSA key for requests via OAuth"""
-    key_cert = None
+def read_rsa_key(path):
+    """Reads a RSA key"""
+    key = None
 
     try:
         file = open(path, 'r')
-        key_cert = file.read()
+        key = file.read()
     except FileNotFoundError as e:
-        logging.warning('RSA private key did not found by path: {}'.format(path))
+        logging.warning('RSA key did not found by path: {}'.format(path))
 
-    return key_cert
+    return key
 
 
 def validates_hostname(url: str) -> bool:
@@ -237,36 +232,9 @@ def validates_hostname(url: str) -> bool:
     return True if hostname_re.match(url) else False
 
 
-def is_jira_app(url: str) -> bool:
-    """Determines the ownership of the Jira application using the main templates in the HTML code"""
-    key_templates = [
-        'name="application-name" content="JIRA" data-name="jira"',
-        'id="atlassian-token" name="atlassian-token"'
-    ]
-
-    try:
-        response = requests.get(url)
-    except ConnectionError:
-        logging.warning('Failed to establish a new connection: {}'.format(url))
-    else:
-        if response.status_code == 200:
-            body = response.content.decode()
-
-            for temp in key_templates:
-                if temp not in body:
-                    break
-            else:
-                return True
-
-    return False
-
-
-def generate_consumer_key(host_url: str) -> str:
-    """Generates a consumer key from hostname and timestamp"""
-    data = '{}{:.2f}'.format(host_url, datetime.now().timestamp())
-    b64_data = base64.b64encode(data.encode())
-
-    return b64_data.decode()[-32:]
+def generate_consumer_key() -> str:
+    """Generates a consumer key"""
+    return uuid.uuid4().hex
 
 
 def generate_key_name(host_url: str) -> str:
@@ -281,36 +249,3 @@ def generate_readable_name(host_url: str) -> str:
     name_list = name.replace('.com', '').split('.')
 
     return ' '.join([word[0].upper() + word[1:] for word in name_list])
-
-
-def generate_private_key(key_name: str) -> bool:
-    """Generates a private RSA-key and saves it on disk"""
-    key = RSA.generate(1024)
-    encrypted_key = key.exportKey(pkcs=8)
-    path = os.path.join(config('PRIVATE_KEYS_PATH') + key_name)
-
-    try:
-        file_out = open(path, 'wb')
-        file_out.write(encrypted_key)
-    except FileNotFoundError as e:
-        logging.warning('Cannot save data into file: {}'.format(e))
-    else:
-        return True
-
-    return False
-
-
-def get_public_key(key_name: str) -> (str, bool):
-    """Extracts a public key from a private key"""
-    path = os.path.join(config('PRIVATE_KEYS_PATH'), key_name)
-
-    try:
-        private_key = open(path).read()
-        raw_key = RSA.import_key(private_key)
-    except FileNotFoundError as e:
-        logging.warning('Cannot read a private key: {}'.format(e))
-    else:
-        key = raw_key.publickey().exportKey()
-        return key.decode()
-
-    return False

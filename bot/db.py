@@ -119,7 +119,6 @@ class MongoBackend:
                 'access_token': user['access_token'],
                 'access_token_secret': user['access_token_secret'],
                 'consumer_key': host['consumer_key'],
-                'key_sert': host['key_sert']
             }
 
         return dict()

@@ -38,7 +38,6 @@
   "url": "https://jira.redwerk.com",
   "readable_name": "Redwerk",
   "consumer_key": "OAuthKey",
-  "key_sert": "jira_redwerk_privatekey.pem",
   "is_confirmed": false,
 }
 
@@ -47,7 +46,6 @@
   "url": "https://jira.test.redwerk.com",
   "readable_name": "Test Redwerk",
   "consumer_key": "OAuthKey",
-  "key_sert": "jira_redwerk_privatekey.pem",
   "is_confirmed": true,
 }
 ```

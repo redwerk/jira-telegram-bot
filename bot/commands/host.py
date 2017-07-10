@@ -95,15 +95,22 @@ class AddHostCommand(AbstractCommand):
 
         data = {
             'consumer_key': jira_host.get('consumer_key'),
-            'public_key': utils.get_public_key(jira_host.get('key_sert')),
-            'application_url': config('OAUTH_SERVICE_URL')
+            'public_key': utils.read_rsa_key(config('PUBLIC_KEY_PATH')),
+            'application_url': config('OAUTH_SERVICE_URL'),
+            'application_name': 'JiraTelegramBot',
         }
         message = 'The host is already added to the database, but it is not activated. ' \
-                  'To activate the host, add the following information to the Application links.\n' \
+                  'To activate the host, add the following information to the ' \
+                  '<a href="https://www.prodpad.com/blog/tech-tutorial-oauth-in-jira/">Application links</a>.\n' \
                   '<b>NOTE:</b> you must have administrator permissions\n\n' \
+                  '<b>Application URL:</b> {application_url}\n' \
+                  '<b>Application Name:</b> {application_name}\n' \
+                  '<b>Application Type:</b> Generic Application\n' \
+                  '<b>Create incoming link:</b> Select a checkbox\n\n' \
                   '<b>Consumer Key:</b> {consumer_key}\n' \
+                  '<b>Consumer Name:</b> {application_name}\n' \
                   '<b>Public Key:</b> {public_key}\n' \
-                  '<b>Application URL:</b> {application_url}\n\n' \
+                  'Fields that are not specified must be filled in (e.g. "example")\n' \
                   'This host was attached to you. After adding the specified data try to ' \
                   'authorize via the command /login'.format(**data)
 
@@ -123,8 +130,7 @@ class AddHostProcessCommand(AbstractCommand):
 
     def handler(self, bot, update, *args, **kwargs):
         """
-        Validates Jira host URL, generates RSA private key, saves key into server,
-        returns consumer key, public key and link on Flask OAuth service
+        Validates Jira host URL, returns consumer key, public key and link on Flask OAuth service
         """
         scope = self._bot_instance.get_query_scope(update)
         host_url = scope['data'].replace('add_host:', '')
@@ -138,7 +144,13 @@ class AddHostProcessCommand(AbstractCommand):
             )
             return
 
-        if not utils.is_jira_app(host_url):
+        bot.edit_message_text(
+            chat_id=scope['chat_id'],
+            message_id=scope['message_id'],
+            text='Processing...',
+        )
+
+        if not self._bot_instance.jira.is_jira_app(host_url):
             bot.edit_message_text(
                 chat_id=scope['chat_id'],
                 message_id=scope['message_id'],
@@ -149,8 +161,7 @@ class AddHostProcessCommand(AbstractCommand):
         host_data = {
             'url': host_url,
             'readable_name': utils.generate_readable_name(host_url),
-            'consumer_key': utils.generate_consumer_key(host_url),
-            'key_sert': utils.generate_key_name(host_url),
+            'consumer_key': utils.generate_consumer_key(),
             'is_confirmed': False
         }
 
@@ -158,10 +169,7 @@ class AddHostProcessCommand(AbstractCommand):
 
         if host_status:
             created_host = self._bot_instance.db.get_host_data(host_url)
-            key_status = utils.generate_private_key(created_host.get('key_sert'))
-
-            if key_status:
-                message = AddHostCommand(self._bot_instance).get_app_links_data(bot, created_host, scope['chat_id'])
+            message = AddHostCommand(self._bot_instance).get_app_links_data(bot, created_host, scope['chat_id'])
 
         bot.edit_message_text(
             chat_id=scope['chat_id'],

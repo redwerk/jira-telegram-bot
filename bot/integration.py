@@ -1,11 +1,11 @@
 import logging
-import os
 from collections import namedtuple
 
 import jira
 from decouple import config
+from jira.resilientsession import ConnectionError
 
-from bot.utils import read_private_key
+from bot.utils import read_rsa_key
 
 OK_STATUS = 200
 
@@ -61,15 +61,28 @@ class JiraBackend:
         """Forms a namedtuple for OAuth authorization"""
         AuthData = namedtuple('AuthData', 'jira_host credentials')
 
-        rsa_key = os.path.join(config('PRIVATE_KEYS_PATH'), kwargs.get('key_sert'))
         oauth_dict = {
             'access_token': kwargs.get('access_token'),
             'access_token_secret': kwargs.get('access_token_secret'),
             'consumer_key': kwargs.get('consumer_key'),
-            'key_cert': read_private_key(rsa_key)
+            'key_cert': read_rsa_key(config('PRIVATE_KEY_PATH'))
         }
 
         return AuthData(jira_host=kwargs.get('url'), credentials=oauth_dict)
+
+    @staticmethod
+    def is_jira_app(host: str) -> bool:
+        """Determines the ownership on the Jira"""
+        try:
+            jira_conn = jira.JIRA(
+                server=host,
+                max_retries=1
+            )
+        except (jira.JIRAError, ConnectionError) as e:
+            return False
+        else:
+            jira_conn.server_info()
+            return True
 
     def check_credentials(self, credentials: dict) -> (bool, int):
         """

@@ -1,7 +1,7 @@
 ## Telegram bot for integration with JIRA
 
 ### Technologies
-- Python 3.5
+- Python 3.6
 - MongoDB
 - PyMongo
 - [jira](https://github.com/pycontribs/jira)
@@ -38,7 +38,9 @@ DB_HOST_COLLECTION = <string>
 
 BOT_URL = https://t.me/<bot_name>
 OAUTH_SERVICE_URL = http://url.to.flask.service
-PRIVATE_KEYS_PATH = /absolute/path/to/private_keys/folder/
+
+PRIVATE_KEY_PATH = /absolute/path/jira_privatekey.pem
+PUBLIC_KEY_PATH = /absolute/path/jira_publickey.pem
 ```
 
 For further deployment see [/docs](docs) folder
