@@ -39,6 +39,7 @@ DB_HOST_COLLECTION = <string>
 BOT_URL = https://t.me/<bot_name>
 OAUTH_SERVICE_URL = http://url.to.flask.service
 
+DOCS_PATH = /absolute/path/path/to/jira-telegram-bot/docs
 PRIVATE_KEY_PATH = /absolute/path/jira_privatekey.pem
 PUBLIC_KEY_PATH = /absolute/path/jira_publickey.pem
 ```

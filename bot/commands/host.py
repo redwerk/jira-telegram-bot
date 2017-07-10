@@ -1,3 +1,6 @@
+import os
+from string import Template
+
 from decouple import config
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
 from telegram.ext import CallbackQueryHandler, CommandHandler
@@ -99,22 +102,12 @@ class AddHostCommand(AbstractCommand):
             'application_url': config('OAUTH_SERVICE_URL'),
             'application_name': 'JiraTelegramBot',
         }
-        message = 'The host is already added to the database, but it is not activated. ' \
-                  'To activate the host, add the following information to the ' \
-                  '<a href="https://www.prodpad.com/blog/tech-tutorial-oauth-in-jira/">Application links</a>.\n' \
-                  '<b>NOTE:</b> you must have administrator permissions\n\n' \
-                  '<b>Application URL:</b> {application_url}\n' \
-                  '<b>Application Name:</b> {application_name}\n' \
-                  '<b>Application Type:</b> Generic Application\n' \
-                  '<b>Create incoming link:</b> Select a checkbox\n\n' \
-                  '<b>Consumer Key:</b> {consumer_key}\n' \
-                  '<b>Consumer Name:</b> {application_name}\n' \
-                  '<b>Public Key:</b> {public_key}\n' \
-                  'Fields that are not specified must be filled in (e.g. "example")\n' \
-                  'This host was attached to you. After adding the specified data try to ' \
-                  'authorize via the command /login'.format(**data)
 
-        return message
+        src_text = None
+        with open(os.path.join(config('DOCS_PATH'), 'app_links.txt')) as file:
+            src_text = Template(file.read())
+
+        return src_text.substitute(data)
 
 
 class AddHostCommandFactory(AbstractCommandFactory):
