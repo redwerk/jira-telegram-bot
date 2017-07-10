@@ -24,13 +24,17 @@ class UserOAuthCommand(AbstractCommand):
         host_url = scope['data'].replace('oauth:', '')
         host = self._bot_instance.db.get_host_data(host_url)
 
-        service_url = '{}/authorize/{}/?host={}'.format(config('OAUTH_SERVICE_URL'), scope['telegram_id'], host['url'])
+        service_url = self.generate_auth_link(scope['telegram_id'], host['url'])
 
         bot.edit_message_text(
             chat_id=scope['chat_id'],
             message_id=scope['message_id'],
             text='Follow the link to confirm authorization\n{}'.format(service_url),
         )
+
+    @staticmethod
+    def generate_auth_link(telegram_id: int, host_url: str) -> str:
+        return '{}/authorize/{}/?host={}'.format(config('OAUTH_SERVICE_URL'), telegram_id, host_url)
 
 
 class OAuthCommandFactory(AbstractCommandFactory):
@@ -61,20 +65,26 @@ class LogoutCommand(AbstractCommand):
         answer = scope['data'].replace('logout:', '')
 
         if answer == LogoutMenuCommand.positive_answer:
-            status = self._bot_instance.db.delete_user(scope['telegram_id'])
+            reset_dict = {
+                'username': None,
+                'host_url': None,
+                'access_token': None,
+                'access_token_secret': None
+            }
+            status = self._bot_instance.db.update_user(scope['telegram_id'], reset_dict)
 
             if status:
                 bot.edit_message_text(
                     chat_id=scope['chat_id'],
                     message_id=scope['message_id'],
-                    text='User successfully deleted from database',
+                    text='Credentials were successfully reset.',
                 )
                 return
             else:
                 bot.edit_message_text(
                     chat_id=scope['chat_id'],
                     message_id=scope['message_id'],
-                    text='The user was not removed from the database, please try again later.',
+                    text='Credentials were not removed from the database, please try again later.',
                 )
                 return
 
@@ -82,7 +92,7 @@ class LogoutCommand(AbstractCommand):
             bot.edit_message_text(
                 chat_id=scope['chat_id'],
                 message_id=scope['message_id'],
-                text='Deleting user is not confirmed',
+                text='Resetting credentials was not confirmed',
             )
             return
 

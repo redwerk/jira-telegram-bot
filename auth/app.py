@@ -1,5 +1,4 @@
 import logging
-import os
 from logging.config import fileConfig
 
 from flask import Flask, redirect, request, session, url_for
@@ -12,9 +11,9 @@ from decouple import config
 from oauthlib.oauth1 import SIGNATURE_RSA
 
 from bot.db import MongoBackend
-from bot.utils import read_private_key
+from bot.utils import read_rsa_key
 
-# commong settings
+# common settings
 fileConfig('./logging_config.ini')
 bot_url = config('BOT_URL')
 db = MongoBackend()
@@ -45,15 +44,11 @@ class JiraOAuthApp:
 
     @property
     def rsa_key_path(self):
-        rsa_key = os.path.join(
-            config('PRIVATE_KEYS_PATH'),
-            self._jira_settings['settings']['key_sert']
-        )
-        return rsa_key
+        return config('PRIVATE_KEY_PATH')
 
     @property
     def consumer_key(self):
-        return self._jira_settings['settings']['consumer_key']
+        return self._jira_settings['consumer_key']
 
     def create_remote_app(self):
         # create app
@@ -66,7 +61,7 @@ class JiraOAuthApp:
             consumer_key=self.consumer_key,
             request_token_method='POST',
             signature_method=SIGNATURE_RSA,
-            rsa_key=read_private_key(self.rsa_key_path),
+            rsa_key=read_rsa_key(self.rsa_key_path),
             access_token_method='POST',
         )
         # set attributes
@@ -126,7 +121,8 @@ class AuthorizeView(SendToChatMixin, OAuthJiraBaseView):
             return self.jira_app.authorize(callback=callback)
         except OAuthException as e:
             logging.warning(e.message)
-            self.send_to_chat(session['telegram_id'], e.message)
+            message = '{}\nDid you create an Application link in your Jira?'.format(e.message)
+            self.send_to_chat(session['telegram_id'], message)
             return redirect(bot_url)
 
 
@@ -151,7 +147,7 @@ class OAuthAuthorizedView(SendToChatMixin, OAuthJiraBaseView):
             'access_token': resp.get('oauth_token'),
             'access_token_secret': resp.get('oauth_token_secret'),
             'consumer_key': self.jira_app.consumer_key,
-            'key_cert': read_private_key(self.jira_app.rsa_key_path)
+            'key_cert': read_rsa_key(self.jira_app.rsa_key_path)
         }
 
         jira_host = db.get_host_data(session['host'])
@@ -169,16 +165,33 @@ class OAuthAuthorizedView(SendToChatMixin, OAuthJiraBaseView):
             logging.warning('Status: {}, message: {}'.format(e.status_code, e.text))
         else:
             username = authed_jira.myself().get('key')
-            data = self.save_token_data(
-                session['telegram_id'],
+            data = self.get_auth_data(
+                session['host'],
                 username,
-                jira_host['id'],
                 oauth_dict['access_token'],
                 oauth_dict['access_token_secret']
             )
             if user_exists:
+                user = db.get_user_data(session['telegram_id'])
+                allowed_hosts = user.get('allowed_hosts')
+
+                # bind the jira host to the user
+                if jira_host.get('_id') not in allowed_hosts:
+                    allowed_hosts.append(jira_host.get('_id'))
+
+                # confirm the jira host, since it was performed at least one successful authentication
+                if not jira_host.get('is_confirmed'):
+                    transaction_status = db.update_host(session['host'], {'is_confirmed': True})
+
+                data.update({
+                    'allowed_hosts': allowed_hosts
+                })
                 transaction_status = db.update_user(session['telegram_id'], data)
             else:
+                data.update({
+                    'telegram_id': session['telegram_id'],
+                    'allowed_hosts': [jira_host.get('_id')]
+                })
                 transaction_status = db.create_user(data)
 
         if not transaction_status:
@@ -196,16 +209,15 @@ class OAuthAuthorizedView(SendToChatMixin, OAuthJiraBaseView):
         )
         return redirect(bot_url)
 
-    def save_token_data(self, telegram_id, username, host_id, access_token, access_token_secret):
+    def get_auth_data(self, host_url, username, access_token, access_token_secret):
         """Generates dict for creating or updating data about access tokens"""
         return {
-            'telegram_id': telegram_id,
-            'host_id': host_id,
+            'host_url': host_url,
             'username': username,
             'access_token': access_token,
             'access_token_secret': access_token_secret
         }
 
 
-app.add_url_rule('/authorize/<string:telegram_id>/', view_func=AuthorizeView.as_view('authorize'))
+app.add_url_rule('/authorize/<int:telegram_id>/', view_func=AuthorizeView.as_view('authorize'))
 app.add_url_rule('/oauth_authorized', view_func=OAuthAuthorizedView.as_view('oauth_authorized'))

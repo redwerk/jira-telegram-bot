@@ -1,7 +1,7 @@
 ## Telegram bot for integration with JIRA
 
 ### Technologies
-- Python 3.5
+- Python 3.6
 - MongoDB
 - PyMongo
 - [jira](https://github.com/pycontribs/jira)
@@ -13,7 +13,7 @@
 
 2. Navigate into *jira-telegram-bot* folder
 
-3. Create a virtualenv: `python3.5 -m venv .venv`
+3. Create a virtualenv: `python3.6 -m venv .venv`
 
 4. Install requirements: `pip install -r requirements.txt`
 
@@ -32,12 +32,16 @@ DB_PORT = <string>
 DB_USER = <string>
 DB_PASS = <string>
 DB_NAME = <string>
+
 DB_USER_COLLECTION = <string>
 DB_HOST_COLLECTION = <string>
 
 BOT_URL = https://t.me/<bot_name>
 OAUTH_SERVICE_URL = http://url.to.flask.service
-PRIVATE_KEYS_PATH = /absolute/path/to/private_keys/folder/
+
+DOCS_PATH = /absolute/path/path/to/jira-telegram-bot/docs
+PRIVATE_KEY_PATH = /absolute/path/jira_privatekey.pem
+PUBLIC_KEY_PATH = /absolute/path/jira_publickey.pem
 ```
 
 For further deployment see [/docs](docs) folder

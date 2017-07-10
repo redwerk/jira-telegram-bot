@@ -18,8 +18,10 @@ class JiraBot:
     Commands (synopsis and description):
     /start
         Start to work with user
-    /oauth
+    /login
         Authorizing via OAuth
+    /add_host
+        Adding your own host
     /logout
         Deleted user credentials from DB
     /menu
@@ -31,7 +33,8 @@ class JiraBot:
     bot_commands = [
         '/start - Start to work with user',
         '/menu - Displays menu with main functions',
-        '/oauth - Authorizing via OAuth',
+        '/login - Authorizing via OAuth',
+        '/add_host - Adding your own host',
         '/logout - Deleted user credentials from DB',
         '/help - Returns commands and its descriptions'
     ]
@@ -48,6 +51,8 @@ class JiraBot:
         commands.LogoutCommandFactory,
         commands.TrackingCommandFactory,
         commands.TrackingProjectCommandFactory,
+        commands.AddHostCommandFactory,
+        commands.AddHostProcessCommandFactory,
     ]
 
     def __init__(self):
@@ -78,11 +83,31 @@ class JiraBot:
     def start_command(self, bot, update):
         first_name = update.message.from_user.first_name
         message = 'Hi, {}! You can see the list of commands using /help. ' \
-                  'Please, enter your credentials using /auth.\n\n'.format(first_name)
+                  'Please, enter a Jira host via /add_host https://example.com'.format(first_name)
+
+        telegram_id = update.message.from_user.id
+        user_exists = self.db.is_user_exists(telegram_id)
+
+        if not user_exists:
+            data = {
+                'telegram_id': telegram_id,
+                'host_url': None,
+                'username': None,
+                'access_token': None,
+                'access_token_secret': None,
+                'allowed_hosts': list()
+            }
+            transaction_status = self.db.create_user(data)
+
+            if not transaction_status:
+                logging.warning(
+                    'Error while creating a new user via '
+                    '/start command, username: {}'.format(update.message.from_user.username)
+                )
 
         bot.send_message(
             chat_id=update.message.chat_id,
-            text=message + '\n'.join(self.bot_commands),
+            text=message
         )
 
     @staticmethod
@@ -90,7 +115,7 @@ class JiraBot:
         """
         Gets scope data for current message
         """
-        telegram_id = str(update.callback_query.from_user.id)
+        telegram_id = update.callback_query.from_user.id
 
         query = update.callback_query
         chat_id = query.message.chat_id
@@ -116,7 +141,7 @@ class JiraBot:
 
         return key, int(page)
 
-    def get_and_check_cred(self, telegram_id: str):
+    def get_and_check_cred(self, telegram_id: int):
         """
         Gets the user's credentials from the database and
         checks them (tries to authorize the user in JIRA)

@@ -237,33 +237,28 @@ class ChooseJiraHostMenuCommand(AbstractCommand):
     def handler(self, bot, update, *args, **kwargs):
         """Displays supported JIRA hosts for further authorization"""
         button_list = list()
-        telegram_id = str(update.message.chat_id)
-        hosts = self._bot_instance.db.get_all_hosts()
+        telegram_id = update.message.chat_id
+        user = self._bot_instance.db.get_user_data(telegram_id)
+        message = 'On which host do you want to log in?'
 
-        if not hosts:
-            bot.send_message(
-                chat_id=update.message.chat_id,
-                text="Cannot get data about supports hosts at this moment. Please, try again later"
-            )
-            return
+        if user:
+            authorized_host_url = user.get('host_url')
+            allowed_hosts = self._bot_instance.db.get_hosts(user.get('allowed_hosts'))
 
-        user_exists = self._bot_instance.db.is_user_exists(telegram_id)
-        authorized_host_id = None
+            for host in allowed_hosts:
+                name = host['readable_name']
 
-        if user_exists:
-            authorized_host_id = self._bot_instance.db.get_user_data(telegram_id).get('host_id')
+                # visually highlight if the user is already authorized on the host
+                if authorized_host_url == host['url']:
+                    name = '· {} ·'.format(name)
 
-        for host in hosts:
-            name = host['readable_name']
+                button_list.append(
+                    InlineKeyboardButton(
+                        name, callback_data='oauth:{}'.format(host['url']))
+                )
 
-            # visually highlight if the user is already authorized on the host
-            if authorized_host_id == host['id']:
-                name = '· {} ·'.format(name)
-
-            button_list.append(
-                InlineKeyboardButton(
-                    name, callback_data='oauth:{}'.format(host['url']))
-            )
+        if not button_list:
+            message = "You haven't specified any hosts. Use /add_host command for this"
 
         reply_markup = InlineKeyboardMarkup(utils.build_menu(
             button_list, n_cols=2
@@ -271,7 +266,7 @@ class ChooseJiraHostMenuCommand(AbstractCommand):
 
         bot.send_message(
             chat_id=update.message.chat_id,
-            text='On which host do you want to log in?',
+            text=message,
             reply_markup=reply_markup
         )
 

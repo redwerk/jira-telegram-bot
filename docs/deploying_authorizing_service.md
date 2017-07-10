@@ -10,13 +10,10 @@ openssl pkcs8 -topk8 -nocrypt -in jira_privatekey.pem -out jira_privatekey.pcks8
 openssl x509 -pubkey -noout -in jira_publickey.cer  > name_publickey.pem
 ```
 
-- Приватный ключ **name_privatekey.pem** положить в папку, абсолютный путь к которой указан в **PRIVATE_KEYS_PATH**
+- Приватный ключ **name_privatekey.pem** положить в папку, абсолютный путь к которой указан в **PRIVATE_KEY_PATH**
+- Публичный ключ **name_publickey.pem** положить в папку, абсолютный путь к которой указан в **PUBLIC_KEY_PATH**
 
-- Запустить Flask приложение из папки /auth:
-```
-export FLASK_APP=app.py
-python -m flask run
-```
+- Запустить Flask приложение из корня проекта: `python auth_run.py`
 
 - С правами администратора добавить [Application links](https://developer.atlassian.com/cloud/jira/platform/jira-rest-api-oauth-authentication/)
 
@@ -33,18 +30,4 @@ python -m flask run
 
 ![step 3](3.png)
 - Consumer Key будет сохранено в **DB_HOST_COLLECTION** в настройках хоста
-
-- В **DB_HOST_COLLECTION** создать документ:
-```
-{
-  "id": "0", // Increment number
-  "url": "https://jira.test.redwerk.com", // **JIRA_HOST**
-  "readable_name": "Test Redwerk Jira",
-  "settings": {
-    "consumer_key": "OAuthKey", // **Consumer Key** из шага 3
-    "key_sert": "name_privatekey.pem" // имя приватного ключа в папке **OAUTH_SERVICE_URL**
-  }
-}
-```
-
 - Запустить или перезапустить бота из корневой папки: `python run.py`

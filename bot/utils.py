@@ -1,10 +1,16 @@
 import calendar
 import logging
+import re
+import uuid
 from datetime import datetime
-from typing import Generator, List
 
 import pytz
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
+from typing import Generator, List
+
+hostname_re = re.compile(r'^http[s]?://([^:/\s]+)?$')
+http_ptotocol = re.compile(r'^http[s]?://')
 
 
 def build_menu(buttons: List,
@@ -197,14 +203,49 @@ def to_human_date(_time: datetime) -> str:
     return 'No date'
 
 
-def read_private_key(path):
-    """Read private RSA key for requests via OAuth"""
-    key_cert = None
+def read_rsa_key(path):
+    """Reads a RSA key"""
+    key = None
 
     try:
         file = open(path, 'r')
-        key_cert = file.read()
+        key = file.read()
     except FileNotFoundError as e:
-        logging.warning('RSA private key did not found by path: {}'.format(path))
+        logging.warning('RSA key did not found by path: {}'.format(path))
 
-    return key_cert
+    return key
+
+
+def validates_hostname(url: str) -> bool:
+    """
+    Validates hostname by next patterns:
+
+    https://jira.redwerk.com                 True
+    https://jira.test.redwerk.com            True
+    https://jira.test.redwerk.com/           False
+    test                                     False
+    www.test.com                             False
+    http//test.com                           False
+    https//test.com                          False
+    https://test.com                         True
+    """
+    return True if hostname_re.match(url) else False
+
+
+def generate_consumer_key() -> str:
+    """Generates a consumer key"""
+    return uuid.uuid4().hex
+
+
+def generate_key_name(host_url: str) -> str:
+    """Generates a name for private key from host name"""
+    name = http_ptotocol.sub('', host_url)
+    return '{}_key.pem'.format(name.replace('.', '_'))
+
+
+def generate_readable_name(host_url: str) -> str:
+    """Generates a readable name for Jira host in DB"""
+    name = http_ptotocol.sub('', host_url)
+    name_list = name.replace('.com', '').split('.')
+
+    return ' '.join([word[0].upper() + word[1:] for word in name_list])
