@@ -16,9 +16,9 @@ ALLOWED_TIME_INTERVAL = 30
 
 class ShowCalendarCommand(AbstractCommand):
 
-    def handler(self, bot, scope, date, pattern, *args, **kwargs):
+    def handler(self, bot, scope, date, pattern, selected_day, *args, **kwargs):
         """Displays a calendar (inline keyboard)"""
-        calendar = utils.create_calendar(date, pattern + ':{}')
+        calendar = utils.create_calendar(date, pattern + ':{}', selected_day)
 
         bot.edit_message_text(
             chat_id=scope['chat_id'],
@@ -30,7 +30,7 @@ class ShowCalendarCommand(AbstractCommand):
 
 class ChooseDateIntervalCommand(AbstractCommand):
 
-    def handler(self, bot, scope, *args, **kwargs):
+    def handler(self, bot, scope, selected_day=None, *args, **kwargs):
         """
         The choice of the time interval. Is called in two stages -
         to select start and end dates
@@ -42,10 +42,10 @@ class ChooseDateIntervalCommand(AbstractCommand):
             pattern, date = scope['data'].split(change_month)
             month, year = date.split('.')
             selected_date = pendulum.create(int(year), int(month))
-            ShowCalendarCommand(self._bot_instance).handler(bot, scope, selected_date, pattern)
+            ShowCalendarCommand(self._bot_instance).handler(bot, scope, selected_date, pattern, selected_day)
         else:
             now = pendulum.now()
-            ShowCalendarCommand(self._bot_instance).handler(bot, scope, now, scope['data'])
+            ShowCalendarCommand(self._bot_instance).handler(bot, scope, now, scope['data'], selected_day)
 
 
 class TrackingUserWorklogCommand(AbstractCommand):
@@ -278,16 +278,26 @@ class TrackingCommandFactory(AbstractCommandFactory):
     def command(self, bot, update, *args, **kwargs):
         change_month = ':change_m:'
         scope = self._bot_instance.get_query_scope(update)
+        selected_day = None
+
+        cmd_scope = scope.get('data').split(':')
+
+        # attempt to get the first selected date (to visually highlight it)
+        try:
+            selected_day = cmd_scope[1]
+        except IndexError:
+            pass
+        else:
+            _date = [int(numb) for numb in selected_day.split('-')]
+            selected_day = pendulum.create(*_date)
 
         # choice of time interval
         if change_month in scope['data']:
-            ChooseDateIntervalCommand(self._bot_instance).handler(bot, scope)
+            ChooseDateIntervalCommand(self._bot_instance).handler(bot, scope, selected_day)
             return
 
-        cmd_scope = scope['data'].split(':')
-
         if len(cmd_scope) != 3:  # must be [cmd, start_date, end_date]
-            ChooseDateIntervalCommand(self._bot_instance).handler(bot, scope)
+            ChooseDateIntervalCommand(self._bot_instance).handler(bot, scope, selected_day)
             return
 
         # date interval is limited
