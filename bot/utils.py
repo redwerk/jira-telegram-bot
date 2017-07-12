@@ -2,6 +2,7 @@ import calendar
 import logging
 import re
 import uuid
+from pendulum import Pendulum
 from datetime import datetime
 
 import pytz
@@ -107,14 +108,15 @@ def get_pagination_keyboard(current: int,
     ))
 
 
-def create_calendar(year: int,
-                    month: int,
-                    pattern_key: str) -> InlineKeyboardMarkup:
+def create_calendar(date: Pendulum, pattern_key: str, selected_day=None) -> InlineKeyboardMarkup:
     buttons = list()
-    previous_m = 'change_m:{}.{}'.format(month - 1, year)
-    next_m = 'change_m:{}.{}'.format(month + 1, year)
+    last_month = date.subtract(months=1)
+    next_month = date.add(months=1)
 
-    week_days = ['M', 'T', 'W', 'R', 'F', 'S', 'U']
+    previous_m = 'change_m:{}.{}'.format(last_month.month, last_month.year)
+    next_m = 'change_m:{}.{}'.format(next_month.month, next_month.year)
+
+    week_days = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']
     for week_day in week_days:
         buttons.append(
             InlineKeyboardButton(
@@ -124,33 +126,33 @@ def create_calendar(year: int,
 
     h_buttons = [
         InlineKeyboardButton(
-            calendar.month_name[month] + ' ' + str(year),
+            calendar.month_name[date.month] + ' ' + str(date.year),
             callback_data='ignore'
         )
     ]
     f_buttons = [
         InlineKeyboardButton(
-            '< ' + calendar.month_name[month - 1],
+            '< ' + calendar.month_name[last_month.month],
             callback_data=pattern_key.format(previous_m)
         ),
         InlineKeyboardButton(
             ' ', callback_data='ignore'
         ),
         InlineKeyboardButton(
-            calendar.month_name[month + 1] + ' >',
+            calendar.month_name[next_month.month] + ' >',
             callback_data=pattern_key.format(next_m)
         )
     ]
 
-    current_month = calendar.monthcalendar(year, month)
+    current_month = calendar.monthcalendar(date.year, date.month)
     for week in current_month:
         for day in week:
             if day:
-                date = '{}-{}-{}'.format(year, month, day)
+                tmp_date = '{}-{}-{}'.format(date.year, date.month, day)
                 buttons.append(
                     InlineKeyboardButton(
                         str(day),
-                        callback_data=pattern_key.format(date)
+                        callback_data=pattern_key.format(tmp_date)
                     )
                 )
             else:

@@ -1,6 +1,6 @@
 import logging
-from datetime import datetime
 
+import pendulum
 from telegram.ext import CallbackQueryHandler
 
 from bot import utils
@@ -16,9 +16,9 @@ ALLOWED_TIME_INTERVAL = 30
 
 class ShowCalendarCommand(AbstractCommand):
 
-    def handler(self, bot, scope, year, month, pattern, *args, **kwargs):
+    def handler(self, bot, scope, date, pattern, *args, **kwargs):
         """Displays a calendar (inline keyboard)"""
-        calendar = utils.create_calendar(int(year), int(month), pattern + ':{}')
+        calendar = utils.create_calendar(date, pattern + ':{}')
 
         bot.edit_message_text(
             chat_id=scope['chat_id'],
@@ -41,10 +41,11 @@ class ChooseDateIntervalCommand(AbstractCommand):
         if change_month in scope['data']:
             pattern, date = scope['data'].split(change_month)
             month, year = date.split('.')
-            ShowCalendarCommand(self._bot_instance).handler(bot, scope, year, month, pattern)
+            selected_date = pendulum.create(int(year), int(month))
+            ShowCalendarCommand(self._bot_instance).handler(bot, scope, selected_date, pattern)
         else:
-            now = datetime.now()
-            ShowCalendarCommand(self._bot_instance).handler(bot, scope, now.year, now.month, scope['data'])
+            now = pendulum.now()
+            ShowCalendarCommand(self._bot_instance).handler(bot, scope, now, scope['data'])
 
 
 class TrackingUserWorklogCommand(AbstractCommand):
