@@ -1,12 +1,12 @@
 import logging
 from datetime import datetime
 
-from telegram import ParseMode
 from telegram.ext import CallbackQueryHandler
 
 from bot import utils
 
 from .base import AbstractCommand, AbstractCommandFactory
+from .issue import UserUnresolvedIssuesCommand
 from .menu import ChooseDeveloperMenuCommand, ChooseProjectMenuCommand
 
 JIRA_DATE_FORMAT = '%Y-%m-%dT%H:%M:%S.%f%z'
@@ -78,7 +78,7 @@ class TrackingUserWorklogCommand(AbstractCommand):
         except TypeError:
             logging.warning('Seconds are not a numeric type: {} {}'.format(type(seconds), seconds))
 
-        return '\n\nAll time spent from {} to {}: <b>{}h</b>'.format(start_date, end_date, round(hours, 2))
+        return 'All time spent from <b>{}</b> to <b>{}</b>: <b>{}h</b>'.format(start_date, end_date, round(hours, 2))
 
     def handler(self, bot, scope, credentials, *args, **kwargs):
         """Shows all worklog of the user in selected date interval"""
@@ -111,25 +111,29 @@ class TrackingUserWorklogCommand(AbstractCommand):
                 )
                 seconds += log.timeSpentSeconds
 
-        start_line = 'User work log from {start_date} to {end_date}\n\n'.format(**scope)
         key = '{username}:{start_date}:{end_date}'.format(**scope, username=credentials['username'])
-        formatted, buttons = self._bot_instance.save_into_cache(
-            user_worklogs,
-            key,
-            footer=self.calculate_total_time(seconds, scope['start_date'], scope['end_date'])
+        formatted, buttons = self._bot_instance.save_into_cache(user_worklogs, key)
+
+        # title
+        UserUnresolvedIssuesCommand.show_title(
+            bot,
+            'User worklog from <b>{start_date}</b> to <b>{end_date}</b>:'.format(**scope),
+            scope['chat_id'],
+            scope['message_id']
         )
 
-        if not formatted:
-            text = start_line + 'No worklog data in chosen time interval'
-        else:
-            text = start_line + formatted
+        if not formatted and not buttons:
+            message = 'No worklog data from <b>{start_date}</b> to <b>{end_date}</b>'.format(**scope)
+            UserUnresolvedIssuesCommand.show_content(bot, message, scope['chat_id'])
+            return
 
-        bot.edit_message_text(
-            chat_id=scope['chat_id'],
-            message_id=scope['message_id'],
-            text=text,
-            reply_markup=buttons,
-            parse_mode=ParseMode.HTML
+        # main content
+        UserUnresolvedIssuesCommand.show_content(bot, formatted, scope['chat_id'], buttons)
+        # all time
+        UserUnresolvedIssuesCommand.show_content(
+            bot,
+            self.calculate_total_time(seconds, scope['start_date'], scope['end_date']),
+            scope['chat_id'],
         )
 
 
@@ -166,25 +170,30 @@ class TrackingProjectWorklogCommand(AbstractCommand):
                     )
                     seconds += log.timeSpentSeconds
 
-        start_line = '{project} worklog from {start_date} to {end_date}\n\n'.format(**scope)
         key = '{project}:{start_date}:{end_date}'.format(**scope)
-        formatted, buttons = self._bot_instance.save_into_cache(
-            project_worklogs,
-            key,
-            footer=TrackingUserWorklogCommand.calculate_total_time(seconds, scope['start_date'], scope['end_date'])
+        formatted, buttons = self._bot_instance.save_into_cache(project_worklogs, key)
+
+        # title
+        UserUnresolvedIssuesCommand.show_title(
+            bot,
+            '<b>{project}</b> worklog from <b>{start_date}</b> to <b>{end_date}</b>:'.format(**scope),
+            scope['chat_id'],
+            scope['message_id']
         )
 
         if not formatted:
-            text = start_line + 'No worklog data in chosen time interval'
-        else:
-            text = start_line + formatted
+            message = 'No worklog data from <b>{start_date}</b> ' \
+                      'to <b>{end_date}</b> on project <b>{project}</b>'.format(**scope)
+            UserUnresolvedIssuesCommand.show_content(bot, message, scope['chat_id'])
+            return
 
-        bot.edit_message_text(
-            chat_id=scope['chat_id'],
-            message_id=scope['message_id'],
-            text=text,
-            reply_markup=buttons,
-            parse_mode=ParseMode.HTML
+        # main content
+        UserUnresolvedIssuesCommand.show_content(bot, formatted, scope['chat_id'], buttons)
+        # all time
+        UserUnresolvedIssuesCommand.show_content(
+            bot,
+            TrackingUserWorklogCommand.calculate_total_time(seconds, scope['start_date'], scope['end_date']),
+            scope['chat_id'],
         )
 
 
@@ -224,26 +233,30 @@ class TrackingProjectUserWorklogCommand(AbstractCommand):
                 )
                 seconds += log.timeSpentSeconds
 
-        start_line = '{user} worklog on {project} from {start_date} to {end_date}\n\n'.format(**scope)
         key = '{username}:{project}:{start_date}:{end_date}'.format(**scope, username=scope.get('user'))
-        formatted, buttons = self._bot_instance.save_into_cache(
-            user_worklogs,
-            key,
-            footer=TrackingUserWorklogCommand.calculate_total_time(seconds, scope['start_date'], scope['end_date'])
+        formatted, buttons = self._bot_instance.save_into_cache(user_worklogs, key)
+
+        # title
+        UserUnresolvedIssuesCommand.show_title(
+            bot,
+            '<b>{user}</b> worklog on <b>{project}</b> from <b>{start_date}</b> to <b>{end_date}</b>:'.format(**scope),
+            scope['chat_id'],
+            scope['message_id']
         )
 
         if not formatted:
-            text = start_line + 'No data about {user} worklogs on {project} from ' \
-                                '{start_date} to {end_date}'.format(**scope)
-        else:
-            text = start_line + formatted
+            message = 'No worklog data about <b>{user}</b> from <b>{start_date}</b> ' \
+                      'to <b>{end_date}</b> on project <b>{project}</b>'.format(**scope)
+            UserUnresolvedIssuesCommand.show_content(bot, message, scope['chat_id'])
+            return
 
-        bot.edit_message_text(
-            chat_id=scope['chat_id'],
-            message_id=scope['message_id'],
-            text=text,
-            reply_markup=buttons,
-            parse_mode=ParseMode.HTML
+        # main content
+        UserUnresolvedIssuesCommand.show_content(bot, formatted, scope['chat_id'], buttons)
+        # all time
+        UserUnresolvedIssuesCommand.show_content(
+            bot,
+            TrackingUserWorklogCommand.calculate_total_time(seconds, scope['start_date'], scope['end_date']),
+            scope['chat_id'],
         )
 
 

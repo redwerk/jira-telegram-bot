@@ -17,22 +17,39 @@ class UserUnresolvedIssuesCommand(AbstractCommand):
         :return: Message with a list of open user issues
         """
         issues, status = self._bot_instance.jira.get_open_issues(**credentials)
+        self.show_title(bot, '<b>All your unresolved tasks:</b>', scope['chat_id'], scope['message_id'])
 
         if not issues:
-            bot.edit_message_text(
-                text='You have no unresolved tasks',
-                chat_id=scope['chat_id'],
-                message_id=scope['message_id']
-            )
+            self.show_content(bot, 'You have not unresolved tasks at this time', scope['chat_id'])
             return
 
         formatted_issues, buttons = self._bot_instance.save_into_cache(issues, credentials.get('username'))
+        self.show_content(bot, formatted_issues, scope['chat_id'], buttons)
 
+    @staticmethod
+    def show_title(bot, title, chat_id, message_id):
+        """
+        Shows title of the request in chat with a user
+        It is possible to display data in HTML mode
+        """
         bot.edit_message_text(
-            text=formatted_issues,
-            chat_id=scope['chat_id'],
-            message_id=scope['message_id'],
-            reply_markup=buttons
+            text=title,
+            chat_id=chat_id,
+            message_id=message_id,
+            parse_mode=ParseMode.HTML
+        )
+
+    @staticmethod
+    def show_content(bot, content, chat_id, buttons=None):
+        """
+        Shows a requested data in chat with a user
+        It is possible to display data in HTML mode
+        """
+        bot.send_message(
+            text=content,
+            chat_id=chat_id,
+            reply_markup=buttons,
+            parse_mode=ParseMode.HTML
         )
 
 
@@ -47,22 +64,22 @@ class ProjectUnresolvedIssuesCommand(AbstractCommand):
 
         issues, status_code = self._bot_instance.jira.get_open_project_issues(project=project, **credentials)
 
+        UserUnresolvedIssuesCommand.show_title(
+            bot,
+            '<b>Unresolved tasks of project {}:</b>'.format(project),
+            scope['chat_id'],
+            scope['message_id'])
+
         if not issues:
-            bot.edit_message_text(
-                text="Project doesn't have any unresolved tasks",
-                chat_id=scope['chat_id'],
-                message_id=scope['message_id']
+            UserUnresolvedIssuesCommand.show_content(
+                bot,
+                "Project <b>{}</b> doesn't have any unresolved tasks".format(project),
+                scope['chat_id']
             )
             return
 
         formatted_issues, buttons = self._bot_instance.save_into_cache(issues, project)
-
-        bot.edit_message_text(
-            text=formatted_issues,
-            chat_id=scope['chat_id'],
-            message_id=scope['message_id'],
-            reply_markup=buttons
-        )
+        UserUnresolvedIssuesCommand.show_content(bot, formatted_issues, scope['chat_id'], buttons)
 
 
 class ProjectStatusIssuesCommand(AbstractCommand):
@@ -73,7 +90,6 @@ class ProjectStatusIssuesCommand(AbstractCommand):
                     > Some project  > Some status
         Shows project issues with selected status
         """
-        buttons = None
         project = kwargs.get('project')
         status = kwargs.get('status')
         project_key = '{}:{}'.format(project, status)
@@ -82,23 +98,19 @@ class ProjectStatusIssuesCommand(AbstractCommand):
             project=project, status=status, **credentials
         )
 
+        UserUnresolvedIssuesCommand.show_title(
+            bot,
+            'All tasks with <b>«{}»</b> status on project <b>{}</b>:'.format(status, project),
+            scope['chat_id'],
+            scope['message_id'])
+
         if not issues:
-            bot.edit_message_text(
-                text="Project {} doesn't have any "
-                     "tasks with {} status".format(project, status),
-                chat_id=scope['chat_id'],
-                message_id=scope['message_id']
-            )
+            message = "Project <b>{}</b> doesn't have any tasks with status <b>«{}»</b>".format(project, status)
+            UserUnresolvedIssuesCommand.show_content(bot, message, scope['chat_id'])
             return
 
         formatted_issues, buttons = self._bot_instance.save_into_cache(issues, project_key)
-
-        bot.edit_message_text(
-            text=formatted_issues,
-            chat_id=scope['chat_id'],
-            message_id=scope['message_id'],
-            reply_markup=buttons
-        )
+        UserUnresolvedIssuesCommand.show_content(bot, formatted_issues, scope['chat_id'], buttons)
 
 
 class IssuesPaginatorCommand(AbstractCommand):
@@ -120,9 +132,6 @@ class IssuesPaginatorCommand(AbstractCommand):
             str_key=str_key + '#{}'
         )
         formatted_issues = '\n\n'.join(user_data['issues'][page - 1])
-
-        if page == user_data.get('page_count'):
-            formatted_issues += user_data.get('footer')
 
         bot.edit_message_text(
             text=formatted_issues,
