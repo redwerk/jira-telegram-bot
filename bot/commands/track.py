@@ -48,14 +48,14 @@ class ChooseDateIntervalCommand(AbstractCommand):
 
 
 class TrackingUserWorklogCommand(AbstractCommand):
+    templates = {
+        'user_content': '<a href="{permalink}">{key}</a> {time_spent}\n{date}',
+        'project_content': '<a href="{permalink}">{key}</a> <b>{author}</b> {time_spent}\n{date}',
+        'time_spent': 'All time spent from <b>{}</b> to <b>{}</b>: <b>{}h</b>',
+    }
 
-    @staticmethod
-    def report_data(log, logged_time, issues_ids, template='user') -> str:
+    def report_data(self, log, logged_time, issues_ids, template='user_content') -> str:
         """Generates a message for report"""
-        templates = {
-            'user': '<a href="{permalink}">{key}</a> {time_spent}\n{date}',
-            'project': '<a href="{permalink}">{key}</a> <b>{author}</b> {time_spent}\n{date}',
-        }
 
         data = {
             'key': issues_ids[log.issueId].key,
@@ -65,10 +65,9 @@ class TrackingUserWorklogCommand(AbstractCommand):
             'author': log.author.displayName
         }
 
-        return templates.get(template).format(**data)
+        return self.templates.get(template).format(**data)
 
-    @staticmethod
-    def calculate_total_time(seconds: int, start_date: str, end_date: str) -> str:
+    def calculate_total_time(self, seconds: int, start_date: str, end_date: str) -> str:
         """Calculates time spent for issues in time interval"""
         hours = 0
         hour_in_seconds = 3600
@@ -78,7 +77,7 @@ class TrackingUserWorklogCommand(AbstractCommand):
         except TypeError:
             logging.warning('Seconds are not a numeric type: {} {}'.format(type(seconds), seconds))
 
-        return 'All time spent from <b>{}</b> to <b>{}</b>: <b>{}h</b>'.format(start_date, end_date, round(hours, 2))
+        return self.templates.get('time_spent').format(start_date, end_date, round(hours, 2))
 
     def handler(self, bot, scope, credentials, *args, **kwargs):
         """Shows all worklog of the user in selected date interval"""
@@ -166,7 +165,12 @@ class TrackingProjectWorklogCommand(AbstractCommand):
 
                 if (start_date <= logged_time) and (logged_time <= end_date):
                     project_worklogs.append(
-                        TrackingUserWorklogCommand.report_data(log, logged_time, issues_ids, template='project')
+                        TrackingUserWorklogCommand(self._bot_instance).report_data(
+                            log,
+                            logged_time,
+                            issues_ids,
+                            template='project_content'
+                        )
                     )
                     seconds += log.timeSpentSeconds
 
@@ -192,7 +196,11 @@ class TrackingProjectWorklogCommand(AbstractCommand):
         # all time
         UserUnresolvedIssuesCommand.show_content(
             bot,
-            TrackingUserWorklogCommand.calculate_total_time(seconds, scope['start_date'], scope['end_date']),
+            TrackingUserWorklogCommand(self._bot_instance).calculate_total_time(
+                seconds,
+                scope['start_date'],
+                scope['end_date']
+            ),
             scope['chat_id'],
         )
 
@@ -229,7 +237,7 @@ class TrackingProjectUserWorklogCommand(AbstractCommand):
 
             if (start_date <= logged_time) and (logged_time <= end_date):
                 user_worklogs.append(
-                    TrackingUserWorklogCommand.report_data(log, logged_time, issues_ids)
+                    TrackingUserWorklogCommand(self._bot_instance).report_data(log, logged_time, issues_ids)
                 )
                 seconds += log.timeSpentSeconds
 
@@ -255,7 +263,11 @@ class TrackingProjectUserWorklogCommand(AbstractCommand):
         # all time
         UserUnresolvedIssuesCommand.show_content(
             bot,
-            TrackingUserWorklogCommand.calculate_total_time(seconds, scope['start_date'], scope['end_date']),
+            TrackingUserWorklogCommand(self._bot_instance).calculate_total_time(
+                seconds,
+                scope['start_date'],
+                scope['end_date']
+            ),
             scope['chat_id'],
         )
 
