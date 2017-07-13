@@ -42,7 +42,7 @@ class JiraBot:
     commands_factories = [
         commands.IssueCommandFactory,
         commands.ProjectIssuesFactory,
-        commands.IssuesPaginatorFactory,
+        commands.ContentPaginatorFactory,
         commands.MainMenuCommandFactory,
         commands.MenuCommandFactory,
         commands.OAuthMenuCommandFactory,
@@ -57,7 +57,6 @@ class JiraBot:
 
     def __init__(self):
         self.__updater = Updater(config('BOT_TOKEN'), workers=2)
-        self.issue_cache = dict()
 
         self.db = MongoBackend()
         self.jira = JiraBackend()
@@ -160,28 +159,27 @@ class JiraBot:
 
         return False, "You didn't enter credentials"
 
-    def save_into_cache(self, data: list, key: str, footer=''):
+    def save_into_cache(self, data: list, key: str):
         """
         Creating a pagination list. Saving into a cache for further work with
         it without redundant requests to JIRA.
 
         If strings less than value per page just return a formatted string without buttons.
         :param data: list of strings
-        :param key: key for stored it into cache dict
-        :param footer: message for the last page
+        :param key: key for stored it into cache collection
         :return: formatted string with pagination buttons
         """
         buttons = None
 
         if len(data) < self.issues_per_page + 1:
             formatted_issues = '\n\n'.join(data)
-            formatted_issues += footer
         else:
             splitted_data = utils.split_by_pages(data, self.issues_per_page)
             page_count = len(splitted_data)
-            self.issue_cache[key] = dict(
-                issues=splitted_data, page_count=page_count, footer=footer
-            )
+            status = self.db.create_cache(key, splitted_data, page_count)
+
+            if not status:
+                logging.warning('An attempt to write content to the cache failed: {}'.format(key))
 
             # return the first page
             formatted_issues = '\n\n'.join(splitted_data[0])

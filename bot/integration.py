@@ -148,8 +148,8 @@ class JiraBackend:
         issues_list = list()
 
         for issue in issues:
-            issues_str = '{} {}\n{}'.format(
-                issue.key, issue.fields.summary, issue.permalink()
+            issues_str = '<a href="{permalink}">{key}</a> {summary}'.format(
+                key=issue.key, summary=issue.fields.summary, permalink=issue.permalink()
             )
             issues_list.append(issues_str)
 

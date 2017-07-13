@@ -1,24 +1,23 @@
 import logging
-from datetime import datetime
 
-from telegram import ParseMode
+import pendulum
 from telegram.ext import CallbackQueryHandler
 
 from bot import utils
 
 from .base import AbstractCommand, AbstractCommandFactory
+from .issue import UserUnresolvedIssuesCommand
 from .menu import ChooseDeveloperMenuCommand, ChooseProjectMenuCommand
 
 JIRA_DATE_FORMAT = '%Y-%m-%dT%H:%M:%S.%f%z'
 USER_DATE_FORMAT = '%Y-%m-%d'
-ALLOWED_TIME_INTERVAL = 30
 
 
 class ShowCalendarCommand(AbstractCommand):
 
-    def handler(self, bot, scope, year, month, pattern, *args, **kwargs):
+    def handler(self, bot, scope, date, pattern, selected_day, *args, **kwargs):
         """Displays a calendar (inline keyboard)"""
-        calendar = utils.create_calendar(int(year), int(month), pattern + ':{}')
+        calendar = utils.create_calendar(date, pattern + ':{}', selected_day)
 
         bot.edit_message_text(
             chat_id=scope['chat_id'],
@@ -30,7 +29,7 @@ class ShowCalendarCommand(AbstractCommand):
 
 class ChooseDateIntervalCommand(AbstractCommand):
 
-    def handler(self, bot, scope, *args, **kwargs):
+    def handler(self, bot, scope, selected_day=None, *args, **kwargs):
         """
         The choice of the time interval. Is called in two stages -
         to select start and end dates
@@ -41,21 +40,22 @@ class ChooseDateIntervalCommand(AbstractCommand):
         if change_month in scope['data']:
             pattern, date = scope['data'].split(change_month)
             month, year = date.split('.')
-            ShowCalendarCommand(self._bot_instance).handler(bot, scope, year, month, pattern)
+            selected_date = pendulum.create(int(year), int(month))
+            ShowCalendarCommand(self._bot_instance).handler(bot, scope, selected_date, pattern, selected_day)
         else:
-            now = datetime.now()
-            ShowCalendarCommand(self._bot_instance).handler(bot, scope, now.year, now.month, scope['data'])
+            now = pendulum.now()
+            ShowCalendarCommand(self._bot_instance).handler(bot, scope, now, scope['data'], selected_day)
 
 
 class TrackingUserWorklogCommand(AbstractCommand):
+    templates = {
+        'user_content': '<a href="{permalink}">{key}</a> {time_spent}\n{date}',
+        'project_content': '<a href="{permalink}">{key}</a> <b>{author}</b> {time_spent}\n{date}',
+        'time_spent': 'All time spent from <b>{}</b> to <b>{}</b>: <b>{}h</b>',
+    }
 
-    @staticmethod
-    def report_data(log, logged_time, issues_ids, template='user') -> str:
+    def report_data(self, log, logged_time, issues_ids, template='user_content') -> str:
         """Generates a message for report"""
-        templates = {
-            'user': '<a href="{permalink}">{key}</a> {time_spent}\n{date}',
-            'project': '<a href="{permalink}">{key}</a> <b>{author}</b> {time_spent}\n{date}',
-        }
 
         data = {
             'key': issues_ids[log.issueId].key,
@@ -65,10 +65,9 @@ class TrackingUserWorklogCommand(AbstractCommand):
             'author': log.author.displayName
         }
 
-        return templates.get(template).format(**data)
+        return self.templates.get(template).format(**data)
 
-    @staticmethod
-    def calculate_total_time(seconds: int, start_date: str, end_date: str) -> str:
+    def calculate_total_time(self, seconds: int, start_date: str, end_date: str) -> str:
         """Calculates time spent for issues in time interval"""
         hours = 0
         hour_in_seconds = 3600
@@ -78,7 +77,7 @@ class TrackingUserWorklogCommand(AbstractCommand):
         except TypeError:
             logging.warning('Seconds are not a numeric type: {} {}'.format(type(seconds), seconds))
 
-        return '\n\nAll time spent from {} to {}: <b>{}h</b>'.format(start_date, end_date, round(hours, 2))
+        return self.templates.get('time_spent').format(start_date, end_date, round(hours, 2))
 
     def handler(self, bot, scope, credentials, *args, **kwargs):
         """Shows all worklog of the user in selected date interval"""
@@ -111,25 +110,29 @@ class TrackingUserWorklogCommand(AbstractCommand):
                 )
                 seconds += log.timeSpentSeconds
 
-        start_line = 'User work log from {start_date} to {end_date}\n\n'.format(**scope)
-        key = '{username}:{start_date}:{end_date}'.format(**scope, username=credentials['username'])
-        formatted, buttons = self._bot_instance.save_into_cache(
-            user_worklogs,
-            key,
-            footer=self.calculate_total_time(seconds, scope['start_date'], scope['end_date'])
+        key = '{telegram_id}:{username}:{start_date}:{end_date}'.format(**scope, username=credentials['username'])
+        formatted, buttons = self._bot_instance.save_into_cache(user_worklogs, key)
+
+        # title
+        UserUnresolvedIssuesCommand.show_title(
+            bot,
+            'User worklog from <b>{start_date}</b> to <b>{end_date}</b>:'.format(**scope),
+            scope['chat_id'],
+            scope['message_id']
         )
 
-        if not formatted:
-            text = start_line + 'No worklog data in chosen time interval'
-        else:
-            text = start_line + formatted
+        if not formatted and not buttons:
+            message = 'No worklog data from <b>{start_date}</b> to <b>{end_date}</b>'.format(**scope)
+            UserUnresolvedIssuesCommand.show_content(bot, message, scope['chat_id'])
+            return
 
-        bot.edit_message_text(
-            chat_id=scope['chat_id'],
-            message_id=scope['message_id'],
-            text=text,
-            reply_markup=buttons,
-            parse_mode=ParseMode.HTML
+        # main content
+        UserUnresolvedIssuesCommand.show_content(bot, formatted, scope['chat_id'], buttons)
+        # all time
+        UserUnresolvedIssuesCommand.show_content(
+            bot,
+            self.calculate_total_time(seconds, scope['start_date'], scope['end_date']),
+            scope['chat_id'],
         )
 
 
@@ -162,29 +165,43 @@ class TrackingProjectWorklogCommand(AbstractCommand):
 
                 if (start_date <= logged_time) and (logged_time <= end_date):
                     project_worklogs.append(
-                        TrackingUserWorklogCommand.report_data(log, logged_time, issues_ids, template='project')
+                        TrackingUserWorklogCommand(self._bot_instance).report_data(
+                            log,
+                            logged_time,
+                            issues_ids,
+                            template='project_content'
+                        )
                     )
                     seconds += log.timeSpentSeconds
 
-        start_line = '{project} worklog from {start_date} to {end_date}\n\n'.format(**scope)
-        key = '{project}:{start_date}:{end_date}'.format(**scope)
-        formatted, buttons = self._bot_instance.save_into_cache(
-            project_worklogs,
-            key,
-            footer=TrackingUserWorklogCommand.calculate_total_time(seconds, scope['start_date'], scope['end_date'])
+        key = '{telegram_id}:{project}:{start_date}:{end_date}'.format(**scope)
+        formatted, buttons = self._bot_instance.save_into_cache(project_worklogs, key)
+
+        # title
+        UserUnresolvedIssuesCommand.show_title(
+            bot,
+            '<b>{project}</b> worklog from <b>{start_date}</b> to <b>{end_date}</b>:'.format(**scope),
+            scope['chat_id'],
+            scope['message_id']
         )
 
         if not formatted:
-            text = start_line + 'No worklog data in chosen time interval'
-        else:
-            text = start_line + formatted
+            message = 'No worklog data from <b>{start_date}</b> ' \
+                      'to <b>{end_date}</b> on project <b>{project}</b>'.format(**scope)
+            UserUnresolvedIssuesCommand.show_content(bot, message, scope['chat_id'])
+            return
 
-        bot.edit_message_text(
-            chat_id=scope['chat_id'],
-            message_id=scope['message_id'],
-            text=text,
-            reply_markup=buttons,
-            parse_mode=ParseMode.HTML
+        # main content
+        UserUnresolvedIssuesCommand.show_content(bot, formatted, scope['chat_id'], buttons)
+        # all time
+        UserUnresolvedIssuesCommand.show_content(
+            bot,
+            TrackingUserWorklogCommand(self._bot_instance).calculate_total_time(
+                seconds,
+                scope['start_date'],
+                scope['end_date']
+            ),
+            scope['chat_id'],
         )
 
 
@@ -220,30 +237,38 @@ class TrackingProjectUserWorklogCommand(AbstractCommand):
 
             if (start_date <= logged_time) and (logged_time <= end_date):
                 user_worklogs.append(
-                    TrackingUserWorklogCommand.report_data(log, logged_time, issues_ids)
+                    TrackingUserWorklogCommand(self._bot_instance).report_data(log, logged_time, issues_ids)
                 )
                 seconds += log.timeSpentSeconds
 
-        start_line = '{user} worklog on {project} from {start_date} to {end_date}\n\n'.format(**scope)
-        key = '{username}:{project}:{start_date}:{end_date}'.format(**scope, username=scope.get('user'))
-        formatted, buttons = self._bot_instance.save_into_cache(
-            user_worklogs,
-            key,
-            footer=TrackingUserWorklogCommand.calculate_total_time(seconds, scope['start_date'], scope['end_date'])
+        key = '{telegram_id}:{username}:{project}:{start_date}:{end_date}'.format(**scope, username=scope.get('user'))
+        formatted, buttons = self._bot_instance.save_into_cache(user_worklogs, key)
+
+        # title
+        UserUnresolvedIssuesCommand.show_title(
+            bot,
+            '<b>{user}</b> worklog on <b>{project}</b> from <b>{start_date}</b> to <b>{end_date}</b>:'.format(**scope),
+            scope['chat_id'],
+            scope['message_id']
         )
 
         if not formatted:
-            text = start_line + 'No data about {user} worklogs on {project} from ' \
-                                '{start_date} to {end_date}'.format(**scope)
-        else:
-            text = start_line + formatted
+            message = 'No worklog data about <b>{user}</b> from <b>{start_date}</b> ' \
+                      'to <b>{end_date}</b> on project <b>{project}</b>'.format(**scope)
+            UserUnresolvedIssuesCommand.show_content(bot, message, scope['chat_id'])
+            return
 
-        bot.edit_message_text(
-            chat_id=scope['chat_id'],
-            message_id=scope['message_id'],
-            text=text,
-            reply_markup=buttons,
-            parse_mode=ParseMode.HTML
+        # main content
+        UserUnresolvedIssuesCommand.show_content(bot, formatted, scope['chat_id'], buttons)
+        # all time
+        UserUnresolvedIssuesCommand.show_content(
+            bot,
+            TrackingUserWorklogCommand(self._bot_instance).calculate_total_time(
+                seconds,
+                scope['start_date'],
+                scope['end_date']
+            ),
+            scope['chat_id'],
         )
 
 
@@ -264,29 +289,28 @@ class TrackingCommandFactory(AbstractCommandFactory):
     def command(self, bot, update, *args, **kwargs):
         change_month = ':change_m:'
         scope = self._bot_instance.get_query_scope(update)
+        selected_day = None
+
+        cmd_scope = scope.get('data').split(':')
+
+        # attempt to get the first selected date (to visually highlight it)
+        try:
+            if cmd_scope[1] and cmd_scope[1] not in change_month:
+                selected_day = cmd_scope[1]
+        except IndexError:
+            pass
+        else:
+            if selected_day:
+                _date = [int(numb) for numb in selected_day.split('-')]
+                selected_day = pendulum.create(*_date)
 
         # choice of time interval
         if change_month in scope['data']:
-            ChooseDateIntervalCommand(self._bot_instance).handler(bot, scope)
+            ChooseDateIntervalCommand(self._bot_instance).handler(bot, scope, selected_day)
             return
-
-        cmd_scope = scope['data'].split(':')
 
         if len(cmd_scope) != 3:  # must be [cmd, start_date, end_date]
-            ChooseDateIntervalCommand(self._bot_instance).handler(bot, scope)
-            return
-
-        # date interval is limited
-        start_date = utils.to_datetime(cmd_scope[1], USER_DATE_FORMAT)
-        end_date = utils.to_datetime(cmd_scope[2], USER_DATE_FORMAT)
-        date_interval = end_date - start_date
-
-        if date_interval.days > ALLOWED_TIME_INTERVAL:
-            bot.edit_message_text(
-                text='The time interval is limited to {} days'.format(ALLOWED_TIME_INTERVAL),
-                chat_id=scope['chat_id'],
-                message_id=scope['message_id']
-            )
+            ChooseDateIntervalCommand(self._bot_instance).handler(bot, scope, selected_day)
             return
 
         credentials, message = self._bot_instance.get_and_check_cred(
@@ -310,6 +334,13 @@ class TrackingCommandFactory(AbstractCommandFactory):
                 'user_d_format': USER_DATE_FORMAT
             }
         )
+
+        if isinstance(obj, TrackingUserWorklogCommand):
+            bot.edit_message_text(
+                text='Please wait, your request is processing',
+                chat_id=scope['chat_id'],
+                message_id=scope['message_id']
+            )
 
         _pattern = self.patterns[cmd_scope[0]].format(cmd_scope[1] + ':' + cmd_scope[2] + ':{}')
         obj.handler(bot, scope, credentials, pattern=_pattern, footer='tracking_menu')
@@ -362,6 +393,13 @@ class TrackingProjectCommandFactory(AbstractCommandFactory):
                 message = 'You have no permissions to use this function'
                 bot.edit_message_text(text=message, chat_id=scope['chat_id'], message_id=scope['message_id'])
                 return
+
+        if isinstance(obj, (TrackingProjectWorklogCommand, TrackingProjectUserWorklogCommand)):
+            bot.edit_message_text(
+                text='Please wait, your request is processing',
+                chat_id=scope['chat_id'],
+                message_id=scope['message_id']
+            )
 
         _pattern = 'tproject_u:{start_date}:{end_date}:{project}'.format(**scope) + ':{}'
         obj.handler(bot, scope, credentials, pattern=_pattern, footer='tracking-pu')

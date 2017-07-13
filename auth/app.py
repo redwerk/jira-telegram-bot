@@ -140,6 +140,11 @@ class OAuthAuthorizedView(SendToChatMixin, OAuthJiraBaseView):
         except OAuthException as e:
             # if the user declined an authorization request
             message = 'Access denied: {}'.format(e.message)
+            answer = e.data.get('oauth_problem')
+
+            if answer and answer == 'permission_denied':
+                message = 'User declined the authorization request'
+
             self.send_to_chat(session['telegram_id'], message)
             return redirect(bot_url)
 
