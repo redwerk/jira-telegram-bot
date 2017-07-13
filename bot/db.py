@@ -46,22 +46,20 @@ def mongodb_connect(func):
 
 class MongoBackend:
     """An interface that contains basic methods for working with the database"""
-    user_collection = config('DB_USER_COLLECTION')
-    host_collection = config('DB_HOST_COLLECTION')
+    collection_mapping = {
+        'user': config('DB_USER_COLLECTION'),
+        'host': config('DB_HOST_COLLECTION'),
+        'cache': config('DB_CACHE_COLLECTION'),
+    }
 
-    def _get_user_collection(self, kwargs: dict) -> MongoClient:
-        """Returns MongoClient object which links to user collection"""
+    def _get_collection(self, name: str, kwargs: dict) -> MongoClient:
+        """Returns MongoClient object which links to selected collection"""
         db = kwargs.get('db')
-        return db[self.user_collection]
-
-    def _get_host_collection(self, kwargs: dict) -> MongoClient:
-        """Returns MongoClient object which links to host collection"""
-        db = kwargs.get('db')
-        return db[self.host_collection]
+        return db[self.collection_mapping.get(name)]
 
     @mongodb_connect
     def create_user(self, user_data: dict, **kwargs) -> bool:
-        collection = self._get_user_collection(kwargs)
+        collection = self._get_collection('user', kwargs)
         status = collection.insert(user_data)
 
         return True if status else False
@@ -72,7 +70,7 @@ class MongoBackend:
         Updates the specified fields in user collection
         Matching by: telegram id
         """
-        collection = self._get_user_collection(kwargs)
+        collection = self._get_collection('user', kwargs)
         status = collection.update({'telegram_id': telegram_id}, {'$set': user_data})
 
         return True if status else False
@@ -83,19 +81,19 @@ class MongoBackend:
         Updates the specified fields in host collection
         Matching by: host url
         """
-        collection = self._get_host_collection(kwargs)
+        collection = self._get_collection('host', kwargs)
         status = collection.update({'url': url}, {'$set': host_data})
 
         return True if status else False
 
     @mongodb_connect
     def is_user_exists(self, telegram_id: int, **kwargs) -> bool:
-        collection = self._get_user_collection(kwargs)
+        collection = self._get_collection('user', kwargs)
         return collection.count({"telegram_id": telegram_id}) > 0
 
     @mongodb_connect
     def get_user_data(self, user_id: int, **kwargs) -> dict:
-        collection = self._get_user_collection(kwargs)
+        collection = self._get_collection('user', kwargs)
         user = collection.find_one({'telegram_id': user_id})
 
         if user:
@@ -125,7 +123,7 @@ class MongoBackend:
 
     @mongodb_connect
     def create_host(self, host_data: dict, **kwargs) -> bool:
-        collection = self._get_host_collection(kwargs)
+        collection = self._get_collection('host', kwargs)
         status = collection.insert(host_data)
 
         return True if status else False
@@ -133,7 +131,7 @@ class MongoBackend:
     @mongodb_connect
     def get_host_data(self, url, **kwargs):
         """Returns host data according to host URL"""
-        collection = self._get_host_collection(kwargs)
+        collection = self._get_collection('host', kwargs)
         host = collection.find_one({'url': url})
 
         return host
@@ -144,7 +142,7 @@ class MongoBackend:
         Returns matched hosts
         Matching by: ObjectId
         """
-        collection = self._get_host_collection(kwargs)
+        collection = self._get_collection('host', kwargs)
         hosts = collection.find({'_id': {'$in': ids_list}})
 
         return hosts
