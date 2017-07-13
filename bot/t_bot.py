@@ -42,7 +42,7 @@ class JiraBot:
     commands_factories = [
         commands.IssueCommandFactory,
         commands.ProjectIssuesFactory,
-        commands.IssuesPaginatorFactory,
+        commands.ContentPaginatorFactory,
         commands.MainMenuCommandFactory,
         commands.MenuCommandFactory,
         commands.OAuthMenuCommandFactory,
@@ -57,7 +57,6 @@ class JiraBot:
 
     def __init__(self):
         self.__updater = Updater(config('BOT_TOKEN'), workers=2)
-        self.issue_cache = dict()
 
         self.db = MongoBackend()
         self.jira = JiraBackend()
@@ -167,7 +166,7 @@ class JiraBot:
 
         If strings less than value per page just return a formatted string without buttons.
         :param data: list of strings
-        :param key: key for stored it into cache dict
+        :param key: key for stored it into cache collection
         :return: formatted string with pagination buttons
         """
         buttons = None
@@ -177,7 +176,10 @@ class JiraBot:
         else:
             splitted_data = utils.split_by_pages(data, self.issues_per_page)
             page_count = len(splitted_data)
-            self.issue_cache[key] = dict(issues=splitted_data, page_count=page_count)
+            status = self.db.create_cache(key, splitted_data, page_count)
+
+            if not status:
+                logging.warning('An attempt to write content to the cache failed: {}'.format(key))
 
             # return the first page
             formatted_issues = '\n\n'.join(splitted_data[0])

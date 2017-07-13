@@ -2,6 +2,8 @@
 
 - Создать базу данных **DB_NAME**, коллекцию для пользователей **DB_USER_COLLECTION** и коллекцию для хостов **DB_HOST_COLLECTION**
 
+- Создать коллекцию **DB_CACHE_COLLECTION** для хранения кэша: `db.DB_CACHE_COLLECTION.createIndex( { "createdAt": 1 }, { expireAfterSeconds: 3600 } )`, *запись удалится через 1 час
+
 - Сгенерировать пару ключей отдельно для каждого хоста, с которым будет работать бот
 ```
 openssl genrsa -out name_privatekey.pem 1024

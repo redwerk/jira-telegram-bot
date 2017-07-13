@@ -1,5 +1,3 @@
-import logging
-
 from telegram import ParseMode
 from telegram.ext import CallbackQueryHandler
 
@@ -23,7 +21,8 @@ class UserUnresolvedIssuesCommand(AbstractCommand):
             self.show_content(bot, 'You have not unresolved tasks at this time', scope['chat_id'])
             return
 
-        formatted_issues, buttons = self._bot_instance.save_into_cache(issues, credentials.get('username'))
+        key = '{}:{}'.format(scope['telegram_id'], credentials.get('username'))
+        formatted_issues, buttons = self._bot_instance.save_into_cache(data=issues, key=key)
         self.show_content(bot, formatted_issues, scope['chat_id'], buttons)
 
     @staticmethod
@@ -78,7 +77,8 @@ class ProjectUnresolvedIssuesCommand(AbstractCommand):
             )
             return
 
-        formatted_issues, buttons = self._bot_instance.save_into_cache(issues, project)
+        key = '{}:{}'.format(scope['telegram_id'], project)
+        formatted_issues, buttons = self._bot_instance.save_into_cache(data=issues, key=key)
         UserUnresolvedIssuesCommand.show_content(bot, formatted_issues, scope['chat_id'], buttons)
 
 
@@ -92,7 +92,7 @@ class ProjectStatusIssuesCommand(AbstractCommand):
         """
         project = kwargs.get('project')
         status = kwargs.get('status')
-        project_key = '{}:{}'.format(project, status)
+        project_key = '{}:{}:{}'.format(scope['telegram_id'], project, status)
 
         issues, status_code = self._bot_instance.jira.get_project_status_issues(
             project=project, status=status, **credentials
@@ -109,11 +109,11 @@ class ProjectStatusIssuesCommand(AbstractCommand):
             UserUnresolvedIssuesCommand.show_content(bot, message, scope['chat_id'])
             return
 
-        formatted_issues, buttons = self._bot_instance.save_into_cache(issues, project_key)
+        formatted_issues, buttons = self._bot_instance.save_into_cache(data=issues, key=project_key)
         UserUnresolvedIssuesCommand.show_content(bot, formatted_issues, scope['chat_id'], buttons)
 
 
-class IssuesPaginatorCommand(AbstractCommand):
+class ContentPaginatorCommand(AbstractCommand):
 
     def handler(self, bot, scope, user_data, *args, **kwargs):
         """
@@ -131,7 +131,7 @@ class IssuesPaginatorCommand(AbstractCommand):
             max_page=user_data['page_count'],
             str_key=str_key + '#{}'
         )
-        formatted_issues = '\n\n'.join(user_data['issues'][page - 1])
+        formatted_issues = '\n\n'.join(user_data['content'][page - 1])
 
         bot.edit_message_text(
             text=formatted_issues,
@@ -215,21 +215,22 @@ class ProjectIssuesFactory(AbstractCommandFactory):
         return CallbackQueryHandler(self.command, pattern=r'^project')
 
 
-class IssuesPaginatorFactory(AbstractCommandFactory):
+class ContentPaginatorFactory(AbstractCommandFactory):
 
     def command(self, bot, update, *args, **kwargs):
         scope = self._bot_instance.get_query_scope(update)
         key, page = self._bot_instance.get_issue_data(scope['data'])
-        user_data = self._bot_instance.issue_cache.get(key)
+        user_data = self._bot_instance.db.get_cached_content(key=key)
 
         if not user_data:
-            logging.info('There is no data in the cache for {}'.format(key))
+            bot.edit_message_text(
+                text='Cache for this content has expired. Repeat the request, please',
+                chat_id=scope['chat_id'],
+                message_id=scope['message_id'],
+            )
             return
 
-        IssuesPaginatorCommand(self._bot_instance).handler(
-            bot, scope, user_data,
-            key=key, page=page
-        )
+        ContentPaginatorCommand(self._bot_instance).handler(bot, scope, user_data, key=key, page=page)
 
     def command_callback(self):
         return CallbackQueryHandler(self.command, pattern=r'^paginator:')

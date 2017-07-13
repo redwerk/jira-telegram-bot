@@ -110,7 +110,7 @@ class TrackingUserWorklogCommand(AbstractCommand):
                 )
                 seconds += log.timeSpentSeconds
 
-        key = '{username}:{start_date}:{end_date}'.format(**scope, username=credentials['username'])
+        key = '{telegram_id}:{username}:{start_date}:{end_date}'.format(**scope, username=credentials['username'])
         formatted, buttons = self._bot_instance.save_into_cache(user_worklogs, key)
 
         # title
@@ -174,7 +174,7 @@ class TrackingProjectWorklogCommand(AbstractCommand):
                     )
                     seconds += log.timeSpentSeconds
 
-        key = '{project}:{start_date}:{end_date}'.format(**scope)
+        key = '{telegram_id}:{project}:{start_date}:{end_date}'.format(**scope)
         formatted, buttons = self._bot_instance.save_into_cache(project_worklogs, key)
 
         # title
@@ -241,7 +241,7 @@ class TrackingProjectUserWorklogCommand(AbstractCommand):
                 )
                 seconds += log.timeSpentSeconds
 
-        key = '{username}:{project}:{start_date}:{end_date}'.format(**scope, username=scope.get('user'))
+        key = '{telegram_id}:{username}:{project}:{start_date}:{end_date}'.format(**scope, username=scope.get('user'))
         formatted, buttons = self._bot_instance.save_into_cache(user_worklogs, key)
 
         # title

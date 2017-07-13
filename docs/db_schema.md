@@ -49,3 +49,31 @@
   "is_confirmed": true,
 }
 ```
+
+
+### cache collection
+```json
+{
+  "_id": ObjectId("5967855ee138233323e1ff61"),
+  "createdAt": ISODate("2017-07-13T14:36:14.473Z"),
+  "content": [
+    [
+      "<a href=\"https://jira.test.redwerk.com/browse/JTB-11\">JTB-11</a> Test 12",
+      "<a href=\"https://jira.test.redwerk.com/browse/JTB-10\">JTB-10</a> Test 10",
+      "<a href=\"https://jira.test.redwerk.com/browse/JTB-9\">JTB-9</a> Test 9",
+      "<a href=\"https://jira.test.redwerk.com/browse/JTB-8\">JTB-8</a> Test 8",
+      "<a href=\"https://jira.test.redwerk.com/browse/JTB-7\">JTB-7</a> Test 7",
+      "<a href=\"https://jira.test.redwerk.com/browse/JTB-6\">JTB-6</a> Test 6",
+      "<a href=\"https://jira.test.redwerk.com/browse/JTB-5\">JTB-5</a> Test 5",
+      "<a href=\"https://jira.test.redwerk.com/browse/JTB-4\">JTB-4</a> Test 4",
+      "<a href=\"https://jira.test.redwerk.com/browse/JTB-3\">JTB-3</a> Test 4",
+      "<a href=\"https://jira.test.redwerk.com/browse/JTB-2\">JTB-2</a> Календарь листается только в пределах текущего года"
+    ],
+    [
+      "<a href=\"https://jira.test.redwerk.com/browse/JTB-1\">JTB-1</a> Вывод данных в 3 сообщения"
+    ]
+  ],
+  "key": "208810129:JTB:Backlog",
+  "page_count": 2
+}
+```

@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 
 from decouple import config
 from pymongo import MongoClient
@@ -146,3 +147,32 @@ class MongoBackend:
         hosts = collection.find({'_id': {'$in': ids_list}})
 
         return hosts
+
+    @mongodb_connect
+    def create_cache(self, key: str, content: list, page_count: int, **kwargs) -> bool:
+        """
+        Creates a document for content which has the ability to paginate
+        Documents will delete by MongoDB when they will expire
+        """
+        collection = self._get_collection('cache', kwargs)
+        status = collection.insert_one(
+            {
+                'key': key,
+                'content': content,
+                'page_count': page_count,
+                'createdAt': datetime.utcnow(),
+            }
+        )
+
+        return True if status else False
+
+    @mongodb_connect
+    def get_cached_content(self, key: str, **kwargs) -> dict:
+        """Gets document from cache collection"""
+        collection = self._get_collection('cache', kwargs)
+        document = collection.find_one({'key': key})
+
+        if document:
+            return dict(content=document.get('content'), page_count=document.get('page_count'))
+
+        return dict()
