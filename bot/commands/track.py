@@ -11,7 +11,6 @@ from .menu import ChooseDeveloperMenuCommand, ChooseProjectMenuCommand
 
 JIRA_DATE_FORMAT = '%Y-%m-%dT%H:%M:%S.%f%z'
 USER_DATE_FORMAT = '%Y-%m-%d'
-ALLOWED_TIME_INTERVAL = 30
 
 
 class ShowCalendarCommand(AbstractCommand):
@@ -284,12 +283,14 @@ class TrackingCommandFactory(AbstractCommandFactory):
 
         # attempt to get the first selected date (to visually highlight it)
         try:
-            selected_day = cmd_scope[1]
+            if cmd_scope[1] and cmd_scope[1] not in change_month:
+                selected_day = cmd_scope[1]
         except IndexError:
             pass
         else:
-            _date = [int(numb) for numb in selected_day.split('-')]
-            selected_day = pendulum.create(*_date)
+            if selected_day:
+                _date = [int(numb) for numb in selected_day.split('-')]
+                selected_day = pendulum.create(*_date)
 
         # choice of time interval
         if change_month in scope['data']:
@@ -298,19 +299,6 @@ class TrackingCommandFactory(AbstractCommandFactory):
 
         if len(cmd_scope) != 3:  # must be [cmd, start_date, end_date]
             ChooseDateIntervalCommand(self._bot_instance).handler(bot, scope, selected_day)
-            return
-
-        # date interval is limited
-        start_date = utils.to_datetime(cmd_scope[1], USER_DATE_FORMAT)
-        end_date = utils.to_datetime(cmd_scope[2], USER_DATE_FORMAT)
-        date_interval = end_date - start_date
-
-        if date_interval.days > ALLOWED_TIME_INTERVAL:
-            bot.edit_message_text(
-                text='The time interval is limited to {} days'.format(ALLOWED_TIME_INTERVAL),
-                chat_id=scope['chat_id'],
-                message_id=scope['message_id']
-            )
             return
 
         credentials, message = self._bot_instance.get_and_check_cred(
@@ -334,6 +322,13 @@ class TrackingCommandFactory(AbstractCommandFactory):
                 'user_d_format': USER_DATE_FORMAT
             }
         )
+
+        if isinstance(obj, TrackingUserWorklogCommand):
+            bot.edit_message_text(
+                text='Please wait, your request is processing',
+                chat_id=scope['chat_id'],
+                message_id=scope['message_id']
+            )
 
         _pattern = self.patterns[cmd_scope[0]].format(cmd_scope[1] + ':' + cmd_scope[2] + ':{}')
         obj.handler(bot, scope, credentials, pattern=_pattern, footer='tracking_menu')
@@ -386,6 +381,13 @@ class TrackingProjectCommandFactory(AbstractCommandFactory):
                 message = 'You have no permissions to use this function'
                 bot.edit_message_text(text=message, chat_id=scope['chat_id'], message_id=scope['message_id'])
                 return
+
+        if isinstance(obj, (TrackingProjectWorklogCommand, TrackingProjectUserWorklogCommand)):
+            bot.edit_message_text(
+                text='Please wait, your request is processing',
+                chat_id=scope['chat_id'],
+                message_id=scope['message_id']
+            )
 
         _pattern = 'tproject_u:{start_date}:{end_date}:{project}'.format(**scope) + ':{}'
         obj.handler(bot, scope, credentials, pattern=_pattern, footer='tracking-pu')
