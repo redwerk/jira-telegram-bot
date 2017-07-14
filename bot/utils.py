@@ -110,11 +110,25 @@ def get_pagination_keyboard(current: int,
 
 def create_calendar(date: pendulum.Pendulum, pattern_key: str, selected_day=None) -> InlineKeyboardMarkup:
     buttons = list()
+
+    # for the month change buttons
     last_month = date.subtract(months=1)
     next_month = date.add(months=1)
 
     previous_m = 'change_m:{}.{}'.format(last_month.month, last_month.year)
     next_m = 'change_m:{}.{}'.format(next_month.month, next_month.year)
+
+    # to select a time interval with a single button
+    now_obj = pendulum.now()
+    today = '{}:{}'.format(now_obj.date(), now_obj.add(days=1).date())
+    current_month = '{}:{}'.format(
+        now_obj._start_of_month().date(),
+        now_obj._end_of_month().add(days=1).date()
+    )
+    displayed_month = '{}:{}'.format(
+        date._start_of_month().date(),
+        date._end_of_month().add(days=1).date()
+    )
 
     week_days = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']
     for week_day in week_days:
@@ -127,8 +141,16 @@ def create_calendar(date: pendulum.Pendulum, pattern_key: str, selected_day=None
     h_buttons = [
         InlineKeyboardButton(
             calendar.month_name[date.month] + ' ' + str(date.year),
-            callback_data='ignore'
-        )
+            callback_data=pattern_key.format(displayed_month)
+        ),
+        InlineKeyboardButton(
+            'Today',
+            callback_data=pattern_key.format(today)
+        ),
+        InlineKeyboardButton(
+            'Current month',
+            callback_data=pattern_key.format(current_month)
+        ),
     ]
     f_buttons = [
         InlineKeyboardButton(
