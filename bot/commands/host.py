@@ -37,7 +37,7 @@ class AddHostCommand(AbstractCommand):
             bot.send_message(
                 chat_id=chat_id,
                 text='<b>Wrong format.</b> Use the following format:\n'
-                     'https://jira.redwerk.com (without the last slash)',
+                     'https://jira.redwerk.com',
                 parse_mode=ParseMode.HTML
             )
             return
