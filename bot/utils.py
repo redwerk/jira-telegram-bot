@@ -3,7 +3,7 @@ import logging
 import re
 import uuid
 import pendulum
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytz
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -215,6 +215,16 @@ def to_datetime(_time: str, _format: str) -> (datetime or bool):
         return dt
 
     return False
+
+
+def add_time(date: datetime, hours=0, minutes=0) -> datetime:
+    """Adds time (hours and minutes) to datetime object"""
+    additional_time = timedelta(hours=hours, minutes=minutes)
+
+    try:
+        return date + additional_time
+    except TypeError:
+        return date
 
 
 def to_human_date(_time: datetime) -> str:
