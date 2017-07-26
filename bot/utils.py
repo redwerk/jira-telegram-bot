@@ -158,7 +158,7 @@ def create_calendar(date: pendulum.Pendulum, pattern_key: str, selected_day=None
             callback_data=pattern_key.format(previous_m)
         ),
         InlineKeyboardButton(
-            ' ', callback_data='ignore'
+            'Back to Menu', callback_data='tracking_menu'
         ),
         InlineKeyboardButton(
             calendar.month_name[next_month.month] + ' >',
