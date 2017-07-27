@@ -120,14 +120,14 @@ def create_calendar(date: pendulum.Pendulum, pattern_key: str, selected_day=None
 
     # to select a time interval with a single button
     now_obj = pendulum.now()
-    today = '{}:{}'.format(now_obj.date(), now_obj.add(days=1).date())
+    today = '{0}:{0}'.format(now_obj.date())
     current_month = '{}:{}'.format(
         now_obj._start_of_month().date(),
-        now_obj._end_of_month().add(days=1).date()
+        now_obj._end_of_month().date()
     )
     displayed_month = '{}:{}'.format(
         date._start_of_month().date(),
-        date._end_of_month().add(days=1).date()
+        date._end_of_month().date()
     )
 
     week_days = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']
