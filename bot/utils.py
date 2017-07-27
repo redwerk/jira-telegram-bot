@@ -3,7 +3,7 @@ import logging
 import re
 import uuid
 import pendulum
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytz
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -120,14 +120,14 @@ def create_calendar(date: pendulum.Pendulum, pattern_key: str, selected_day=None
 
     # to select a time interval with a single button
     now_obj = pendulum.now()
-    today = '{}:{}'.format(now_obj.date(), now_obj.add(days=1).date())
+    today = '{0}:{0}'.format(now_obj.date())
     current_month = '{}:{}'.format(
         now_obj._start_of_month().date(),
-        now_obj._end_of_month().add(days=1).date()
+        now_obj._end_of_month().date()
     )
     displayed_month = '{}:{}'.format(
         date._start_of_month().date(),
-        date._end_of_month().add(days=1).date()
+        date._end_of_month().date()
     )
 
     week_days = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']
@@ -158,7 +158,7 @@ def create_calendar(date: pendulum.Pendulum, pattern_key: str, selected_day=None
             callback_data=pattern_key.format(previous_m)
         ),
         InlineKeyboardButton(
-            ' ', callback_data='ignore'
+            '« Back', callback_data='tracking_menu'
         ),
         InlineKeyboardButton(
             calendar.month_name[next_month.month] + ' >',
@@ -215,6 +215,18 @@ def to_datetime(_time: str, _format: str) -> (datetime or bool):
         return dt
 
     return False
+
+
+def add_time(date: datetime, hours=0, minutes=0) -> datetime:
+    """Adds time (hours and minutes) to datetime object"""
+    additional_time = timedelta(hours=hours, minutes=minutes)
+
+    try:
+        date += additional_time
+    except TypeError as e:
+        logging.warning(e)
+
+    return date
 
 
 def to_human_date(_time: datetime) -> str:

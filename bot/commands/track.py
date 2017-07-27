@@ -83,6 +83,7 @@ class TrackingUserWorklogCommand(AbstractCommand):
         """Shows all worklog of the user in selected date interval"""
         start_date = utils.to_datetime(scope['start_date'], scope['user_d_format'])
         end_date = utils.to_datetime(scope['end_date'], scope['user_d_format'])
+        end_date = utils.add_time(end_date, hours=23, minutes=59)
         user_worklogs = list()
 
         if start_date > end_date:
@@ -142,6 +143,7 @@ class TrackingProjectWorklogCommand(AbstractCommand):
         """Shows all worklogs by selected project in selected date interval"""
         start_date = utils.to_datetime(scope['start_date'], scope['user_d_format'])
         end_date = utils.to_datetime(scope['end_date'], scope['user_d_format'])
+        end_date = utils.add_time(end_date, hours=23, minutes=59)
         project_worklogs = list()
 
         if start_date > end_date:
@@ -214,6 +216,7 @@ class TrackingProjectUserWorklogCommand(AbstractCommand):
         """
         start_date = utils.to_datetime(scope['start_date'], scope['user_d_format'])
         end_date = utils.to_datetime(scope['end_date'], scope['user_d_format'])
+        end_date = utils.add_time(end_date, hours=23, minutes=59)
         user_worklogs = list()
 
         if start_date > end_date:
