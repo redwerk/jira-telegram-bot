@@ -5,7 +5,7 @@ from fabric.api import run, env, cd, task
 
 # Server configurations
 env.name = 'stage'
-env.hosts = ['botelegram@kiev2.redwerk.com']
+env.hosts = ['46.28.194.157']
 env.port = "22378"
 env.user = 'botelegram'
 env.path = '/home/botelegram/jira-telegram-bot'
