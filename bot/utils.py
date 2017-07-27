@@ -222,9 +222,11 @@ def add_time(date: datetime, hours=0, minutes=0) -> datetime:
     additional_time = timedelta(hours=hours, minutes=minutes)
 
     try:
-        return date + additional_time
-    except TypeError:
-        return date
+        date += additional_time
+    except TypeError as e:
+        logging.warning(e)
+
+    return date
 
 
 def to_human_date(_time: datetime) -> str:
