@@ -89,7 +89,6 @@ class MainMenuCommandFactory(AbstractCommandFactory):
                 text='<b>You did not specify credential data. Please, login and try again</b>',
                 parse_mode=ParseMode.HTML
             )
-            return
 
     def command_callback(self):
         return CommandHandler('menu', self.command)
