@@ -25,9 +25,6 @@ openssl x509 -pubkey -noout -in jira_publickey.cer  > name_publickey.pem
 ![step 1](1.png)
 
 ![step 2](2.png)
-- request_token_url: **JIRA_HOST** + **/plugins/servlet/oauth/request-token**
-- access_token_url: **JIRA_HOST** + **/plugins/servlet/oauth/access-token**
-- authorize_url: **JIRA_HOST** + **/plugins/servlet/oauth/authorize**
 - Обазятельно выбрать **Create incoming link**
 
 ![step 3](3.png)

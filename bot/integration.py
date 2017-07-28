@@ -5,7 +5,7 @@ import jira
 from decouple import config
 from jira.resilientsession import ConnectionError
 
-from bot.utils import read_rsa_key
+from bot.utils import JIRA_DATE_FORMAT, read_rsa_key, to_datetime
 
 OK_STATUS = 200
 
@@ -227,19 +227,20 @@ class JiraBackend:
         return list()
 
     @jira_connect
-    def get_user_issues_by_worklog(self, start_date: str, end_date: str, *args, **kwargs) -> dict:
+    def get_all_user_worklogs(self, start_date: str, end_date: str, *args, **kwargs) -> list:
         """
         Gets issues in which user logged time in selected time interval
-        :return: {'issues_id': 'issue_key'}
+        :return: list of worklogs
         """
         jira_conn, username = self._getting_data(kwargs)
+        issues = list()
 
         try:
             issues = jira_conn.search_issues(
-                'worklogAuthor = "{username}" and worklogDate >= {start_date} '
-                'and worklogDate <= {end_date}'.format(
+                'worklogAuthor = "{username}" and worklogDate >= {start_date} and worklogDate <= {end_date}'.format(
                     username=username, start_date=start_date, end_date=end_date
                 ),
+                fields='worklog',
                 maxResults=200
             )
         except jira.JIRAError as e:
@@ -247,77 +248,93 @@ class JiraBackend:
                 'Failed to get assigned or '
                 'watched {} questions:\n{}'.format(username, e)
             )
-        else:
-            return self.get_issues_id(issues)
 
-        return dict()
-
-    def get_issues_id(self, issues: list) -> dict:
-        """
-        Returen issue data
-        {issue_id: namedtuple.key, namedtuple.permalink
-        """
-        return {i.id: self.issue_data(key=i.key, permalink=i.permalink()) for i in issues}
-
-    @jira_connect
-    def get_worklogs_by_id(self, issues_ids: dict, *args, **kwargs) -> list:
-        """
-        Gets worklogs by issue dict ids
-        :param issues_ids: {'30407': 'PLS-62', '30356': 'PLS-61'}
-        :return: list with projects worklogs
-        """
-        jira_conn = kwargs.get('jira_conn')
-        _worklogs = list()
-
-        for _id, key in issues_ids.items():
-            try:
-                log = jira_conn.worklogs(issue=_id)
-            except jira.JIRAError as e:
-                logging.error(
-                    'Failed to get {} worklog:\n{}'.format(key, e)
-                )
-            else:
-                if log:
-                    _worklogs.append(log)
-        else:
-            return _worklogs
+        return self._obtain_worklogs(issues)
 
     @staticmethod
-    def get_user_worklogs(_worklogs: list, username: str, display_name=False) -> list:
+    def _obtain_worklogs(issues: list) -> list:
         """
-        Gets the only selected user worklogs
-        :param _worklogs: list of lists worklogs
-        :param username:
-        :param display_name: the flag on what attribute to compare
-        :return: list of user worklogs
+        Returns list of worklogs in dict flat structure
+
+        issue_key: str
+        issue_permalink: str
+        author_displayName: str
+        author_name: str
+        created: datetime
+        time_spent: int
+        time_spent_seconds: int
         """
-        if display_name:
-            return [log for issue in _worklogs for log in issue if log.author.displayName == username]
-        else:
-            return [log for issue in _worklogs for log in issue if log.author.name == username]
+        all_worklogs = list()
+
+        for issue in issues:
+            try:
+                _worklogs = issue.fields.worklog.worklogs
+            except AttributeError:
+                logging.warning('Worklogs AttributeError in {}'.format(issue.key))
+            else:
+                for worklog in _worklogs:
+                    w_data = {
+                        'issue_key': issue.key,
+                        'issue_permalink': issue.permalink(),
+                        'author_displayName': worklog.author.displayName,
+                        'author_name': worklog.author.name,
+                        'created': to_datetime(worklog.created, JIRA_DATE_FORMAT),
+                        'time_spent': worklog.timeSpent,
+                        'time_spent_seconds': worklog.timeSpentSeconds,
+                    }
+                    all_worklogs.append(w_data)
+
+        return all_worklogs
+
+    @staticmethod
+    def get_user_worklogs(_worklogs: list, username: str, name_key: str) -> list:
+        """Gets the only selected user worklogs"""
+        return [log for log in _worklogs if log.get(name_key) == username]
 
     @jira_connect
-    def get_project_issues_by_worklog(self, project: str, start_date: str, end_date: str, *args, **kwargs) -> dict:
+    def get_project_worklogs(self, project: str, start_date: str, end_date: str, *args, **kwargs) -> list:
         """
         Gets issues by selected project in which someone logged time in selected time interval
-        :return: {'issues_id': 'issue_key'}
+        :return: list of worklogs
         """
         jira_conn = kwargs.get('jira_conn')
+        p_issues = list()
 
         try:
             p_issues = jira_conn.search_issues(
-                'project = "{project}" and worklogDate >= {start_date} '
-                'and worklogDate <= {end_date}'.format(
+                'project = "{project}" and worklogDate >= {start_date} and worklogDate <= {end_date}'.format(
                     project=project, start_date=start_date, end_date=end_date
                 ),
+                fields='worklog',
                 maxResults=200
             )
         except jira.JIRAError as e:
             logging.error('Failed to get issues of {}:\n{}'.format(project, e))
-        else:
-            return self.get_issues_id(p_issues)
 
-        return dict()
+        return self._obtain_worklogs(p_issues)
+
+    @jira_connect
+    def get_user_project_worklogs(self, user, project, start_date, end_date, *args, **kwargs) -> list:
+        """
+        Gets issues by selected project in which user logged time in selected time interval
+        :return: list of worklogs
+        """
+        jira_conn = kwargs.get('jira_conn')
+        p_issues = list()
+
+        try:
+            p_issues = jira_conn.search_issues(
+                'project = "{project}" and worklogAuthor = "{user}" and worklogDate >= {start_date} '
+                'and worklogDate <= {end_date}'.format(
+                    project=project, user=user, start_date=start_date, end_date=end_date
+                ),
+                fields='worklog',
+                maxResults=200
+            )
+        except jira.JIRAError as e:
+            logging.error('Failed to get issues of {} in {}:\n{}'.format(user, project, e))
+
+        return self._obtain_worklogs(p_issues)
 
     @jira_connect
     def is_admin_permissions(self, *args, **kwargs) -> bool:
@@ -339,32 +356,3 @@ class JiraBackend:
             return [data['fullname'] for nick, data in developers.items()]
 
         return list()
-
-    @jira_connect
-    def get_user_project_issues_by_worklog(self,
-                                           user: str,
-                                           project: str,
-                                           start_date: str,
-                                           end_date: str,
-                                           *args,
-                                           **kwargs) -> dict:
-        """
-        Gets issues by selected project in which user logged time in selected time interval
-        :return: {'issues_id': 'issue_key'}
-        """
-        jira_conn = kwargs.get('jira_conn')
-
-        try:
-            p_issues = jira_conn.search_issues(
-                'project = "{project}" and worklogAuthor = "{user}" and worklogDate >= {start_date} '
-                'and worklogDate <= {end_date}'.format(
-                    project=project, user=user, start_date=start_date, end_date=end_date
-                ),
-                maxResults=200
-            )
-        except jira.JIRAError as e:
-            logging.error('Failed to get issues of {} in {}:\n{}'.format(user, project, e))
-        else:
-            return self.get_issues_id(p_issues)
-
-        return dict()
