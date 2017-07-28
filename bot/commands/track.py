@@ -278,6 +278,27 @@ class TrackingCommandFactory(AbstractCommandFactory):
         selected_day = None
 
         cmd_scope = scope.get('data').split(':')
+        only_command = len(cmd_scope) == 1
+        chosen_protected_submenu = cmd_scope[0] == 'tracking-pu'
+
+        # Protected feature. Only for users with administrator permissions
+        if only_command and chosen_protected_submenu:
+            credentials, message = self._bot_instance.get_and_check_cred(scope['telegram_id'])
+
+            if not credentials:
+                bot.edit_message_text(
+                    text=message,
+                    chat_id=scope['chat_id'],
+                    message_id=scope['message_id']
+                )
+                return
+
+            permission, status = self._bot_instance.jira.is_admin_permissions(**credentials)
+
+            if not permission:
+                message = 'You have no permissions to use this function'
+                bot.edit_message_text(text=message, chat_id=scope['chat_id'], message_id=scope['message_id'])
+                return
 
         # attempt to get the first selected date (to visually highlight it)
         try:
@@ -299,9 +320,7 @@ class TrackingCommandFactory(AbstractCommandFactory):
             ChooseDateIntervalCommand(self._bot_instance).handler(bot, scope, selected_day)
             return
 
-        credentials, message = self._bot_instance.get_and_check_cred(
-            scope['telegram_id']
-        )
+        credentials, message = self._bot_instance.get_and_check_cred(scope['telegram_id'])
 
         if not credentials:
             bot.edit_message_text(
@@ -370,15 +389,6 @@ class TrackingProjectCommandFactory(AbstractCommandFactory):
                 'user': user
             }
         )
-
-        # Protected feature. Only for users with administrator permissions
-        if isinstance(obj, ChooseDeveloperMenuCommand):
-            permission, status = self._bot_instance.jira.is_admin_permissions(**credentials)
-
-            if not permission:
-                message = 'You have no permissions to use this function'
-                bot.edit_message_text(text=message, chat_id=scope['chat_id'], message_id=scope['message_id'])
-                return
 
         if isinstance(obj, (TrackingProjectWorklogCommand, TrackingProjectUserWorklogCommand)):
             bot.edit_message_text(
