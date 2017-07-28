@@ -2,16 +2,18 @@ import calendar
 import logging
 import re
 import uuid
-import pendulum
 from datetime import datetime, timedelta
+from typing import Generator, List
 
+import pendulum
 import pytz
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
-from typing import Generator, List
-
 hostname_re = re.compile(r'^http[s]?://([^:/\s]+)?$')
 http_ptotocol = re.compile(r'^http[s]?://')
+
+JIRA_DATE_FORMAT = '%Y-%m-%dT%H:%M:%S.%f%z'
+USER_DATE_FORMAT = '%Y-%m-%d'
 
 
 def build_menu(buttons: List,

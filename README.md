@@ -24,7 +24,6 @@
 ```
 BOT_TOKEN = <string>
 SECRET_KEY = <string> # from cryptography.fernet import Fernet; Fernet.generate_key()
-JIRA_HOST = <string>
 
 DB_HOST = <string>
 DB_PORT = <string>

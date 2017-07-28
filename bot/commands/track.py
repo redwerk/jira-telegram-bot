@@ -9,9 +9,6 @@ from .base import AbstractCommand, AbstractCommandFactory
 from .issue import UserUnresolvedIssuesCommand
 from .menu import ChooseDeveloperMenuCommand, ChooseProjectMenuCommand
 
-JIRA_DATE_FORMAT = '%Y-%m-%dT%H:%M:%S.%f%z'
-USER_DATE_FORMAT = '%Y-%m-%d'
-
 
 class ShowCalendarCommand(AbstractCommand):
 
@@ -49,23 +46,16 @@ class ChooseDateIntervalCommand(AbstractCommand):
 
 class TrackingUserWorklogCommand(AbstractCommand):
     templates = {
-        'user_content': '<a href="{permalink}">{key}</a> {time_spent}\n{date}',
-        'project_content': '<a href="{permalink}">{key}</a> <b>{author}</b> {time_spent}\n{date}',
+        'user_content': '<a href="{issue_permalink}">{issue_key}</a> {time_spent}\n{date}',
+        'project_content': '<a href="{issue_permalink}">{issue_key}</a> <b>{author_displayName}</b> '
+                           '{time_spent}\n{date}',
         'time_spent': 'All time spent from <b>{}</b> to <b>{}</b>: <b>{}h</b>',
     }
 
-    def report_data(self, log, logged_time, issues_ids, template='user_content') -> str:
+    def report_data(self, log, template='user_content') -> str:
         """Generates a message for report"""
-
-        data = {
-            'key': issues_ids[log.issueId].key,
-            'time_spent': log.timeSpent,
-            'permalink': issues_ids[log.issueId].permalink,
-            'date': utils.to_human_date(logged_time),
-            'author': log.author.displayName
-        }
-
-        return self.templates.get(template).format(**data)
+        date = utils.to_human_date(log.get('created'))
+        return self.templates.get(template).format(**log, date=date)
 
     def calculate_total_time(self, seconds: int, start_date: str, end_date: str) -> str:
         """Calculates time spent for issues in time interval"""
@@ -94,22 +84,21 @@ class TrackingUserWorklogCommand(AbstractCommand):
             )
             return
 
-        issues_ids, status_code = self._bot_instance.jira.get_user_issues_by_worklog(
+        all_worklogs, status_code = self._bot_instance.jira.get_all_user_worklogs(
             scope['start_date'], scope['end_date'], **credentials
         )
-        all_worklogs, status_code = self._bot_instance.jira.get_worklogs_by_id(issues_ids, **credentials)
-        user_logs = self._bot_instance.jira.get_user_worklogs(all_worklogs, credentials['username'])
+        all_user_logs = self._bot_instance.jira.get_user_worklogs(
+            all_worklogs, credentials['username'], name_key='author_name'
+        )
 
         # comparison of the time interval (the time of the log should be between the start and end dates)
         seconds = 0
-        for log in user_logs:
-            logged_time = utils.to_datetime(log.created, scope['jira_d_format'])
+        for log in sorted(all_user_logs, key=lambda x: x.get('created')):
+            logged_time = log.get('created')
 
             if (start_date <= logged_time) and (logged_time <= end_date):
-                user_worklogs.append(
-                    self.report_data(log, logged_time, issues_ids)
-                )
-                seconds += log.timeSpentSeconds
+                user_worklogs.append(self.report_data(log))
+                seconds += log.get('time_spent_seconds')
 
         key = '{telegram_id}:{username}:{start_date}:{end_date}'.format(**scope, username=credentials['username'])
         formatted, buttons = self._bot_instance.save_into_cache(user_worklogs, key)
@@ -154,27 +143,20 @@ class TrackingProjectWorklogCommand(AbstractCommand):
             )
             return
 
-        issues_ids, status_code = self._bot_instance.jira.get_project_issues_by_worklog(
+        all_worklogs, status_code = self._bot_instance.jira.get_project_worklogs(
             scope.get('project'), scope.get('start_date'), scope.get('end_date'), **credentials
         )
-        all_worklogs, status_code = self._bot_instance.jira.get_worklogs_by_id(issues_ids, **credentials)
 
         # comparison of the time interval (the time of the log should be between the start and end dates)
         seconds = 0
-        for i_log in all_worklogs:
-            for log in i_log:
-                logged_time = utils.to_datetime(log.created, scope['jira_d_format'])
+        for log in sorted(all_worklogs, key=lambda x: x.get('created')):
+            logged_time = log.get('created')
 
-                if (start_date <= logged_time) and (logged_time <= end_date):
-                    project_worklogs.append(
-                        TrackingUserWorklogCommand(self._bot_instance).report_data(
-                            log,
-                            logged_time,
-                            issues_ids,
-                            template='project_content'
-                        )
-                    )
-                    seconds += log.timeSpentSeconds
+            if (start_date <= logged_time) and (logged_time <= end_date):
+                project_worklogs.append(
+                    TrackingUserWorklogCommand(self._bot_instance).report_data(log, template='project_content')
+                )
+                seconds += log.get('time_spent_seconds')
 
         key = '{telegram_id}:{project}:{start_date}:{end_date}'.format(**scope)
         formatted, buttons = self._bot_instance.save_into_cache(project_worklogs, key)
@@ -227,22 +209,23 @@ class TrackingProjectUserWorklogCommand(AbstractCommand):
             )
             return
 
-        issues_ids, status_code = self._bot_instance.jira.get_user_project_issues_by_worklog(
+        all_worklogs, status_code = self._bot_instance.jira.get_user_project_worklogs(
             scope.get('user'), scope.get('project'), scope.get('start_date'), scope.get('end_date'), **credentials
         )
-        all_worklogs, status_code = self._bot_instance.jira.get_worklogs_by_id(issues_ids, **credentials)
-        user_logs = self._bot_instance.jira.get_user_worklogs(all_worklogs, scope.get('user'), display_name=True)
+        all_user_logs = self._bot_instance.jira.get_user_worklogs(
+            all_worklogs, scope.get('user'), name_key='author_displayName'
+        )
 
         # comparison of the time interval (the time of the log should be between the start and end dates)
         seconds = 0
-        for log in user_logs:
-            logged_time = utils.to_datetime(log.created, scope['jira_d_format'])
+        for log in sorted(all_user_logs, key=lambda x: x.get('created')):
+            logged_time = log.get('created')
 
             if (start_date <= logged_time) and (logged_time <= end_date):
                 user_worklogs.append(
-                    TrackingUserWorklogCommand(self._bot_instance).report_data(log, logged_time, issues_ids)
+                    TrackingUserWorklogCommand(self._bot_instance).report_data(log)
                 )
-                seconds += log.timeSpentSeconds
+                seconds += log.get('time_spent_seconds')
 
         key = '{telegram_id}:{username}:{project}:{start_date}:{end_date}'.format(**scope, username=scope.get('user'))
         formatted, buttons = self._bot_instance.save_into_cache(user_worklogs, key)
@@ -333,8 +316,8 @@ class TrackingCommandFactory(AbstractCommandFactory):
             {
                 'start_date': cmd_scope[1],
                 'end_date': cmd_scope[2],
-                'jira_d_format': JIRA_DATE_FORMAT,
-                'user_d_format': USER_DATE_FORMAT
+                'jira_d_format': utils.JIRA_DATE_FORMAT,
+                'user_d_format': utils.USER_DATE_FORMAT
             }
         )
 
@@ -382,8 +365,8 @@ class TrackingProjectCommandFactory(AbstractCommandFactory):
                 'project': project,
                 'start_date': start_d,
                 'end_date': end_d,
-                'jira_d_format': JIRA_DATE_FORMAT,
-                'user_d_format': USER_DATE_FORMAT,
+                'jira_d_format': utils.JIRA_DATE_FORMAT,
+                'user_d_format': utils.USER_DATE_FORMAT,
                 'user': user
             }
         )
