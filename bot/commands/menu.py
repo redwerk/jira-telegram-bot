@@ -1,4 +1,4 @@
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
 from telegram.ext import CallbackQueryHandler, CommandHandler
 
 from bot import utils
@@ -73,7 +73,22 @@ class TrackingMenuCommand(AbstractCommand):
 class MainMenuCommandFactory(AbstractCommandFactory):
 
     def command(self, bot, update, *args, **kwargs):
-        MainMenuCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
+        telegram_id = update.message.chat_id
+
+        user = self._bot_instance.db.get_user_data(telegram_id)
+        access_condition = (
+            user.get('access_token'),
+            user.get('access_token_secret'),
+        )
+
+        if user and all(access_condition):
+            MainMenuCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
+        else:
+            bot.send_message(
+                chat_id=telegram_id,
+                text='<b>You did not specify credential data. Please, login and try again</b>',
+                parse_mode=ParseMode.HTML
+            )
 
     def command_callback(self):
         return CommandHandler('menu', self.command)
