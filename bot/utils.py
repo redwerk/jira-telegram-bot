@@ -178,7 +178,7 @@ def create_calendar(date: pendulum.Pendulum, pattern_key: str, selected_day=None
 
                 # visually mark the date
                 if selected_day and not _day.diff(selected_day).days:
-                    title = '«{}»'.format(title)
+                    title = '·{}·'.format(title)
 
                 buttons.append(
                     InlineKeyboardButton(title, callback_data=pattern_key.format(tmp_date))
