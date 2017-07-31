@@ -37,8 +37,8 @@ class ChooseDateIntervalCommand(AbstractCommand):
         if change_month in scope['data']:
             pattern, date = scope['data'].split(change_month)
             month, year = date.split('.')
-            selected_date = pendulum.create(int(year), int(month))
-            ShowCalendarCommand(self._bot_instance).handler(bot, scope, selected_date, pattern, selected_day)
+            changed_month_date = pendulum.create(year=int(year), month=int(month), day=1)
+            ShowCalendarCommand(self._bot_instance).handler(bot, scope, changed_month_date, pattern, selected_day)
         elif selected_day:
             ShowCalendarCommand(self._bot_instance).handler(bot, scope, selected_day, scope['data'], selected_day)
         else:
