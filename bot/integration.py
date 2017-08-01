@@ -397,13 +397,13 @@ class JiraBackend:
                 'project = "{project}" and worklogDate >= {start_date} and worklogDate <= {end_date}'.format(
                     project=project, start_date=start_date, end_date=end_date
                 ),
-                fields='worklog',
-                maxResults=200
+                expand='changelog',
+                maxResults=1000
             )
         except jira.JIRAError as e:
             logging.error('Failed to get issues of {}:\n{}'.format(project, e))
 
-        return self._obtain_worklogs(p_issues)
+        return self._obtain_worklogs(p_issues, start_date, end_date, kwargs)
 
     @jira_connect
     def get_user_project_worklogs(self, user, project, start_date, end_date, *args, **kwargs) -> list:
@@ -420,13 +420,13 @@ class JiraBackend:
                 'and worklogDate <= {end_date}'.format(
                     project=project, user=user, start_date=start_date, end_date=end_date
                 ),
-                fields='worklog',
-                maxResults=200
+                expand='changelog',
+                maxResults=1000
             )
         except jira.JIRAError as e:
             logging.error('Failed to get issues of {} in {}:\n{}'.format(user, project, e))
 
-        return self._obtain_worklogs(p_issues)
+        return self._obtain_worklogs(p_issues, start_date, end_date, kwargs)
 
     @jira_connect
     def is_admin_permissions(self, *args, **kwargs) -> bool:

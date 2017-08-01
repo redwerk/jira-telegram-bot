@@ -129,7 +129,6 @@ class TrackingProjectWorklogCommand(AbstractCommand):
         """Shows all worklogs by selected project in selected date interval"""
         start_date = utils.to_datetime(scope['start_date'], scope['user_d_format'])
         end_date = utils.to_datetime(scope['end_date'], scope['user_d_format'])
-        end_date = utils.add_time(end_date, hours=23, minutes=59)
         project_worklogs = list()
 
         if start_date > end_date:
@@ -144,16 +143,12 @@ class TrackingProjectWorklogCommand(AbstractCommand):
             scope.get('project'), scope.get('start_date'), scope.get('end_date'), **credentials
         )
 
-        # comparison of the time interval (the time of the log should be between the start and end dates)
         seconds = 0
         for log in sorted(all_worklogs, key=lambda x: x.get('created')):
-            logged_time = log.get('created')
-
-            if (start_date <= logged_time) and (logged_time <= end_date):
-                project_worklogs.append(
-                    TrackingUserWorklogCommand(self._bot_instance).report_data(log, template='project_content')
-                )
-                seconds += log.get('time_spent_seconds')
+            project_worklogs.append(
+                TrackingUserWorklogCommand(self._bot_instance).report_data(log, template='project_content')
+            )
+            seconds += log.get('time_spent_seconds')
 
         key = '{telegram_id}:{project}:{start_date}:{end_date}'.format(**scope)
         formatted, buttons = self._bot_instance.save_into_cache(project_worklogs, key)
@@ -195,7 +190,6 @@ class TrackingProjectUserWorklogCommand(AbstractCommand):
         """
         start_date = utils.to_datetime(scope['start_date'], scope['user_d_format'])
         end_date = utils.to_datetime(scope['end_date'], scope['user_d_format'])
-        end_date = utils.add_time(end_date, hours=23, minutes=59)
         user_worklogs = list()
 
         if start_date > end_date:
@@ -216,13 +210,10 @@ class TrackingProjectUserWorklogCommand(AbstractCommand):
         # comparison of the time interval (the time of the log should be between the start and end dates)
         seconds = 0
         for log in sorted(all_user_logs, key=lambda x: x.get('created')):
-            logged_time = log.get('created')
-
-            if (start_date <= logged_time) and (logged_time <= end_date):
-                user_worklogs.append(
-                    TrackingUserWorklogCommand(self._bot_instance).report_data(log)
-                )
-                seconds += log.get('time_spent_seconds')
+            user_worklogs.append(
+                TrackingUserWorklogCommand(self._bot_instance).report_data(log)
+            )
+            seconds += log.get('time_spent_seconds')
 
         key = '{telegram_id}:{username}:{project}:{start_date}:{end_date}'.format(**scope, username=scope.get('user'))
         formatted, buttons = self._bot_instance.save_into_cache(user_worklogs, key)
