@@ -3,9 +3,7 @@ from collections import namedtuple
 
 import jira
 from decouple import config
-from jira.resilientsession import ConnectionError, ResilientSession
-from oauthlib.oauth1 import SIGNATURE_RSA
-from requests_oauthlib import OAuth1
+from jira.resilientsession import ConnectionError
 
 from bot.utils import JIRA_DATE_FORMAT, USER_DATE_FORMAT, add_time, read_rsa_key, to_datetime
 
@@ -23,19 +21,6 @@ def jira_connect(func):
     def wrapper(*args, **kwargs) -> (list or bool, int):
         auth_data = JiraBackend.getting_credentials(kwargs)
 
-        oauth = OAuth1(
-            auth_data.credentials['consumer_key'],
-            rsa_key=auth_data.credentials['key_cert'],
-            signature_method=SIGNATURE_RSA,
-            resource_owner_key=auth_data.credentials['access_token'],
-            resource_owner_secret=auth_data.credentials['access_token_secret']
-        )
-
-        # to request a worklogs from an unsupported endpoint
-        requests_session = ResilientSession(timeout=20.0)
-        requests_session.auth = oauth
-        requests_session.verify = True
-
         try:
             jira_conn = jira.JIRA(
                 server=auth_data.jira_host,
@@ -49,7 +34,6 @@ def jira_connect(func):
             kwargs.update(
                 {
                     'jira_conn': jira_conn,
-                    'requests_session': requests_session,
                     'jira_host': auth_data.jira_host
                 }
             )
@@ -270,9 +254,9 @@ class JiraBackend:
                 'watched {} questions:\n{}'.format(username, e)
             )
 
-        return self._obtain_worklogs(issues, start_date, end_date, kwargs)
+        return self.obtain_worklogs(issues, start_date, end_date, kwargs)
 
-    def _obtain_worklogs(self, issues, start_date, end_date, session_data):
+    def obtain_worklogs(self, issues, start_date, end_date, session_data):
         """
         Returns list of worklogs in dict flat structure
 
@@ -287,12 +271,12 @@ class JiraBackend:
         all_worklogs = list()
         received_worklogs = list()
 
-        issues_worklog = self._extraction_worklog_ids(issues, start_date, end_date)
+        issues_worklog = self.extraction_worklog_ids(issues, start_date, end_date)
 
         if issues_worklog:
             w_ids = [int(w_id) for issue in issues_worklog.values() for w_id in issue['worklog_ids']]
-            received_worklogs = self._request_worklogs_by_id(
-                session_data.get('requests_session'),
+            received_worklogs = self.request_worklogs_by_id(
+                session_data.get('jira_conn'),
                 session_data.get('jira_host'),
                 w_ids
             )
@@ -312,7 +296,7 @@ class JiraBackend:
         return all_worklogs
 
     @staticmethod
-    def _extraction_worklog_ids(issues, start_date, end_date):
+    def extraction_worklog_ids(issues, start_date, end_date):
         """
         Obtains the identifiers of the vorklogs and combines them in the structure:
         the worklogs relate to the issues in which they are indicated
@@ -330,7 +314,7 @@ class JiraBackend:
         :param end_date: end time interval
         :return: dict of formatted worklog ids
         """
-        _worklogs = dict()
+        worklogs = dict()
         start_datetime = to_datetime(start_date, USER_DATE_FORMAT)
         end_datetime = to_datetime(end_date, USER_DATE_FORMAT)
         end_datetime = add_time(end_datetime, hours=23, minutes=59)
@@ -341,7 +325,7 @@ class JiraBackend:
                     'issue_key': issue.key,
                     'issue_permalink': issue.permalink(),
                 }
-                _worklog_ids = []
+                worklog_ids = []
 
                 for history in issue.changelog.histories:
                     creted_date = to_datetime(history.created, JIRA_DATE_FORMAT)
@@ -350,28 +334,28 @@ class JiraBackend:
                     for item in history.items:
 
                         if item.field == 'WorklogId' and time_condition:
-                            _worklog_ids.append(item.fromString)
+                            worklog_ids.append(item.fromString)
 
-                if _worklog_ids:
-                    issue_data['worklog_ids'] = _worklog_ids
-                    _worklogs[issue.id] = issue_data
+                if worklog_ids:
+                    issue_data['worklog_ids'] = worklog_ids
+                    worklogs[issue.id] = issue_data
 
         except AttributeError as e:
             logging.warning(e)
         else:
-            return _worklogs
+            return worklogs
 
     @staticmethod
-    def _request_worklogs_by_id(session, host, w_ids):
+    def request_worklogs_by_id(jira_conn, host, w_ids):
         """
         Gets worklogs by their identifiers making a request for an endpoint that is not supported by the library
-        :param session: auth object for making requests
+        :param jira_conn: auth object for making requests
         :param host: server host
         :param w_ids: list of worklog ids
         :return: dict with data about worklogs
         """
         worklogs = {}
-        response = session.post(host + '/rest/api/2/worklog/list', json={'ids': w_ids})
+        response = jira_conn._session.post(host + '/rest/api/2/worklog/list', json={'ids': w_ids})
 
         if response.status_code == OK_STATUS:
             worklogs = response.json()
@@ -403,7 +387,7 @@ class JiraBackend:
         except jira.JIRAError as e:
             logging.error('Failed to get issues of {}:\n{}'.format(project, e))
 
-        return self._obtain_worklogs(p_issues, start_date, end_date, kwargs)
+        return self.obtain_worklogs(p_issues, start_date, end_date, kwargs)
 
     @jira_connect
     def get_user_project_worklogs(self, user, project, start_date, end_date, *args, **kwargs) -> list:
@@ -426,7 +410,7 @@ class JiraBackend:
         except jira.JIRAError as e:
             logging.error('Failed to get issues of {} in {}:\n{}'.format(user, project, e))
 
-        return self._obtain_worklogs(p_issues, start_date, end_date, kwargs)
+        return self.obtain_worklogs(p_issues, start_date, end_date, kwargs)
 
     @jira_connect
     def is_admin_permissions(self, *args, **kwargs) -> bool:
