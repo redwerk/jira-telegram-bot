@@ -332,7 +332,6 @@ class JiraBackend:
                     time_condition = (creted_date >= start_datetime) and (creted_date <= end_datetime)
 
                     for item in history.items:
-
                         if item.field == 'WorklogId' and time_condition:
                             worklog_ids.append(item.fromString)
 
