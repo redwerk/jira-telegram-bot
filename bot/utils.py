@@ -1,8 +1,10 @@
 import calendar
 import logging
 import re
+import smtplib
 import uuid
 from datetime import datetime, timedelta
+from email.mime.text import MIMEText
 from typing import Generator, List
 
 import pendulum
@@ -11,6 +13,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 hostname_re = re.compile(r'^http[s]?://([^:/\s]+)?$')
 http_ptotocol = re.compile(r'^http[s]?://')
+email_address = re.compile(r'([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)')
 
 JIRA_DATE_FORMAT = '%Y-%m-%dT%H:%M:%S.%f%z'
 USER_DATE_FORMAT = '%Y-%m-%d'
@@ -291,3 +294,41 @@ def generate_readable_name(host_url: str) -> str:
     name_list = name.replace('.com', '').split('.')
 
     return ' '.join([word[0].upper() + word[1:] for word in name_list])
+
+
+def get_email_address(text):
+    """Gets email from the message"""
+    email = email_address.findall(text)
+    return email[0] if email else False
+
+
+def get_text_without_email(text):
+    """Delete email address from the message"""
+    text = email_address.sub('', text)
+    return text.strip()
+
+
+def generate_email_message(sender_email, recipient_email, subject, message):
+    """Generates an e-mail for further sending"""
+    email_message = MIMEText(message)
+    email_message['Subject'] = subject
+    email_message['From'] = sender_email if sender_email else 'noreply@redwerk.com'
+    email_message['To'] = recipient_email
+
+    return email_message
+
+
+def send_email(host, port, user, password, message):
+    """Sends a message to the recipient"""
+    s = smtplib.SMTP_SSL(host, port)
+
+    try:
+        s.login(user=user, password=password)
+        s.send_message(message)
+    except smtplib.SMTPException as e:
+        logging.error('Error while sending a feedback email: {}'.format(e))
+        return False
+    else:
+        return True
+    finally:
+        s.quit()

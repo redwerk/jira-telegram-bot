@@ -42,6 +42,12 @@ OAUTH_SERVICE_URL = http://url.to.flask.service
 DOCS_PATH = /absolute/path/path/to/jira-telegram-bot/docs
 PRIVATE_KEY_PATH = /absolute/path/jira_privatekey.pem
 PUBLIC_KEY_PATH = /absolute/path/jira_publickey.pem
+
+FEEDBACK_RECIPIENT = <string>
+SMTP_HOST = <string>
+SMTP_PORT = <string>
+SMTP_USER = <string>
+SMTP_PASS = <string>
 ```
 
 For further deployment see [/docs](docs) folder

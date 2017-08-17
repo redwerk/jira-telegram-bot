@@ -26,6 +26,8 @@ class JiraBot:
         Deleted user credentials from DB
     /menu
         Displaying menu with main functions
+    /feedback
+        Displays help for sending feedback
     /help
         Returns commands and its descriptions
     """
@@ -36,6 +38,7 @@ class JiraBot:
         '/login - Authorizing via OAuth',
         '/add_host - Adding your own host',
         '/logout - Deleted user credentials from DB',
+        '/feedback - Displays help for sending feedback',
         '/help - Returns commands and its descriptions'
     ]
     issues_per_page = 10
@@ -53,6 +56,7 @@ class JiraBot:
         commands.TrackingProjectCommandFactory,
         commands.AddHostCommandFactory,
         commands.AddHostProcessCommandFactory,
+        commands.FeedbackMessageCommandFactory,
     ]
 
     def __init__(self):
