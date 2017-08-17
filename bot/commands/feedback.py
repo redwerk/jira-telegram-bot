@@ -22,8 +22,6 @@ class FeedbackMessageCommand(AbstractCommand):
             parse_mode=ParseMode.HTML
         )
 
-        return
-
 
 class FeedbackMessageCommandFactory(AbstractCommandFactory):
 
@@ -71,7 +69,6 @@ class SendFeedbackToEmailCommand(AbstractCommand):
             message = 'You specified the email address in an invalid format. See /feedback for more information.'
 
         bot.send_message(chat_id=chat_id, text=message)
-        return
 
 
 class SendFeedbackToEmailCommandFactory(AbstractCommandFactory):
