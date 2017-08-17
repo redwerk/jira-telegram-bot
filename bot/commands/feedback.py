@@ -1,20 +1,42 @@
-import os
-
 from decouple import config
 from telegram import ParseMode
-from telegram.ext import CommandHandler, Filters, MessageHandler
+from telegram.ext import CommandHandler
 
 from bot.commands.base import AbstractCommand, AbstractCommandFactory
-from bot.utils import check_email_address, generate_email_message, send_email
+from bot.utils import (generate_email_message, get_email_address,
+                       get_text_without_email, send_email)
 
 
 class FeedbackMessageCommand(AbstractCommand):
 
     def handler(self, bot, update, *args, **kwargs):
-        """Sends a help message with feedback instructions to user"""
+        """Gets feedback from the user. Generates a letter and sends it to the recipient"""
         chat_id = update.message.chat_id
-        with open(os.path.join(config('DOCS_PATH'), 'help_email.txt')) as file:
-            message = file.read()
+        message = 'Thanks for your feedback!'
+        raw_feedback = update.message.text.replace('/feedback', '').strip()
+
+        if not raw_feedback:
+            return
+
+        emails = get_email_address(raw_feedback)
+        email_text = get_text_without_email(raw_feedback)
+
+        email_message = generate_email_message(
+            sender_email=emails,
+            recipient_email=config('FEEDBACK_RECIPIENT'),
+            subject='JTB Feedback',
+            message=email_text
+        )
+        success = send_email(
+            config('SMTP_HOST'),
+            config('SMTP_PORT', cast=int),
+            config('SMTP_USER'),
+            config('SMTP_PASS'),
+            email_message
+        )
+
+        if not success:
+            message = 'A letter with your feedback was not sent. Please try again later.'
 
         bot.send_message(
             chat_id=chat_id,
@@ -29,50 +51,4 @@ class FeedbackMessageCommandFactory(AbstractCommandFactory):
         FeedbackMessageCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
 
     def command_callback(self):
-        return CommandHandler('feedback', self.command)
-
-
-class SendFeedbackToEmailCommand(AbstractCommand):
-
-    def handler(self, bot, update, *args, **kwargs):
-        """
-        Gets feedback from the user. Validates the e-mail address.
-        Generates a letter and sends it to the recipient
-        """
-        message = 'Thanks for your feedback!'
-        raw_text = update.message.text
-        chat_id = update.message.chat_id
-
-        email, *splitted_text = raw_text.split('\n\n')
-        email = email.strip()
-
-        if check_email_address(email):
-            email_message = generate_email_message(
-                sender_email=email,
-                recipient_email=config('FEEDBACK_RECIPIENT'),
-                subject='JTB Feedback',
-                message='\n'.join(splitted_text)
-            )
-            success = send_email(
-                config('SMTP_HOST'),
-                config('SMTP_PORT', cast=int),
-                config('SMTP_USER'),
-                config('SMTP_PASS'),
-                email_message
-            )
-
-            if not success:
-                message = 'A letter with your feedback was not sent. Please try again later.'
-        else:
-            message = 'You specified the email address in an invalid format. See /feedback for more information.'
-
-        bot.send_message(chat_id=chat_id, text=message)
-
-
-class SendFeedbackToEmailCommandFactory(AbstractCommandFactory):
-
-    def command(self, bot, update, *args, **kwargs):
-        SendFeedbackToEmailCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
-
-    def command_callback(self):
-        return MessageHandler(Filters.text, self.command, pass_user_data=True)
+        return CommandHandler('feedback', self.command, pass_args=True)

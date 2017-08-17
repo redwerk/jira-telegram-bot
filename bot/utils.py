@@ -13,7 +13,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 hostname_re = re.compile(r'^http[s]?://([^:/\s]+)?$')
 http_ptotocol = re.compile(r'^http[s]?://')
-email_address = re.compile(r'(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)')
+email_address = re.compile(r'([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)')
 
 JIRA_DATE_FORMAT = '%Y-%m-%dT%H:%M:%S.%f%z'
 USER_DATE_FORMAT = '%Y-%m-%d'
@@ -296,16 +296,23 @@ def generate_readable_name(host_url: str) -> str:
     return ' '.join([word[0].upper() + word[1:] for word in name_list])
 
 
-def check_email_address(email):
-    """Validating an email address"""
-    return True if email_address.match(email) else False
+def get_email_address(text):
+    """Gets email from the message"""
+    email = email_address.findall(text)
+    return email[0] if email else False
+
+
+def get_text_without_email(text):
+    """Delete email address from the message"""
+    text = email_address.sub('', text)
+    return text.strip()
 
 
 def generate_email_message(sender_email, recipient_email, subject, message):
     """Generates an e-mail for further sending"""
     email_message = MIMEText(message)
     email_message['Subject'] = subject
-    email_message['From'] = sender_email
+    email_message['From'] = sender_email if sender_email else 'noreply@redwerk.com'
     email_message['To'] = recipient_email
 
     return email_message

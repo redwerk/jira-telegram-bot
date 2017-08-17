@@ -1,8 +1,0 @@
-You can send an email with feedback at any time.
-To do this, send a text message with the <i>following format</i> to the chat with the bot:
-
-<b>your_email_address@example.com
-
-Message with your feedback</b>
-
-Don't forget about a blank line between email address and feedback message.

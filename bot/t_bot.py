@@ -57,7 +57,6 @@ class JiraBot:
         commands.AddHostCommandFactory,
         commands.AddHostProcessCommandFactory,
         commands.FeedbackMessageCommandFactory,
-        commands.SendFeedbackToEmailCommandFactory,
     ]
 
     def __init__(self):
