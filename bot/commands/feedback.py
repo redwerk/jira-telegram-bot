@@ -13,12 +13,8 @@ class FeedbackMessageCommand(AbstractCommand):
     def handler(self, bot, update, *args, **kwargs):
         """Sends a help message with feedback instructions to user"""
         chat_id = update.message.chat_id
-        message = None
-
         with open(os.path.join(config('DOCS_PATH'), 'help_email.txt')) as file:
             message = file.read()
-
-        print(message)
 
         bot.send_message(
             chat_id=chat_id,
