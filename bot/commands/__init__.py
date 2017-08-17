@@ -4,6 +4,7 @@ from .menu import MainMenuCommandFactory, MenuCommandFactory
 from .auth import OAuthMenuCommandFactory, OAuthCommandFactory, LogoutMenuCommandFactory, LogoutCommandFactory
 from .track import TrackingCommandFactory, TrackingProjectCommandFactory
 from .host import AddHostCommandFactory, AddHostProcessCommandFactory
+from .feedback import FeedbackMessageCommandFactory, SendFeedbackToEmailCommandFactory
 
 
 __all__ = (
@@ -20,4 +21,6 @@ __all__ = (
     "TrackingProjectCommandFactory",
     "AddHostCommandFactory",
     "AddHostProcessCommandFactory",
+    "FeedbackMessageCommandFactory",
+    "SendFeedbackToEmailCommandFactory",
 )
