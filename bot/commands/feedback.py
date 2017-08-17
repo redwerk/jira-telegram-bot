@@ -46,9 +46,7 @@ class SendFeedbackToEmailCommand(AbstractCommand):
         email, *splitted_text = raw_text.split('\n\n')
         email = email.strip()
 
-        valid_email = check_email_address(email)
-
-        if valid_email:
+        if check_email_address(email):
             email_message = generate_email_message(
                 sender_email=email,
                 recipient_email=config('FEEDBACK_RECIPIENT'),
