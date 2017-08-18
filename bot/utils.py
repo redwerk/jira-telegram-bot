@@ -4,7 +4,9 @@ import re
 import smtplib
 import uuid
 from datetime import datetime, timedelta
+from email.message import EmailMessage
 from email.mime.text import MIMEText
+from email.utils import localtime
 from typing import Generator, List
 
 import pendulum
@@ -332,3 +334,33 @@ def send_email(host, port, user, password, message):
         return True
     finally:
         s.quit()
+
+
+def emit(self, record):
+    """
+    Emit a record.
+
+    Format the record and send it to the specified addressees.
+    Used SMTP_SSL connection for send emails
+    """
+    try:
+        port = self.mailport
+
+        if not port:
+            port = smtplib.SMTP_PORT
+        smtp = smtplib.SMTP_SSL(self.mailhost, port, timeout=self.timeout)
+
+        msg = EmailMessage()
+        msg['From'] = self.fromaddr
+        msg['To'] = ','.join(self.toaddrs)
+        msg['Subject'] = self.getSubject(record)
+        msg['Date'] = localtime()
+        msg.set_content(self.format(record))
+
+        if self.username:
+            smtp.login(self.username, self.password)
+
+        smtp.send_message(msg)
+        smtp.quit()
+    except Exception:
+        self.handleError(record)
