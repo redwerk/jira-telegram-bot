@@ -43,11 +43,12 @@ DOCS_PATH = /absolute/path/path/to/jira-telegram-bot/docs
 PRIVATE_KEY_PATH = /absolute/path/jira_privatekey.pem
 PUBLIC_KEY_PATH = /absolute/path/jira_publickey.pem
 
-FEEDBACK_RECIPIENT = <string>
-SMTP_HOST = <string>
-SMTP_PORT = <string>
-SMTP_USER = <string>
-SMTP_PASS = <string>
+FEEDBACK_RECIPIENT = feedback@email.com
+SMTP_HOST = smtp.company.com
+SMTP_PORT = 465
+SMTP_USER = username
+SMTP_PASS = password
+DEV_EMAILS = user1@email.com, user2@email.com
 ```
 
 For further deployment see [/docs](docs) folder
