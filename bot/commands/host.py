@@ -110,7 +110,7 @@ class AddHostCommandFactory(AbstractCommandFactory):
         AddHostCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
 
     def command_callback(self):
-        return CommandHandler('add_host', self.command, pass_args=True)
+        return CommandHandler('host', self.command, pass_args=True)
 
 
 class AddHostProcessCommand(AbstractCommand):

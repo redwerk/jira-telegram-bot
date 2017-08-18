@@ -20,7 +20,7 @@ class JiraBot:
         Start to work with user
     /login
         Authorizing via OAuth
-    /add_host
+    /host
         Adding your own host
     /logout
         Deleted user credentials from DB
@@ -36,7 +36,7 @@ class JiraBot:
         '/start - Start to work with user',
         '/menu - Displays menu with main functions',
         '/login - Authorizing via OAuth',
-        '/add_host - Adding your own host',
+        '/host - Adding your own host',
         '/logout - Deleted user credentials from DB',
         '/feedback - Displays help for sending feedback',
         '/help - Returns commands and its descriptions'
@@ -86,7 +86,7 @@ class JiraBot:
     def start_command(self, bot, update):
         first_name = update.message.from_user.first_name
         message = 'Hi, {}! You can see the list of commands using /help. ' \
-                  'Please, enter a Jira host via /add_host https://example.com'.format(first_name)
+                  'Please, enter a Jira host via /host https://example.com'.format(first_name)
 
         telegram_id = update.message.from_user.id
         user_exists = self.db.is_user_exists(telegram_id)
