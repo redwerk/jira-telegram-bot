@@ -81,9 +81,9 @@ class JiraBackend:
         try:
             jira_conn = jira.JIRA(
                 server=host,
-                max_retries=1
+                max_retries=0
             )
-        except (jira.JIRAError, ConnectionError) as e:
+        except (jira.JIRAError, ConnectionError):
             return False
         else:
             jira_conn.server_info()
