@@ -138,12 +138,13 @@ class AddHostProcessCommand(AbstractCommand):
         )
 
         if not utils.validates_hostname(host_url):
-            host_url = 'https://' + host_url
 
-        if not self._bot_instance.jira.is_jira_app(host_url):
-            host_url = host_url.replace('https://', 'http://')
+            for protocol in ('https://', 'http://'):
+                host_url = protocol + host_url
 
-            if not self._bot_instance.jira.is_jira_app(host_url):
+                if self._bot_instance.jira.is_jira_app(host_url):
+                    break
+            else:
                 bot.edit_message_text(
                     chat_id=scope['chat_id'],
                     message_id=scope['message_id'],

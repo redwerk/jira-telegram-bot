@@ -142,7 +142,6 @@ class MongoBackend:
         """Search a host in DB by pattern matching"""
         collection = self._get_collection('host', kwargs)
         host = collection.find_one({'url': {'$regex': 'http(s)://' + host}})
-
         return host
 
     @mongodb_connect
