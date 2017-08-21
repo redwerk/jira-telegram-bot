@@ -340,7 +340,7 @@ class JiraBackend:
                     worklogs[issue.id] = issue_data
 
         except AttributeError as e:
-            logging.warning(e)
+            logging.error(e)
         else:
             return worklogs
 

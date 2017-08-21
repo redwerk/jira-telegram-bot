@@ -103,7 +103,7 @@ class JiraBot:
             transaction_status = self.db.create_user(data)
 
             if not transaction_status:
-                logging.warning(
+                logging.error(
                     'Error while creating a new user via '
                     '/start command, username: {}'.format(update.message.from_user.username)
                 )
@@ -183,7 +183,7 @@ class JiraBot:
             status = self.db.create_cache(key, splitted_data, page_count)
 
             if not status:
-                logging.warning('An attempt to write content to the cache failed: {}'.format(key))
+                logging.error('An attempt to write content to the cache failed: {}'.format(key))
 
             # return the first page
             formatted_issues = '\n\n'.join(splitted_data[0])

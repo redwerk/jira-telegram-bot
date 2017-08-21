@@ -39,7 +39,7 @@ class JiraOAuthApp:
         # host validation
         if not self._jira_settings:
             msg = 'No setting for {}'.format(host)
-            logging.warning(msg)
+            logging.error(msg)
             raise AttributeError
 
     @property
@@ -120,7 +120,7 @@ class AuthorizeView(SendToChatMixin, OAuthJiraBaseView):
         try:
             return self.jira_app.authorize(callback=callback)
         except OAuthException as e:
-            logging.warning(e.message)
+            logging.error(e.message)
             message = '{}\nDid you create an Application link in your Jira?'.format(e.message)
             self.send_to_chat(session['telegram_id'], message)
             return redirect(bot_url)
@@ -160,14 +160,14 @@ class OAuthAuthorizedView(SendToChatMixin, OAuthJiraBaseView):
 
         if not jira_host:
             message = 'Settings for the {} are not found in the database'.format(session['host'])
-            logging.warning(message)
+            logging.error(message)
             self.send_to_chat(session['telegram_id'], message)
             return redirect(bot_url)
 
         try:
             authed_jira = jira.JIRA(self.jira_app.base_server_url, oauth=oauth_dict)
         except jira.JIRAError as e:
-            logging.warning('Status: {}, message: {}'.format(e.status_code, e.text))
+            logging.error('Status: {}, message: {}'.format(e.status_code, e.text))
         else:
             username = authed_jira.myself().get('key')
             data = self.get_auth_data(
@@ -201,7 +201,7 @@ class OAuthAuthorizedView(SendToChatMixin, OAuthJiraBaseView):
 
         if not transaction_status:
             message = 'Data cannot save into DB. Please try again later.'
-            logging.warning(
+            logging.error(
                 "Data didn't save into DB. "
                 "telegram_id: {}, jira_host: {}".format(session['telegram_id'], jira_host['url'])
             )
