@@ -19,7 +19,7 @@ class AddHostCommand(AbstractCommand):
         If not - request for adding a new host into DB.
         """
         chat_id = update.message.chat_id
-        data = kwargs.get('args')[0]
+        domain_name = kwargs.get('args')[0]
         user_exists = self._bot_instance.db.is_user_exists(chat_id)
 
         if not user_exists:
@@ -30,19 +30,13 @@ class AddHostCommand(AbstractCommand):
             )
             return
 
-        if not data:
+        if not domain_name:
             return
 
-        if not utils.validates_hostname(data):
-            bot.send_message(
-                chat_id=chat_id,
-                text='<b>Wrong format.</b> Use the following format:\n'
-                     'https://jira.redwerk.com',
-                parse_mode=ParseMode.HTML
-            )
-            return
-
-        jira_host = self._bot_instance.db.get_host_data(data)
+        if not utils.validates_hostname(domain_name):
+            jira_host = self._bot_instance.db.search_host(domain_name)
+        else:
+            jira_host = self._bot_instance.db.get_host_data(domain_name)
 
         if jira_host and jira_host.get('is_confirmed'):
             message = 'Follow the link to confirm authorization\n{}'.format(
@@ -66,7 +60,7 @@ class AddHostCommand(AbstractCommand):
         else:
             button_list = [
                 InlineKeyboardButton(
-                    'Yes', callback_data='add_host:{}'.format(data)
+                    'Yes', callback_data='add_host:{}'.format(domain_name)
                 ),
                 InlineKeyboardButton(
                     'No', callback_data='add_host:{}'.format(self.negative_answer)
@@ -116,7 +110,7 @@ class AddHostCommandFactory(AbstractCommandFactory):
         AddHostCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
 
     def command_callback(self):
-        return CommandHandler('add_host', self.command, pass_args=True)
+        return CommandHandler('host', self.command, pass_args=True)
 
 
 class AddHostProcessCommand(AbstractCommand):
@@ -143,13 +137,20 @@ class AddHostProcessCommand(AbstractCommand):
             text='Processing...',
         )
 
-        if not self._bot_instance.jira.is_jira_app(host_url):
-            bot.edit_message_text(
-                chat_id=scope['chat_id'],
-                message_id=scope['message_id'],
-                text="It's not a Jira application",
-            )
-            return
+        if not utils.validates_hostname(host_url):
+
+            for protocol in ('https://', 'http://'):
+                host_url = protocol + host_url
+
+                if self._bot_instance.jira.is_jira_app(host_url):
+                    break
+            else:
+                bot.edit_message_text(
+                    chat_id=scope['chat_id'],
+                    message_id=scope['message_id'],
+                    text="It's not a Jira application",
+                )
+                return
 
         host_data = {
             'url': host_url,

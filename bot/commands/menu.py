@@ -273,7 +273,7 @@ class ChooseJiraHostMenuCommand(AbstractCommand):
                 )
 
         if not button_list:
-            message = "You haven't specified any hosts. Use /add_host command for this"
+            message = "You haven't specified any hosts. Use /host command for this"
 
         reply_markup = InlineKeyboardMarkup(utils.build_menu(
             button_list, n_cols=2

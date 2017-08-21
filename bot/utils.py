@@ -231,7 +231,7 @@ def add_time(date: datetime, hours=0, minutes=0) -> datetime:
     try:
         date += additional_time
     except TypeError as e:
-        logging.warning(e)
+        logging.error(e)
 
     return date
 
@@ -258,7 +258,7 @@ def read_rsa_key(path):
         file = open(path, 'r')
         key = file.read()
     except FileNotFoundError as e:
-        logging.warning('RSA key did not found by path: {}'.format(path))
+        logging.error('RSA key did not found by path: {}'.format(path))
 
     return key
 
