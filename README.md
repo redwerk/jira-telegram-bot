@@ -44,10 +44,6 @@ PRIVATE_KEY_PATH = /absolute/path/jira_privatekey.pem
 PUBLIC_KEY_PATH = /absolute/path/jira_publickey.pem
 
 FEEDBACK_RECIPIENT = feedback@email.com
-SMTP_HOST = smtp.company.com
-SMTP_PORT = 465
-SMTP_USER = username
-SMTP_PASS = password
 DEV_EMAILS = user1@email.com, user2@email.com
 ```
 

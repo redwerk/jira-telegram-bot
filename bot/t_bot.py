@@ -38,7 +38,6 @@ class JiraBot:
         '/login - Initiates authorization',
         '/host jira.yourcompany.com - Adds user host (no limits for the number of hosts)',
         '/logout - Deletes user credentials from DB',
-        '/feedback - Give us a feedback (add your email for instant reply)',
         '/help - Returns commands and its descriptions'
     ]
     issues_per_page = 10
@@ -56,7 +55,6 @@ class JiraBot:
         commands.TrackingProjectCommandFactory,
         commands.AddHostCommandFactory,
         commands.AddHostProcessCommandFactory,
-        commands.FeedbackMessageCommandFactory,
     ]
 
     def __init__(self):

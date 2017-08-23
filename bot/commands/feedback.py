@@ -27,13 +27,7 @@ class FeedbackMessageCommand(AbstractCommand):
             subject='JTB Feedback',
             message=email_text
         )
-        success = send_email(
-            config('SMTP_HOST'),
-            config('SMTP_PORT', cast=int),
-            config('SMTP_USER'),
-            config('SMTP_PASS'),
-            email_message
-        )
+        success = send_email(email_message)
 
         if not success:
             message = 'Your feedback was not sent. Please try again later.'
