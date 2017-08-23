@@ -23,6 +23,7 @@
 
 ```
 BOT_TOKEN = <string>
+WORKERS = <integer>
 SECRET_KEY = <string> # from cryptography.fernet import Fernet; Fernet.generate_key()
 
 DB_HOST = <string>
