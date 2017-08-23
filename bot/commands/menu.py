@@ -57,7 +57,7 @@ class TrackingMenuCommand(AbstractCommand):
         tracking_button_list = [
             InlineKeyboardButton('My time', callback_data='tracking-my'),
             InlineKeyboardButton('Project time', callback_data='tracking-p'),
-            InlineKeyboardButton('Project time by user', callback_data='tracking-pu')
+            InlineKeyboardButton('Project time by developer', callback_data='tracking-pu')
         ]
 
         reply_markup = InlineKeyboardMarkup(utils.build_menu(tracking_button_list, n_cols=2))
@@ -65,7 +65,7 @@ class TrackingMenuCommand(AbstractCommand):
         bot.edit_message_text(
             chat_id=scope['chat_id'],
             message_id=scope['message_id'],
-            text='What you want to see?',
+            text='What do you want to see?',
             reply_markup=reply_markup
         )
 
@@ -86,7 +86,7 @@ class MainMenuCommandFactory(AbstractCommandFactory):
         else:
             bot.send_message(
                 chat_id=telegram_id,
-                text='<b>You did not specify credential data. Please, login and try again</b>',
+                text='<b>You did not specify credential data. Enter /login command and try again</b>',
                 parse_mode=ParseMode.HTML
             )
 
@@ -123,7 +123,7 @@ class ChooseDeveloperMenuCommand(AbstractCommand):
 
         if not developers:
             bot.edit_message_text(
-                text="Sorry, can't get developers at the moment",
+                text="Sorry, can't get developers list at the moment.",
                 chat_id=scope['chat_id'],
                 message_id=scope['message_id']
             )
@@ -165,7 +165,7 @@ class ChooseProjectMenuCommand(AbstractCommand):
 
         if not projects:
             bot.edit_message_text(
-                text="Sorry, can't get projects",
+                text="Sorry, can't get projects list at the moment.",
                 chat_id=scope['chat_id'],
                 message_id=scope['message_id']
             )
@@ -254,7 +254,7 @@ class ChooseJiraHostMenuCommand(AbstractCommand):
         button_list = list()
         telegram_id = update.message.chat_id
         user = self._bot_instance.db.get_user_data(telegram_id)
-        message = 'On which host do you want to log in?'
+        message = 'Which host do you want to log in to?'
 
         if user:
             authorized_host_url = user.get('host_url')
@@ -273,7 +273,7 @@ class ChooseJiraHostMenuCommand(AbstractCommand):
                 )
 
         if not button_list:
-            message = "You haven't specified any hosts. Use /host command for this"
+            message = "You haven't specified any hosts. Please, enter Jira host by typing /host jira.yourcompany.com"
 
         reply_markup = InlineKeyboardMarkup(utils.build_menu(
             button_list, n_cols=2
@@ -309,7 +309,6 @@ class LogoutMenuCommand(AbstractCommand):
 
         bot.send_message(
             chat_id=update.message.chat_id,
-            text='Are you sure you want to logout? If approved, all credentials '
-                 'associated with this user will be deleted.',
+            text='Are you sure you want to log out? All credentials associated with this user will be lost.',
             reply_markup=reply_markup
         )

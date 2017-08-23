@@ -36,7 +36,7 @@ class FeedbackMessageCommand(AbstractCommand):
         )
 
         if not success:
-            message = 'A letter with your feedback was not sent. Please try again later.'
+            message = 'Your feedback was not sent. Please try again later.'
 
         bot.send_message(
             chat_id=chat_id,

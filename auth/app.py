@@ -121,7 +121,7 @@ class AuthorizeView(SendToChatMixin, OAuthJiraBaseView):
             return self.jira_app.authorize(callback=callback)
         except OAuthException as e:
             logging.error(e.message)
-            message = '{}\nDid you create an Application link in your Jira?'.format(e.message)
+            message = '{}\nPlease check if you created an Application link in your Jira'.format(e.message)
             self.send_to_chat(session['telegram_id'], message)
             return redirect(bot_url)
 
@@ -143,7 +143,7 @@ class OAuthAuthorizedView(SendToChatMixin, OAuthJiraBaseView):
             answer = e.data.get('oauth_problem')
 
             if answer and answer == 'permission_denied':
-                message = 'User declined the authorization request'
+                message = 'Authorization request declined by user'
 
             self.send_to_chat(session['telegram_id'], message)
             return redirect(bot_url)
@@ -159,7 +159,7 @@ class OAuthAuthorizedView(SendToChatMixin, OAuthJiraBaseView):
         user_exists = db.is_user_exists(session['telegram_id'])
 
         if not jira_host:
-            message = 'Settings for the {} are not found in the database'.format(session['host'])
+            message = 'No settings found for {} in the database'.format(session['host'])
             logging.error(message)
             self.send_to_chat(session['telegram_id'], message)
             return redirect(bot_url)
@@ -200,7 +200,7 @@ class OAuthAuthorizedView(SendToChatMixin, OAuthJiraBaseView):
                 transaction_status = db.create_user(data)
 
         if not transaction_status:
-            message = 'Data cannot save into DB. Please try again later.'
+            message = 'Impossible to save data into the database. Please try again later.'
             logging.error(
                 "Data didn't save into DB. "
                 "telegram_id: {}, jira_host: {}".format(session['telegram_id'], jira_host['url'])

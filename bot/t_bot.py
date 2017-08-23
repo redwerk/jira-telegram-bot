@@ -17,28 +17,28 @@ class JiraBot:
 
     Commands (synopsis and description):
     /start
-        Start to work with user
+        Starts the bot
     /login
-        Authorizing via OAuth
-    /host
-        Adding your own host
+        Initiates authorization
+    /host jira.yourcompany.com
+        Adds user host (no limits for the number of hosts)
     /logout
-        Deleted user credentials from DB
+        Deletes user credentials from DB
     /menu
-        Displaying menu with main functions
+        Displays options to interact with Jira
     /feedback
-        Displays help for sending feedback
+        Give us a feedback (add your email for instant reply)
     /help
         Returns commands and its descriptions
     """
 
     bot_commands = [
-        '/start - Start to work with user',
-        '/menu - Displays menu with main functions',
-        '/login - Authorizing via OAuth',
-        '/host - Adding your own host',
-        '/logout - Deleted user credentials from DB',
-        '/feedback - Displays help for sending feedback',
+        '/start - Starts the bot',
+        '/menu - Displays options to interact with Jira',
+        '/login - Initiates authorization',
+        '/host jira.yourcompany.com - Adds user host (no limits for the number of hosts)',
+        '/logout - Deletes user credentials from DB',
+        '/feedback - Give us a feedback (add your email for instant reply)',
         '/help - Returns commands and its descriptions'
     ]
     issues_per_page = 10
@@ -85,8 +85,7 @@ class JiraBot:
 
     def start_command(self, bot, update):
         first_name = update.message.from_user.first_name
-        message = 'Hi, {}! You can see the list of commands using /help. ' \
-                  'Please, enter a Jira host via /host https://example.com'.format(first_name)
+        message = 'Hi, {}! Please, enter Jira host by typing /host jira.yourcompany.com'.format(first_name)
 
         telegram_id = update.message.from_user.id
         user_exists = self.db.is_user_exists(telegram_id)

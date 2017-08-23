@@ -81,7 +81,7 @@ class TrackingUserWorklogCommand(AbstractCommand):
             bot.edit_message_text(
                 chat_id=scope['chat_id'],
                 message_id=scope['message_id'],
-                text='End date can not be less than the start date',
+                text='End date cannot be less than the start date',
             )
             return
 
@@ -135,7 +135,7 @@ class TrackingProjectWorklogCommand(AbstractCommand):
             bot.edit_message_text(
                 chat_id=scope['chat_id'],
                 message_id=scope['message_id'],
-                text='End date can not be less than the start date',
+                text='End date cannot be less than the start date',
             )
             return
 
@@ -196,7 +196,7 @@ class TrackingProjectUserWorklogCommand(AbstractCommand):
             bot.edit_message_text(
                 chat_id=scope['chat_id'],
                 message_id=scope['message_id'],
-                text='End date can not be less than the start date',
+                text='End date cannot be less than the start date',
             )
             return
 
@@ -284,7 +284,7 @@ class TrackingCommandFactory(AbstractCommandFactory):
             permission, status = self._bot_instance.jira.is_admin_permissions(**credentials)
 
             if not permission:
-                message = 'You have no permissions to use this function'
+                message = 'You have no permissions to use this function. Contact your Jira administrator'
                 bot.edit_message_text(text=message, chat_id=scope['chat_id'], message_id=scope['message_id'])
                 return
 
@@ -330,7 +330,7 @@ class TrackingCommandFactory(AbstractCommandFactory):
 
         if isinstance(obj, TrackingUserWorklogCommand):
             bot.edit_message_text(
-                text='Please wait, your request is processing',
+                text='Please, wait. Processing your request...',
                 chat_id=scope['chat_id'],
                 message_id=scope['message_id']
             )
@@ -380,7 +380,7 @@ class TrackingProjectCommandFactory(AbstractCommandFactory):
 
         if isinstance(obj, (TrackingProjectWorklogCommand, TrackingProjectUserWorklogCommand)):
             bot.edit_message_text(
-                text='Please wait, your request is processing',
+                text='Please, wait. Processing your request...',
                 chat_id=scope['chat_id'],
                 message_id=scope['message_id']
             )

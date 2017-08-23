@@ -18,7 +18,7 @@ class UserUnresolvedIssuesCommand(AbstractCommand):
         self.show_title(bot, '<b>All your unresolved tasks:</b>', scope['chat_id'], scope['message_id'])
 
         if not issues:
-            self.show_content(bot, 'You have not unresolved tasks at this time', scope['chat_id'])
+            self.show_content(bot, 'Woohoo! You have no unresolved tasks', scope['chat_id'])
             return
 
         key = '{}:{}'.format(scope['telegram_id'], credentials.get('username'))
@@ -100,12 +100,12 @@ class ProjectStatusIssuesCommand(AbstractCommand):
 
         UserUnresolvedIssuesCommand.show_title(
             bot,
-            'All tasks with <b>«{}»</b> status on project <b>{}</b>:'.format(status, project),
+            'All tasks with <b>«{}»</b> status in <b>{}</b> project:'.format(status, project),
             scope['chat_id'],
             scope['message_id'])
 
         if not issues:
-            message = "Project <b>{}</b> doesn't have any tasks with status <b>«{}»</b>".format(project, status)
+            message = "No tasks with <b>«{}»</b> status in <b>{}</b> project ".format(status, project)
             UserUnresolvedIssuesCommand.show_content(bot, message, scope['chat_id'])
             return
 
