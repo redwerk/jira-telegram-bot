@@ -21,7 +21,6 @@ email_error_handler = SMTPHandler(
 )
 email_fomatter = logger.handlers[0].formatter
 email_error_handler.setFormatter(email_fomatter)
-logger.addHandler(email_error_handler)
 
 
 if __name__ == '__main__':
