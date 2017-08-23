@@ -73,9 +73,9 @@ class AddHostCommand(AbstractCommand):
 
             bot.send_message(
                 chat_id=chat_id,
-                text='This host is not supported at this time, '
+                text='This host is not supported at the moment, '
                      'do you want to go through the procedure of adding a new host?\n'
-                     '<b>NOTE:</b> for add a generated data into Jira you must have administrator permissions',
+                     '<b>NOTE:</b> you must have administrator permissions to add a generated data into Jira',
                 reply_markup=reply_markup,
                 parse_mode=ParseMode.HTML
             )
@@ -148,7 +148,8 @@ class AddHostProcessCommand(AbstractCommand):
                 bot.edit_message_text(
                     chat_id=scope['chat_id'],
                     message_id=scope['message_id'],
-                    text="It's not a Jira application",
+                    text="This is not Jira host. "
+                         "Please try again or use /feedback command so we can help you to fix this issue",
                 )
                 return
 
