@@ -4,9 +4,7 @@ import re
 import smtplib
 import uuid
 from datetime import datetime, timedelta
-from email.message import EmailMessage
 from email.mime.text import MIMEText
-from email.utils import localtime
 from typing import Generator, List
 
 import pendulum
@@ -314,18 +312,17 @@ def generate_email_message(sender_email, recipient_email, subject, message):
     """Generates an e-mail for further sending"""
     email_message = MIMEText(message)
     email_message['Subject'] = subject
-    email_message['From'] = sender_email if sender_email else 'noreply@redwerk.com'
+    email_message['From'] = sender_email if sender_email else 'root@jirabot.redwer.com'
     email_message['To'] = recipient_email
 
     return email_message
 
 
-def send_email(host, port, user, password, message):
+def send_email(message):
     """Sends a message to the recipient"""
-    s = smtplib.SMTP_SSL(host, port)
+    s = smtplib.SMTP('localhost')
 
     try:
-        s.login(user=user, password=password)
         s.send_message(message)
     except smtplib.SMTPException as e:
         logging.error('Error while sending a feedback email: {}'.format(e))
@@ -334,33 +331,3 @@ def send_email(host, port, user, password, message):
         return True
     finally:
         s.quit()
-
-
-def emit(self, record):
-    """
-    Emit a record.
-
-    Format the record and send it to the specified addressees.
-    Used SMTP_SSL connection for send emails
-    """
-    try:
-        port = self.mailport
-
-        if not port:
-            port = smtplib.SMTP_PORT
-        smtp = smtplib.SMTP_SSL(self.mailhost, port, timeout=self.timeout)
-
-        msg = EmailMessage()
-        msg['From'] = self.fromaddr
-        msg['To'] = ','.join(self.toaddrs)
-        msg['Subject'] = self.getSubject(record)
-        msg['Date'] = localtime()
-        msg.set_content(self.format(record))
-
-        if self.username:
-            smtp.login(self.username, self.password)
-
-        smtp.send_message(msg)
-        smtp.quit()
-    except Exception:
-        self.handleError(record)
