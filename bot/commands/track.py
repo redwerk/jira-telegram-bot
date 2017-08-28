@@ -67,7 +67,7 @@ class TrackingUserWorklogCommand(AbstractCommand):
         try:
             hours = seconds / hour_in_seconds
         except TypeError:
-            logging.error('Seconds are not a numeric type: {} {}'.format(type(seconds), seconds))
+            logging.exception('Seconds are not a numeric type: {} {}'.format(type(seconds), seconds))
 
         return self.templates.get('time_spent').format(start_date, end_date, round(hours, 2))
 

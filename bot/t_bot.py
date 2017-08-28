@@ -100,7 +100,7 @@ class JiraBot:
             transaction_status = self.db.create_user(data)
 
             if not transaction_status:
-                logging.error(
+                logging.exception(
                     'Error while creating a new user via '
                     '/start command, username: {}'.format(update.message.from_user.username)
                 )
@@ -180,7 +180,7 @@ class JiraBot:
             status = self.db.create_cache(key, splitted_data, page_count)
 
             if not status:
-                logging.error('An attempt to write content to the cache failed: {}'.format(key))
+                logging.exception('An attempt to write content to the cache failed: {}'.format(key))
 
             # return the first page
             formatted_issues = '\n\n'.join(splitted_data[0])
@@ -202,5 +202,5 @@ class JiraBot:
     def __error_callback(bot, update, error):
         try:
             raise error
-        except (Unauthorized, BadRequest, TimedOut, NetworkError, ChatMigrated, TelegramError) as e:
-            logging.error('{}'.format(e))
+        except (Unauthorized, BadRequest, NetworkError, ChatMigrated, TelegramError) as e:
+            logging.exception('{}'.format(e))
