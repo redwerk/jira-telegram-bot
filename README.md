@@ -44,6 +44,7 @@ DOCS_PATH = /absolute/path/path/to/jira-telegram-bot/docs
 PRIVATE_KEY_PATH = /absolute/path/jira_privatekey.pem
 PUBLIC_KEY_PATH = /absolute/path/jira_publickey.pem
 
+LOGGER_EMAIL = logger@email.com
 FEEDBACK_RECIPIENT = feedback@email.com
 DEV_EMAILS = user1@email.com,user2@email.com
 ```

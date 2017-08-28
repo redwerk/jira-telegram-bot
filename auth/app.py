@@ -13,20 +13,13 @@ from oauthlib.oauth1 import SIGNATURE_RSA
 
 from bot.db import MongoBackend
 from bot.utils import read_rsa_key
+from run import SMTPHandlerNumb
 
 # common settings
 fileConfig('./logging_config.ini')
 logger = logging.getLogger()
-
-email_error_handler = SMTPHandler(
-    mailhost='localhost',
-    fromaddr='root@jirabot.redwer.com',
-    toaddrs=[email.strip() for email in config('DEV_EMAILS').split(',')],
-    subject='JTB ERRORS',
-)
-email_fomatter = logger.handlers[0].formatter
-email_error_handler.setFormatter(email_fomatter)
-logger.addHandler(email_error_handler)
+logger.handlers[SMTPHandlerNumb].fromaddr = config('LOGGER_EMAIL')
+logger.handlers[SMTPHandlerNumb].toaddrs = [email.strip() for email in config('DEV_EMAILS').split(',')]
 
 bot_url = config('BOT_URL')
 db = MongoBackend()
