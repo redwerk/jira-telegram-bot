@@ -1,5 +1,6 @@
 import logging
 from logging.config import fileConfig
+from logging.handlers import SMTPHandler
 
 from flask import Flask, redirect, request, session, url_for
 from flask.views import View
@@ -12,9 +13,14 @@ from oauthlib.oauth1 import SIGNATURE_RSA
 
 from bot.db import MongoBackend
 from bot.utils import read_rsa_key
+from run import SMTPHandlerNumb
 
 # common settings
 fileConfig('./logging_config.ini')
+logger = logging.getLogger()
+logger.handlers[SMTPHandlerNumb].fromaddr = config('LOGGER_EMAIL')
+logger.handlers[SMTPHandlerNumb].toaddrs = [email.strip() for email in config('DEV_EMAILS').split(',')]
+
 bot_url = config('BOT_URL')
 db = MongoBackend()
 
@@ -39,7 +45,7 @@ class JiraOAuthApp:
         # host validation
         if not self._jira_settings:
             msg = 'No setting for {}'.format(host)
-            logging.error(msg)
+            logging.exception(msg)
             raise AttributeError
 
     @property
@@ -120,7 +126,7 @@ class AuthorizeView(SendToChatMixin, OAuthJiraBaseView):
         try:
             return self.jira_app.authorize(callback=callback)
         except OAuthException as e:
-            logging.error(e.message)
+            logging.exception('{}, Telegram ID: {}, Host: {}'.format(e.message, telegram_id, session['host']))
             message = '{}\nPlease check if you created an Application link in your Jira'.format(e.message)
             self.send_to_chat(session['telegram_id'], message)
             return redirect(bot_url)
@@ -160,14 +166,14 @@ class OAuthAuthorizedView(SendToChatMixin, OAuthJiraBaseView):
 
         if not jira_host:
             message = 'No settings found for {} in the database'.format(session['host'])
-            logging.error(message)
+            logging.exception(message)
             self.send_to_chat(session['telegram_id'], message)
             return redirect(bot_url)
 
         try:
             authed_jira = jira.JIRA(self.jira_app.base_server_url, oauth=oauth_dict)
         except jira.JIRAError as e:
-            logging.error('Status: {}, message: {}'.format(e.status_code, e.text))
+            logging.exception('Status: {}, message: {}'.format(e.status_code, e.text))
         else:
             username = authed_jira.myself().get('key')
             data = self.get_auth_data(
@@ -201,7 +207,7 @@ class OAuthAuthorizedView(SendToChatMixin, OAuthJiraBaseView):
 
         if not transaction_status:
             message = 'Impossible to save data into the database. Please try again later.'
-            logging.error(
+            logging.exception(
                 "Data didn't save into DB. "
                 "telegram_id: {}, jira_host: {}".format(session['telegram_id'], jira_host['url'])
             )

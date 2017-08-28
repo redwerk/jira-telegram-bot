@@ -29,7 +29,7 @@ def mongodb_connect(func):
         try:
             client.server_info()  # checking a connection to DB
         except (ServerSelectionTimeoutError, OperationFailure) as error:
-            logging.error("Can't connect to DB: {}".format(error))
+            logging.exception("Can't connect to DB: {}".format(error))
         else:
             db = client[db_name]
             kwargs.update({'db': db})

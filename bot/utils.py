@@ -229,7 +229,7 @@ def add_time(date: datetime, hours=0, minutes=0) -> datetime:
     try:
         date += additional_time
     except TypeError as e:
-        logging.error(e)
+        logging.exception(e)
 
     return date
 
@@ -256,7 +256,7 @@ def read_rsa_key(path):
         file = open(path, 'r')
         key = file.read()
     except FileNotFoundError as e:
-        logging.error('RSA key did not found by path: {}'.format(path))
+        logging.exception('RSA key did not found by path: {}'.format(path))
 
     return key
 
@@ -325,7 +325,7 @@ def send_email(message):
     try:
         s.send_message(message)
     except smtplib.SMTPException as e:
-        logging.error('Error while sending a feedback email: {}'.format(e))
+        logging.exception('Error while sending a feedback email: {}'.format(e))
         return False
     else:
         return True

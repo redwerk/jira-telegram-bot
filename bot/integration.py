@@ -135,7 +135,7 @@ class JiraBackend:
                 maxResults=200
             )
         except jira.JIRAError as e:
-            logging.error(
+            logging.exception(
                 'Error while getting {} issues:\n{}'.format(username, e)
             )
         else:
@@ -186,7 +186,7 @@ class JiraBackend:
                 maxResults=200
             )
         except jira.JIRAError as e:
-            logging.error(
+            logging.exception(
                 'Error while getting unresolved '
                 '{} issues:\n{}'.format(project, e)
             )
@@ -222,7 +222,7 @@ class JiraBackend:
                 maxResults=200
             )
         except jira.JIRAError as e:
-            logging.error(
+            logging.exception(
                 'Error while getting {} '
                 'issues with status = {}:\n{}'.format(project, status, e)
             )
@@ -249,7 +249,7 @@ class JiraBackend:
                 maxResults=1000
             )
         except jira.JIRAError as e:
-            logging.error(
+            logging.exception(
                 'Failed to get assigned or '
                 'watched {} questions:\n{}'.format(username, e)
             )
@@ -340,7 +340,7 @@ class JiraBackend:
                     worklogs[issue.id] = issue_data
 
         except AttributeError as e:
-            logging.error(e)
+            logging.exception(e)
         else:
             return worklogs
 
@@ -384,7 +384,7 @@ class JiraBackend:
                 maxResults=1000
             )
         except jira.JIRAError as e:
-            logging.error('Failed to get issues of {}:\n{}'.format(project, e))
+            logging.exception('Failed to get issues of {}:\n{}'.format(project, e))
 
         return self.obtain_worklogs(p_issues, start_date, end_date, kwargs)
 
@@ -407,7 +407,7 @@ class JiraBackend:
                 maxResults=1000
             )
         except jira.JIRAError as e:
-            logging.error('Failed to get issues of {} in {}:\n{}'.format(user, project, e))
+            logging.exception('Failed to get issues of {} in {}:\n{}'.format(user, project, e))
 
         return self.obtain_worklogs(p_issues, start_date, end_date, kwargs)
 
@@ -426,7 +426,7 @@ class JiraBackend:
         try:
             developers = jira_conn.group_members('jira-developers')
         except jira.JIRAError as e:
-            logging.error('Failed to get developers:\n{}'.format(e))
+            logging.exception('Failed to get developers:\n{}'.format(e))
         else:
             return [data['fullname'] for nick, data in developers.items()]
 
