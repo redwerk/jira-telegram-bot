@@ -1,6 +1,5 @@
 import logging
 from logging.config import fileConfig
-from logging.handlers import SMTPHandler
 
 from flask import Flask, redirect, request, session, url_for
 from flask.views import View

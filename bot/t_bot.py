@@ -2,7 +2,7 @@ import logging
 
 from decouple import config
 from telegram.error import (BadRequest, ChatMigrated, NetworkError,
-                            TelegramError, TimedOut, Unauthorized)
+                            TelegramError, Unauthorized)
 from telegram.ext import CommandHandler, Updater
 
 import bot.commands as commands
