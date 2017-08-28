@@ -1,5 +1,6 @@
 import logging
 from logging.config import fileConfig
+from logging.handlers import SMTPHandler
 
 from flask import Flask, redirect, request, session, url_for
 from flask.views import View
@@ -15,6 +16,18 @@ from bot.utils import read_rsa_key
 
 # common settings
 fileConfig('./logging_config.ini')
+logger = logging.getLogger()
+
+email_error_handler = SMTPHandler(
+    mailhost='localhost',
+    fromaddr='root@jirabot.redwer.com',
+    toaddrs=[email.strip() for email in config('DEV_EMAILS').split(',')],
+    subject='JTB ERRORS',
+)
+email_fomatter = logger.handlers[0].formatter
+email_error_handler.setFormatter(email_fomatter)
+logger.addHandler(email_error_handler)
+
 bot_url = config('BOT_URL')
 db = MongoBackend()
 
@@ -120,7 +133,7 @@ class AuthorizeView(SendToChatMixin, OAuthJiraBaseView):
         try:
             return self.jira_app.authorize(callback=callback)
         except OAuthException as e:
-            logging.error(e.message)
+            logging.error('{}, Telegram ID: {}, Host: {}'.format(e.message, telegram_id, session['host']))
             message = '{}\nPlease check if you created an Application link in your Jira'.format(e.message)
             self.send_to_chat(session['telegram_id'], message)
             return redirect(bot_url)

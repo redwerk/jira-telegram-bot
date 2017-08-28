@@ -45,7 +45,7 @@ PRIVATE_KEY_PATH = /absolute/path/jira_privatekey.pem
 PUBLIC_KEY_PATH = /absolute/path/jira_publickey.pem
 
 FEEDBACK_RECIPIENT = feedback@email.com
-DEV_EMAILS = user1@email.com, user2@email.com
+DEV_EMAILS = user1@email.com,user2@email.com
 ```
 
 For further deployment see [/docs](docs) folder

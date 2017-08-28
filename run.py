@@ -12,7 +12,7 @@ logger = logging.getLogger()
 email_error_handler = SMTPHandler(
     mailhost='localhost',
     fromaddr='root@jirabot.redwer.com',
-    toaddrs=config('DEV_EMAILS').split(', '),
+    toaddrs=[email.strip() for email in config('DEV_EMAILS').split(',')],
     subject='JTB ERRORS',
 )
 email_fomatter = logger.handlers[0].formatter
