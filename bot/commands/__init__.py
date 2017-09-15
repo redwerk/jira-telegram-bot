@@ -1,9 +1,9 @@
 from .issue import (IssueCommandFactory, ProjectIssuesFactory,
                     ContentPaginatorFactory)
 from .menu import MainMenuCommandFactory, MenuCommandFactory
-from .auth import OAuthMenuCommandFactory, OAuthCommandFactory, LogoutMenuCommandFactory, LogoutCommandFactory
+from .auth import (OAuthCommandFactory, OAuthLoginCommandFactory, AddHostProcessCommandFactory,
+                   LogoutMenuCommandFactory, LogoutCommandFactory)
 from .track import TrackingCommandFactory, TrackingProjectCommandFactory
-from .host import AddHostCommandFactory, AddHostProcessCommandFactory
 from .feedback import FeedbackMessageCommandFactory
 
 
@@ -13,13 +13,12 @@ __all__ = (
     "ContentPaginatorFactory",
     "MainMenuCommandFactory",
     "MenuCommandFactory",
-    "OAuthMenuCommandFactory",
     "OAuthCommandFactory",
+    "OAuthLoginCommandFactory",
+    "AddHostProcessCommandFactory",
     "LogoutMenuCommandFactory",
     "LogoutCommandFactory",
     "TrackingCommandFactory",
     "TrackingProjectCommandFactory",
-    "AddHostCommandFactory",
-    "AddHostProcessCommandFactory",
     "FeedbackMessageCommandFactory",
 )

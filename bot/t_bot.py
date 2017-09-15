@@ -12,31 +12,12 @@ from bot.integration import JiraBackend
 
 
 class JiraBot:
-    """
-    Bot to integrate with the JIRA service.
-
-    Commands (synopsis and description):
-    /start
-        Starts the bot
-    /login
-        Initiates authorization
-    /host jira.yourcompany.com
-        Adds user host (no limits for the number of hosts)
-    /logout
-        Deletes user credentials from DB
-    /menu
-        Displays options to interact with Jira
-    /feedback
-        Give us a feedback (add your email for instant reply)
-    /help
-        Returns commands and its descriptions
-    """
+    """Bot to integrate with the JIRA service"""
 
     bot_commands = [
         '/start - Starts the bot',
         '/menu - Displays options to interact with Jira',
-        '/login - Initiates authorization',
-        '/host jira.yourcompany.com - Adds user host (no limits for the number of hosts)',
+        '/oauth jira.yourcompany.com - Login into host using OAuth',
         '/logout - Deletes user credentials from DB',
         '/help - Returns commands and its descriptions'
     ]
@@ -47,13 +28,12 @@ class JiraBot:
         commands.ContentPaginatorFactory,
         commands.MainMenuCommandFactory,
         commands.MenuCommandFactory,
-        commands.OAuthMenuCommandFactory,
         commands.OAuthCommandFactory,
         commands.LogoutMenuCommandFactory,
         commands.LogoutCommandFactory,
         commands.TrackingCommandFactory,
         commands.TrackingProjectCommandFactory,
-        commands.AddHostCommandFactory,
+        commands.OAuthLoginCommandFactory,
         commands.AddHostProcessCommandFactory,
     ]
 
