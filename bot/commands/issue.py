@@ -9,19 +9,19 @@ from .menu import ChooseProjectMenuCommand, ChooseStatusMenuCommand
 
 class UserUnresolvedIssuesCommand(AbstractCommand):
 
-    def handler(self, bot, scope, credentials, *args, **kwargs):
+    def handler(self, bot, scope, auth_data, *args, **kwargs):
         """
         Receiving open user issues and modifying the current message
         :return: Message with a list of open user issues
         """
-        issues, status = self._bot_instance.jira.get_open_issues(**credentials)
+        issues, status = self._bot_instance.jira.get_open_issues(auth_data=auth_data)
         self.show_title(bot, '<b>All your unresolved tasks:</b>', scope['chat_id'], scope['message_id'])
 
         if not issues:
             self.show_content(bot, 'Woohoo! You have no unresolved tasks', scope['chat_id'])
             return
 
-        key = '{}:{}'.format(scope['telegram_id'], credentials.get('username'))
+        key = '{}:{}'.format(scope['telegram_id'], auth_data.username)
         formatted_issues, buttons = self._bot_instance.save_into_cache(data=issues, key=key)
         self.show_content(bot, formatted_issues, scope['chat_id'], buttons)
 
@@ -161,9 +161,9 @@ class IssueCommandFactory(AbstractCommandFactory):
         Call order: /menu > Issues > Any option
         """
         scope = self._bot_instance.get_query_scope(update)
-        credentials, message = self._bot_instance.get_and_check_cred(scope['telegram_id'])
+        auth_data, message = self._bot_instance.get_and_check_cred(scope['telegram_id'])
 
-        if not credentials:
+        if not auth_data:
             bot.edit_message_text(
                 text=message,
                 chat_id=scope['chat_id'],
@@ -172,7 +172,7 @@ class IssueCommandFactory(AbstractCommandFactory):
             return
 
         obj = self._command_factory_method(scope['data'])
-        obj.handler(bot, scope, credentials, pattern=self.patterns[scope['data']], footer='issues_menu')
+        obj.handler(bot, scope, auth_data, pattern=self.patterns[scope['data']], footer='issues_menu')
 
     def command_callback(self):
         return CallbackQueryHandler(self.command, pattern=r'^issues:')

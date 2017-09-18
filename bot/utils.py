@@ -350,3 +350,52 @@ def send_email(message):
         return True
     finally:
         s.quit()
+
+
+def is_user_exists(func):
+    """
+    Decorator for commands: checking the presence of the user in the database
+    It is recommended if the command will change the data in the database
+    """
+    def wrapper(*args, **kwargs):
+        try:
+            instance, bot, update = args
+        except IndexError as e:
+            logging.exception('is_user_exists decorator: {}'.format(e))
+            return
+
+        chat_id = update.message.chat_id
+        user_exists = instance._bot_instance.db.is_user_exists(chat_id)
+
+        if not user_exists:
+            bot.send_message(
+                chat_id=chat_id,
+                text='You are not in the database. Just call the /start command',
+            )
+            return
+        func(*args, **kwargs)
+
+    return wrapper
+
+
+def login_required(func):
+    def wrapper(*args, **kwargs):
+        try:
+            instance, bot, update = args
+        except IndexError as e:
+            logging.exception('login_required decorator: {}'.format(e))
+            return
+
+        chat_id = update.message.chat_id
+        auth, message = instance._bot_instance.get_and_check_cred(chat_id)
+
+        if not auth:
+            bot.send_message(
+                chat_id=chat_id,
+                text=message,
+            )
+            return
+        else:
+            func(*args, **kwargs)
+
+    return wrapper

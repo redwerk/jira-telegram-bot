@@ -103,26 +103,6 @@ class MongoBackend:
         return dict()
 
     @mongodb_connect
-    def get_user_credentials(self, telegram_id: int, *args, **kwargs) -> dict:
-        """Returns data for OAuth authorization and further processing"""
-        user = self.get_user_data(telegram_id)
-        host = None
-
-        if user:
-            host = self.get_host_data(user.get('host_url'))
-
-        if user and host:
-            return {
-                'username': user['username'],
-                'url': host['url'],
-                'access_token': user['access_token'],
-                'access_token_secret': user['access_token_secret'],
-                'consumer_key': host['consumer_key'],
-            }
-
-        return dict()
-
-    @mongodb_connect
     def create_host(self, host_data: dict, **kwargs) -> bool:
         collection = self._get_collection('host', kwargs)
         status = collection.insert(host_data)
