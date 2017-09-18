@@ -64,8 +64,9 @@ class LogoutCommand(AbstractCommand):
                 'username': None,
                 'host_url': None,
                 'auth_method': None,
-                'auth.oauth': None,
-                'auth.basic': None,
+                'auth.oauth.access_token': None,
+                'auth.oauth.access_token_secret': None,
+                'auth.basic.password': None,
             }
             status = self._bot_instance.db.update_user(scope['telegram_id'], reset_dict)
 
@@ -145,7 +146,6 @@ class OAuthLoginCommand(AbstractCommand):
             return
 
         else:
-            # TODO: Transfer the functionality of adding a new host to the factory to use in several commands
             button_list = [
                 InlineKeyboardButton(
                     'Yes', callback_data='add_host:{}'.format(domain_name)
@@ -226,22 +226,16 @@ class AddHostProcessCommand(AbstractCommand):
             text='Processing...',
         )
 
-        if not utils.validates_hostname(host_url):
+        host_url = self.check_hosturl(host_url)
 
-            for protocol in ('https://', 'http://'):
-                test_host_url = '{}{}'.format(protocol, host_url)
-
-                if self._bot_instance.jira.is_jira_app(test_host_url):
-                    host_url = test_host_url
-                    break
-            else:
-                bot.edit_message_text(
-                    chat_id=scope['chat_id'],
-                    message_id=scope['message_id'],
-                    text="This is not Jira host. "
-                         "Please try again or use /feedback command so we can help you to fix this issue",
-                )
-                return
+        if not host_url:
+            bot.edit_message_text(
+                chat_id=scope['chat_id'],
+                message_id=scope['message_id'],
+                text="This is not Jira host. "
+                     "Please try again or use /feedback command so we can help you to fix this issue",
+            )
+            return
 
         host_data = {
             'url': host_url,
@@ -263,6 +257,19 @@ class AddHostProcessCommand(AbstractCommand):
             parse_mode=ParseMode.HTML
         )
 
+    def check_hosturl(self, host_url):
+        if utils.validates_hostname(host_url):
+            return host_url
+
+        elif not utils.validates_hostname(host_url):
+            for protocol in ('https://', 'http://'):
+                test_host_url = '{}{}'.format(protocol, host_url)
+
+                if self._bot_instance.jira.is_jira_app(test_host_url):
+                    return test_host_url
+            else:
+                return False
+
 
 class AddHostProcessCommandFactory(AbstractCommandFactory):
 
@@ -271,3 +278,91 @@ class AddHostProcessCommandFactory(AbstractCommandFactory):
 
     def command_callback(self):
         return CallbackQueryHandler(self.command, pattern=r'^add_host:')
+
+
+class BasicLoginCommand(AbstractCommand):
+    """/connect <host> <username> <password> - Login into Jira via username and password"""
+
+    def handler(self, bot, update, *args, **kwargs):
+        chat_id = update.message.chat_id
+        user_exists = self._bot_instance.db.is_user_exists(chat_id)
+
+        if not user_exists:
+            bot.send_message(
+                chat_id=chat_id,
+                text='You are not in the database. Just call the /start command and '
+                     'repeat the procedure to add the host.',
+            )
+            return
+
+        auth_data = kwargs.get('args')
+        if not auth_data:
+            # if no parameters are passed
+            bot.send_message(
+                chat_id=chat_id,
+                text='You did not specify parameters for authorization',
+            )
+            return
+
+        try:
+            host, username, password = auth_data
+        except ValueError:
+            # if not passed all the parameters
+            bot.send_message(
+                chat_id=chat_id,
+                text='You have not specified all the parameters for authorization. '
+                     'Try again using the following instructions:\n'
+                     '/connect <host> <username> <password>',
+            )
+            return
+
+        bot.send_message(
+            chat_id=chat_id,
+            text='Authorization to <b>{}</b>...'.format(host),
+            parse_mode=ParseMode.HTML
+        )
+
+        # getting the URL to the Jira app
+        host_url = AddHostProcessCommand(self._bot_instance).check_hosturl(host)
+        if not host_url:
+            bot.send_message(
+                chat_id=chat_id,
+                text='This is not a Jira application. Please try again',
+            )
+            return
+
+        auth_status, *error = self._bot_instance.jira.check_basic_authorization(host_url, username, password)
+        if not auth_status:
+            bot.send_message(
+                chat_id=chat_id,
+                text=error[0],
+            )
+            return
+
+        basic_auth = {
+            'host_url': host_url,
+            'username': username,
+            'auth_method': 'basic',
+            'auth.basic.password': utils.encrypt_password(password)
+        }
+
+        status = self._bot_instance.db.update_user(chat_id, basic_auth)
+        if status:
+            bot.send_message(
+                chat_id=chat_id,
+                text='You have successfully logged on {}'.format(host_url),
+            )
+        else:
+            bot.send_message(
+                chat_id=chat_id,
+                text='Failed to save data to database, please try again later',
+            )
+
+
+class BasicLoginCommandFactory(AbstractCommandFactory):
+
+    def command(self, bot, update, *args, **kwargs):
+        BasicLoginCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
+
+    def command_callback(self):
+        return CommandHandler('connect', self.command, pass_args=True)

@@ -34,6 +34,7 @@ class JiraBot:
         commands.TrackingCommandFactory,
         commands.TrackingProjectCommandFactory,
         commands.OAuthLoginCommandFactory,
+        commands.BasicLoginCommandFactory,
         commands.AddHostProcessCommandFactory,
     ]
 
@@ -75,8 +76,8 @@ class JiraBot:
                 'username': None,
                 'auth_method': None,
                 'auth': {
-                    'oauth': None,
-                    'basic': None,
+                    'oauth': dict(access_token=None, access_token_secret=None),
+                    'basic': dict(password=None),
                 },
                 'allowed_hosts': list()
             }

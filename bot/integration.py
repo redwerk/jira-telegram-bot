@@ -105,6 +105,20 @@ class JiraBackend:
             return False, e.status_code
         else:
             jira_conn.kill_session()
+            return True
+
+    def check_basic_authorization(self, host, username, password):
+        """Check credentials using the basic (username, password) authorization method"""
+        try:
+            jira_conn = jira.JIRA(
+                server=host,
+                basic_auth=(username, password),
+                max_retries=1
+            )
+        except jira.JIRAError as e:
+            return False, self.login_error[e.status_code]
+        else:
+            jira_conn.kill_session()
             return True, OK_STATUS
 
     @staticmethod
