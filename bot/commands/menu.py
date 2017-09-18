@@ -98,14 +98,14 @@ class MenuCommandFactory(AbstractCommandFactory):
 
 class ChooseDeveloperMenuCommand(AbstractCommand):
 
-    def handler(self, bot, scope: dict, credentials: dict, *args, **kwargs):
+    def handler(self, bot, scope, auth_data, *args, **kwargs):
         """Displaying inline keyboard with developers names"""
 
         buttons = list()
         _callback = kwargs.get('pattern')
         _footer = kwargs.get('footer')
 
-        developers, status = self._bot_instance.jira.get_developers(**credentials)
+        developers, status = self._bot_instance.jira.get_developers(auth_data=auth_data)
 
         if not developers:
             bot.edit_message_text(
@@ -272,20 +272,20 @@ class ChooseJiraHostMenuCommand(AbstractCommand):
         )
 
 
-class LogoutMenuCommand(AbstractCommand):
+class DisconnectMenuCommand(AbstractCommand):
     positive_answer = 'Yes'
     negative_answer = 'No'
 
     def handler(self, bot, update, *args, **kwargs):
         """
-        Call order: /logout
+        /disconnect
         """
         button_list = [
             InlineKeyboardButton(
-                'Yes', callback_data='logout:{}'.format(self.positive_answer)
+                'Yes', callback_data='disconnect:{}'.format(self.positive_answer)
             ),
             InlineKeyboardButton(
-                'No', callback_data='logout:{}'.format(self.negative_answer)
+                'No', callback_data='disconnect:{}'.format(self.negative_answer)
             ),
         ]
 

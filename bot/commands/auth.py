@@ -8,7 +8,7 @@ from telegram.ext import CallbackQueryHandler, CommandHandler
 from bot import utils
 
 from .base import AbstractCommand, AbstractCommandFactory
-from .menu import LogoutMenuCommand
+from .menu import DisconnectMenuCommand
 
 
 class UserOAuthCommand(AbstractCommand):
@@ -41,25 +41,25 @@ class OAuthCommandFactory(AbstractCommandFactory):
         return CallbackQueryHandler(self.command, pattern=r'^oauth:')
 
 
-class LogoutMenuCommandFactory(AbstractCommandFactory):
+class DisconnectMenuCommandFactory(AbstractCommandFactory):
     """
-    /logout - request to delete credentials from the database
+    /disconnect - request to delete credentials from the database
     """
     def command(self, bot, update, *args, **kwargs):
-        LogoutMenuCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
+        DisconnectMenuCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
 
     def command_callback(self):
-        return CommandHandler('logout', self.command)
+        return CommandHandler('disconnect', self.command)
 
 
-class LogoutCommand(AbstractCommand):
+class DisconnectCommand(AbstractCommand):
 
     def handler(self, bot, update, *args, **kwargs):
         """Deletes user credentials from DB"""
         scope = self._bot_instance.get_query_scope(update)
-        answer = scope['data'].replace('logout:', '')
+        answer = scope['data'].replace('disconnect:', '')
 
-        if answer == LogoutMenuCommand.positive_answer:
+        if answer == DisconnectMenuCommand.positive_answer:
             reset_dict = {
                 'username': None,
                 'host_url': None,
@@ -94,18 +94,19 @@ class LogoutCommand(AbstractCommand):
             return
 
 
-class LogoutCommandFactory(AbstractCommandFactory):
+class DisconnectCommandFactory(AbstractCommandFactory):
 
     def command(self, bot, update, *args, **kwargs):
-        LogoutCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
+        DisconnectCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
 
     def command_callback(self):
-        return CallbackQueryHandler(self.command, pattern=r'^logout:')
+        return CallbackQueryHandler(self.command, pattern=r'^disconnect:')
 
 
 class OAuthLoginCommand(AbstractCommand):
     negative_answer = 'No'
 
+    @utils.is_authorized
     @utils.is_user_exists
     def handler(self, bot, update, *args, **kwargs):
         """
@@ -275,6 +276,7 @@ class AddHostProcessCommandFactory(AbstractCommandFactory):
 class BasicLoginCommand(AbstractCommand):
     """/connect <host> <username> <password> - Login into Jira via username and password"""
 
+    @utils.is_authorized
     @utils.is_user_exists
     def handler(self, bot, update, *args, **kwargs):
         chat_id = update.message.chat_id

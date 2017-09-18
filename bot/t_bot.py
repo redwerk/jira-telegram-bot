@@ -31,8 +31,8 @@ class JiraBot:
         commands.MainMenuCommandFactory,
         commands.MenuCommandFactory,
         commands.OAuthCommandFactory,
-        commands.LogoutMenuCommandFactory,
-        commands.LogoutCommandFactory,
+        commands.DisconnectMenuCommandFactory,
+        commands.DisconnectCommandFactory,
         commands.TrackingCommandFactory,
         commands.TrackingProjectCommandFactory,
         commands.OAuthLoginCommandFactory,
@@ -67,7 +67,9 @@ class JiraBot:
 
     def start_command(self, bot, update):
         first_name = update.message.from_user.first_name
-        message = 'Hi, {}! Please, enter Jira host by typing /host jira.yourcompany.com'.format(first_name)
+        message = 'Hi, {}! Please, enter Jira host by typing \n' \
+                  '/connect jira.yourcompany.com username password OR\n' \
+                  '/oauth jira.yourcompany.com'.format(first_name)
 
         telegram_id = update.message.from_user.id
         user_exists = self.db.is_user_exists(telegram_id)
