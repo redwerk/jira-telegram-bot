@@ -106,6 +106,7 @@ class LogoutCommandFactory(AbstractCommandFactory):
 class OAuthLoginCommand(AbstractCommand):
     negative_answer = 'No'
 
+    @utils.is_user_exists
     def handler(self, bot, update, *args, **kwargs):
         """
         Adds a new host into a system. If a host is already in DB - returns a link for authorizing via Flask service.
@@ -113,15 +114,6 @@ class OAuthLoginCommand(AbstractCommand):
         """
         chat_id = update.message.chat_id
         domain_name = kwargs.get('args')[0]
-        user_exists = self._bot_instance.db.is_user_exists(chat_id)
-
-        if not user_exists:
-            bot.send_message(
-                chat_id=chat_id,
-                text='You are not in the database. Just call the /start command and '
-                     'repeat the procedure to add the host.',
-            )
-            return
 
         if not domain_name:
             bot.send_message(
@@ -283,18 +275,9 @@ class AddHostProcessCommandFactory(AbstractCommandFactory):
 class BasicLoginCommand(AbstractCommand):
     """/connect <host> <username> <password> - Login into Jira via username and password"""
 
+    @utils.is_user_exists
     def handler(self, bot, update, *args, **kwargs):
         chat_id = update.message.chat_id
-        user_exists = self._bot_instance.db.is_user_exists(chat_id)
-
-        if not user_exists:
-            bot.send_message(
-                chat_id=chat_id,
-                text='You are not in the database. Just call the /start command and '
-                     'repeat the procedure to add the host.',
-            )
-            return
-
         auth_data = kwargs.get('args')
         if not auth_data:
             # if no parameters are passed
@@ -331,7 +314,12 @@ class BasicLoginCommand(AbstractCommand):
             )
             return
 
-        auth_status, *error = self._bot_instance.jira.check_basic_authorization(host_url, username, password)
+        auth_status, *error = self._bot_instance.jira.check_authorization(
+            auth_method='basic',
+            jira_host=host_url,
+            credentials=(username, password),
+            base_check=True,
+        )
         if not auth_status:
             bot.send_message(
                 chat_id=chat_id,

@@ -379,6 +379,7 @@ def is_user_exists(func):
 
 
 def login_required(func):
+    """Decorator for commands: to check the availability and relevance of user credentials"""
     def wrapper(*args, **kwargs):
         try:
             instance, bot, update = args

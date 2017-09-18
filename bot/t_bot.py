@@ -1,4 +1,5 @@
 import logging
+from collections import namedtuple
 
 from decouple import config
 from telegram.error import (BadRequest, ChatMigrated, NetworkError,
@@ -43,6 +44,7 @@ class JiraBot:
 
         self.db = MongoBackend()
         self.jira = JiraBackend()
+        self.AuthData = namedtuple('AuthData', 'auth_method jira_host username credentials')
 
         self.__updater.dispatcher.add_handler(
             CommandHandler('start', self.start_command)
@@ -127,22 +129,48 @@ class JiraBot:
 
     def get_and_check_cred(self, telegram_id: int):
         """
-        Gets the user's credentials from the database and
-        checks them (tries to authorize the user in JIRA)
+        Gets the user data and tries to log in according to the specified authorization method.
+        Output of messages according to missing information
         :param telegram_id: user id telegram
-        :return: credentials and an empty message or False and an error message
+        :return: returns a namedtuple for further authorization or bool and messages
         """
-        credentials = self.db.get_user_credentials(telegram_id)
+        user_data = self.db.get_user_data(telegram_id)
+        auth_method = user_data.get('auth_method')
 
-        if credentials:
-            confirmed, status_code = self.jira.check_credentials(credentials)
+        if not auth_method:
+            return False, 'You are not authorized by any of the methods (user/pass or OAuth)'
 
-            if not confirmed:
-                return False, self.jira.login_error.get(status_code, 'Credentials are incorrect')
+        else:
+            if auth_method == 'basic':
+                credentials = (
+                    user_data.get('username'),
+                    utils.decrypt_password(user_data.get('auth')['basic']['password'])
+                )
+            else:
+                host_data = self.db.get_host_data(user_data.get('host_url'))
 
-            return credentials, ''
+                if not host_data:
+                    return False, 'In database there are no data on the {} host'.format(user_data.get('host_url'))
 
-        return False, "You didn't enter credentials"
+                credentials = {
+                    'access_token': user_data.get('auth')['oauth']['access_token'],
+                    'access_token_secret': user_data.get('auth')['oauth']['access_token_secret'],
+                    'consumer_key': host_data.get('consumer_key'),
+                    'key_cert': utils.read_rsa_key(config('PRIVATE_KEY_PATH'))
+                }
+
+            auth_data = self.AuthData(auth_method, user_data.get('host_url'), user_data.get('username'), credentials)
+            status = self.jira.check_authorization(
+                auth_data.auth_method,
+                auth_data.jira_host,
+                auth_data.credentials,
+                base_check=True
+            )
+
+            if status:
+                return auth_data, 'Success'
+            else:
+                return False, 'Invalid credentials, please authorize again'
 
     def save_into_cache(self, data: list, key: str):
         """

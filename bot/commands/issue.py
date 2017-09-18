@@ -54,14 +54,13 @@ class UserUnresolvedIssuesCommand(AbstractCommand):
 
 class ProjectUnresolvedIssuesCommand(AbstractCommand):
 
-    def handler(self, bot, scope, credentials, *args, **kwargs):
+    def handler(self, bot, scope, auth_data, *args, **kwargs):
         """
         Call order: /menu > Issues > Open project issues > Some project
         Shows unresolved issues by selected project
         """
         project = kwargs.get('project')
-
-        issues, status_code = self._bot_instance.jira.get_open_project_issues(project=project, **credentials)
+        issues, status_code = self._bot_instance.jira.get_open_project_issues(project=project, auth_data=auth_data)
 
         UserUnresolvedIssuesCommand.show_title(
             bot,
@@ -84,7 +83,7 @@ class ProjectUnresolvedIssuesCommand(AbstractCommand):
 
 class ProjectStatusIssuesCommand(AbstractCommand):
 
-    def handler(self, bot, scope, credentials, *args, **kwargs):
+    def handler(self, bot, scope, auth_data, *args, **kwargs):
         """
         Call order: /menu > Issues > Open project issues >
                     > Some project  > Some status
@@ -95,7 +94,7 @@ class ProjectStatusIssuesCommand(AbstractCommand):
         project_key = '{}:{}:{}'.format(scope['telegram_id'], project, status)
 
         issues, status_code = self._bot_instance.jira.get_project_status_issues(
-            project=project, status=status, **credentials
+            project=project, status=status, auth_data=auth_data
         )
 
         UserUnresolvedIssuesCommand.show_title(
@@ -195,12 +194,11 @@ class ProjectIssuesFactory(AbstractCommandFactory):
             status = status[0]
 
         obj = self._command_factory_method(cmd)
-
-        credentials, message = self._bot_instance.get_and_check_cred(
+        auth_data, message = self._bot_instance.get_and_check_cred(
             scope['telegram_id']
         )
 
-        if not credentials:
+        if not auth_data:
             bot.edit_message_text(
                 text=message,
                 chat_id=scope['chat_id'],
@@ -209,7 +207,7 @@ class ProjectIssuesFactory(AbstractCommandFactory):
             return
 
         _pattern = 'project_s:' + project + ':{}'
-        obj.handler(bot, scope, credentials, project=project, status=status, pattern=_pattern, footer='issues:ps')
+        obj.handler(bot, scope, auth_data, project=project, status=status, pattern=_pattern, footer='issues:ps')
 
     def command_callback(self):
         return CallbackQueryHandler(self.command, pattern=r'^project')

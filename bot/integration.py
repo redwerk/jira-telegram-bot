@@ -168,7 +168,7 @@ class JiraBackend:
         jira_conn = kwargs.get('jira_conn')
 
         projects = jira_conn.projects()
-        return [project.key for project in projects]
+        return sorted([project.key for project in projects])
 
     @jira_connect
     def get_open_project_issues(self, project: str, *args, **kwargs) -> list:
@@ -203,7 +203,7 @@ class JiraBackend:
         jira_conn = kwargs.get('jira_conn')
 
         statuses = jira_conn.statuses()
-        return [status.name for status in statuses]
+        return sorted([status.name for status in statuses])
 
     @jira_connect
     def get_project_status_issues(self, project: str, status: str, *args, **kwargs) -> list:
