@@ -73,8 +73,11 @@ class JiraBot:
                 'telegram_id': telegram_id,
                 'host_url': None,
                 'username': None,
-                'access_token': None,
-                'access_token_secret': None,
+                'auth_method': None,
+                'auth': {
+                    'oauth': None,
+                    'basic': None,
+                },
                 'allowed_hosts': list()
             }
             transaction_status = self.db.create_user(data)
