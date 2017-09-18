@@ -20,7 +20,7 @@ class JiraBot:
         '/menu - Displays options to interact with Jira',
         '/connect jira.yourcompany.com username password - Login into host using user/pass',
         '/oauth jira.yourcompany.com - Login into host using OAuth',
-        '/logout - Deletes user credentials from DB',
+        '/disconnect - Deletes user credentials from DB',
         '/help - Returns commands and its descriptions'
     ]
     issues_per_page = 10
