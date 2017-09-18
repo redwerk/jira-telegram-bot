@@ -18,6 +18,7 @@ class JiraBot:
     bot_commands = [
         '/start - Starts the bot',
         '/menu - Displays options to interact with Jira',
+        '/connect jira.yourcompany.com username password - Login into host using user/pass',
         '/oauth jira.yourcompany.com - Login into host using OAuth',
         '/logout - Deletes user credentials from DB',
         '/help - Returns commands and its descriptions'

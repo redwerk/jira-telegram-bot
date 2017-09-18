@@ -2,32 +2,81 @@
 ```json
 // Создание нового пользователя
 {
-  "telegram_id" : 208810129,
-  "host_url": null,
-  "username": null,
-  "access_token": null,
-  "access_token_secret": null,
+  "_id": ObjectId("59bfbe69a47e654c39355f9d"),
+  "telegram_id": 208810129,
+  "host_url": none,
+  "username": none,
+  "auth_method": none,
+  "auth": {
+    "oauth": {
+      "access_token": none,
+      "access_token_secret": none
+    },
+    "basic": {
+      "password": none
+    }
+  },
   "allowed_hosts": []
 }
 
-// Пользователь полностью авторизован
+// Пользователь авторизован c помощью username/password
 {
-  "telegram_id" : 208810129,
-  "host_url": "https://jira.test.redwerk.com",
+  "_id": ObjectId("59bfbe69a47e654c39355f9d"),
+  "telegram_id": 208810129,
+  "host_url": "https://jira.redwerk.com",
   "username": "iperesunko",
-  "access_token": "3223f32f23f23ff",
-  "access_token_secret": "12313lkj1kl2jlkjk1j24",
-  "allowed_hosts": [ObjectId("595b971db645d6240f1fd1be"), ObjectId("595b971db645d6240f1fd1be")]
+  "auth_method": "basic",
+  "auth": {
+    "oauth": {
+      "access_token": none,
+      "access_token_secret": none
+    },
+    "basic": {
+      "password": BinData(0,
+      "Z0FBQUFBQlp2ODFpS1BEZ0pRbjl1ekZzS0JlZFcySDFNa0gzTV9VRE5zU2doZG5FMDY3RC1DSnpsc1U0ZDRMbDhMaDNaSUJKSk9tdzlMX1pBRGlaZ0VGZE93Y1hFdDRTbXc9PQ==")
+    }
+  },
+  "allowed_hosts": []
+}
+
+// Пользователь авторизован c помощью OAuth
+{
+  "_id": ObjectId("59bfbe69a47e654c39355f9d"),
+  "telegram_id": 208810129,
+  "host_url": "https://jira.redwerk.com",
+  "username": "iperesunko",
+  "auth_method": "oauth",
+  "auth": {
+    "oauth": {
+      "access_token": "SMdbQck9e65GPSB8zn8FHdGAeRHQrZ2M",
+      "access_token_secret": "S4FyvCi01cSHV9KDlBLgwX6oZ0s1UU3c"
+    },
+    "basic": {
+      "password": none
+    }
+  },
+  "allowed_hosts": [
+    ObjectId("59bf8c1aa47e652e6af9312a")
+  ]
 }
 
 // При выполнении команды logout
 {
-  "telegram_id" : 208810129,
-  "host_url": null,
-  "username": null,
-  "access_token": null,
-  "access_token_secret": null,
-  "allowed_hosts": [ObjectId("595b971db645d6240f1fd1be"), ObjectId("595b971db645d6240f1fd1be")]
+  "_id": ObjectId("59bfbe69a47e654c39355f9d"),
+  "telegram_id": 208810129,
+  "host_url": none,
+  "username": none,
+  "auth_method": none,
+  "auth": {
+    "oauth": {
+      "access_token": none,
+      "access_token_secret": none
+    },
+    "basic": {
+      "password": none
+    }
+  },
+  "allowed_hosts": [ObjectId("59bf8c1aa47e652e6af9312a")]
 }
 ```
 
