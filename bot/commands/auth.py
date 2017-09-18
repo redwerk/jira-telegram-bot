@@ -350,7 +350,7 @@ class BasicLoginCommand(AbstractCommand):
         if status:
             bot.send_message(
                 chat_id=chat_id,
-                text='You have successfully logged on {}'.format(host_url),
+                text='You were successfully authorized in {}'.format(host_url),
             )
         else:
             bot.send_message(
