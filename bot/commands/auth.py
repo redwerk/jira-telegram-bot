@@ -63,8 +63,9 @@ class LogoutCommand(AbstractCommand):
             reset_dict = {
                 'username': None,
                 'host_url': None,
-                'access_token': None,
-                'access_token_secret': None
+                'auth_method': None,
+                'auth.oauth': None,
+                'auth.basic': None,
             }
             status = self._bot_instance.db.update_user(scope['telegram_id'], reset_dict)
 
