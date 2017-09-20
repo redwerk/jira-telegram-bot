@@ -1,4 +1,5 @@
 import logging
+from collections import namedtuple
 
 from decouple import config
 from telegram.error import (BadRequest, ChatMigrated, NetworkError,
@@ -12,32 +13,14 @@ from bot.integration import JiraBackend
 
 
 class JiraBot:
-    """
-    Bot to integrate with the JIRA service.
-
-    Commands (synopsis and description):
-    /start
-        Starts the bot
-    /login
-        Initiates authorization
-    /host jira.yourcompany.com
-        Adds user host (no limits for the number of hosts)
-    /logout
-        Deletes user credentials from DB
-    /menu
-        Displays options to interact with Jira
-    /feedback
-        Give us a feedback (add your email for instant reply)
-    /help
-        Returns commands and its descriptions
-    """
+    """Bot to integrate with the JIRA service"""
 
     bot_commands = [
         '/start - Starts the bot',
         '/menu - Displays options to interact with Jira',
-        '/login - Initiates authorization',
-        '/host jira.yourcompany.com - Adds user host (no limits for the number of hosts)',
-        '/logout - Deletes user credentials from DB',
+        '/connect jira.yourcompany.com username password - Login into host using user/pass',
+        '/oauth jira.yourcompany.com - Login into host using OAuth',
+        '/disconnect - Deletes user credentials from DB',
         '/help - Returns commands and its descriptions'
     ]
     issues_per_page = 10
@@ -47,13 +30,13 @@ class JiraBot:
         commands.ContentPaginatorFactory,
         commands.MainMenuCommandFactory,
         commands.MenuCommandFactory,
-        commands.OAuthMenuCommandFactory,
         commands.OAuthCommandFactory,
-        commands.LogoutMenuCommandFactory,
-        commands.LogoutCommandFactory,
+        commands.DisconnectMenuCommandFactory,
+        commands.DisconnectCommandFactory,
         commands.TrackingCommandFactory,
         commands.TrackingProjectCommandFactory,
-        commands.AddHostCommandFactory,
+        commands.OAuthLoginCommandFactory,
+        commands.BasicLoginCommandFactory,
         commands.AddHostProcessCommandFactory,
     ]
 
@@ -62,6 +45,7 @@ class JiraBot:
 
         self.db = MongoBackend()
         self.jira = JiraBackend()
+        self.AuthData = namedtuple('AuthData', 'auth_method jira_host username credentials')
 
         self.__updater.dispatcher.add_handler(
             CommandHandler('start', self.start_command)
@@ -83,7 +67,9 @@ class JiraBot:
 
     def start_command(self, bot, update):
         first_name = update.message.from_user.first_name
-        message = 'Hi, {}! Please, enter Jira host by typing /host jira.yourcompany.com'.format(first_name)
+        message = 'Hi, {}! Please, enter Jira host by typing \n' \
+                  '/connect jira.yourcompany.com username password OR\n' \
+                  '/oauth jira.yourcompany.com'.format(first_name)
 
         telegram_id = update.message.from_user.id
         user_exists = self.db.is_user_exists(telegram_id)
@@ -93,8 +79,11 @@ class JiraBot:
                 'telegram_id': telegram_id,
                 'host_url': None,
                 'username': None,
-                'access_token': None,
-                'access_token_secret': None,
+                'auth_method': None,
+                'auth': {
+                    'oauth': dict(access_token=None, access_token_secret=None),
+                    'basic': dict(password=None),
+                },
                 'allowed_hosts': list()
             }
             transaction_status = self.db.create_user(data)
@@ -143,22 +132,48 @@ class JiraBot:
 
     def get_and_check_cred(self, telegram_id: int):
         """
-        Gets the user's credentials from the database and
-        checks them (tries to authorize the user in JIRA)
+        Gets the user data and tries to log in according to the specified authorization method.
+        Output of messages according to missing information
         :param telegram_id: user id telegram
-        :return: credentials and an empty message or False and an error message
+        :return: returns a namedtuple for further authorization or bool and messages
         """
-        credentials = self.db.get_user_credentials(telegram_id)
+        user_data = self.db.get_user_data(telegram_id)
+        auth_method = user_data.get('auth_method')
 
-        if credentials:
-            confirmed, status_code = self.jira.check_credentials(credentials)
+        if not auth_method:
+            return False, 'You are not authorized by any of the methods (user/pass or OAuth)'
 
-            if not confirmed:
-                return False, self.jira.login_error.get(status_code, 'Credentials are incorrect')
+        else:
+            if auth_method == 'basic':
+                credentials = (
+                    user_data.get('username'),
+                    utils.decrypt_password(user_data.get('auth')['basic']['password'])
+                )
+            else:
+                host_data = self.db.get_host_data(user_data.get('host_url'))
 
-            return credentials, ''
+                if not host_data:
+                    return False, 'In database there are no data on the {} host'.format(user_data.get('host_url'))
 
-        return False, "You didn't enter credentials"
+                credentials = {
+                    'access_token': user_data.get('auth')['oauth']['access_token'],
+                    'access_token_secret': user_data.get('auth')['oauth']['access_token_secret'],
+                    'consumer_key': host_data.get('consumer_key'),
+                    'key_cert': utils.read_rsa_key(config('PRIVATE_KEY_PATH'))
+                }
+
+            auth_data = self.AuthData(auth_method, user_data.get('host_url'), user_data.get('username'), credentials)
+            status = self.jira.check_authorization(
+                auth_data.auth_method,
+                auth_data.jira_host,
+                auth_data.credentials,
+                base_check=True
+            )
+
+            if status:
+                return auth_data, 'Success'
+            else:
+                return False, 'Invalid credentials, please authorize again'
 
     def save_into_cache(self, data: list, key: str):
         """

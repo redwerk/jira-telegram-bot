@@ -71,7 +71,7 @@ class TrackingUserWorklogCommand(AbstractCommand):
 
         return self.templates.get('time_spent').format(start_date, end_date, round(hours, 2))
 
-    def handler(self, bot, scope, credentials, *args, **kwargs):
+    def handler(self, bot, scope, auth_data, *args, **kwargs):
         """Shows all worklog of the user in selected date interval"""
         start_date = utils.to_datetime(scope['start_date'], scope['user_d_format'])
         end_date = utils.to_datetime(scope['end_date'], scope['user_d_format'])
@@ -86,10 +86,10 @@ class TrackingUserWorklogCommand(AbstractCommand):
             return
 
         all_worklogs, status_code = self._bot_instance.jira.get_all_user_worklogs(
-            scope['start_date'], scope['end_date'], **credentials
+            scope['start_date'], scope['end_date'], auth_data=auth_data
         )
         all_user_logs = self._bot_instance.jira.define_user_worklogs(
-            all_worklogs, credentials['username'], name_key='author_name'
+            all_worklogs, auth_data.username, name_key='author_name'
         )
 
         seconds = 0
@@ -97,7 +97,7 @@ class TrackingUserWorklogCommand(AbstractCommand):
             user_worklogs.append(self.report_data(log))
             seconds += log.get('time_spent_seconds')
 
-        key = '{telegram_id}:{username}:{start_date}:{end_date}'.format(**scope, username=credentials['username'])
+        key = '{telegram_id}:{username}:{start_date}:{end_date}'.format(**scope, username=auth_data.username)
         formatted, buttons = self._bot_instance.save_into_cache(user_worklogs, key)
 
         # title
@@ -125,7 +125,7 @@ class TrackingUserWorklogCommand(AbstractCommand):
 
 class TrackingProjectWorklogCommand(AbstractCommand):
 
-    def handler(self, bot, scope: dict, credentials: dict, *args, **kwargs):
+    def handler(self, bot, scope: dict, auth_data: dict, *args, **kwargs):
         """Shows all worklogs by selected project in selected date interval"""
         start_date = utils.to_datetime(scope['start_date'], scope['user_d_format'])
         end_date = utils.to_datetime(scope['end_date'], scope['user_d_format'])
@@ -140,7 +140,7 @@ class TrackingProjectWorklogCommand(AbstractCommand):
             return
 
         all_worklogs, status_code = self._bot_instance.jira.get_project_worklogs(
-            scope.get('project'), scope.get('start_date'), scope.get('end_date'), **credentials
+            scope.get('project'), scope.get('start_date'), scope.get('end_date'), auth_data=auth_data
         )
 
         seconds = 0
@@ -183,7 +183,7 @@ class TrackingProjectWorklogCommand(AbstractCommand):
 
 class TrackingProjectUserWorklogCommand(AbstractCommand):
 
-    def handler(self, bot, scope, credentials, *args, **kwargs):
+    def handler(self, bot, scope, auth_data, *args, **kwargs):
         """
         Shows all worklogs by selected project for selected user
         in selected date interval
@@ -201,7 +201,7 @@ class TrackingProjectUserWorklogCommand(AbstractCommand):
             return
 
         all_worklogs, status_code = self._bot_instance.jira.get_user_project_worklogs(
-            scope.get('user'), scope.get('project'), scope.get('start_date'), scope.get('end_date'), **credentials
+            scope.get('user'), scope.get('project'), scope.get('start_date'), scope.get('end_date'), auth_data=auth_data
         )
         all_user_logs = self._bot_instance.jira.define_user_worklogs(
             all_worklogs, scope.get('user'), name_key='author_displayName'
@@ -271,9 +271,9 @@ class TrackingCommandFactory(AbstractCommandFactory):
 
         # Protected feature. Only for users with administrator permissions
         if only_command and chosen_protected_submenu:
-            credentials, message = self._bot_instance.get_and_check_cred(scope['telegram_id'])
+            auth_data, message = self._bot_instance.get_and_check_cred(scope['telegram_id'])
 
-            if not credentials:
+            if not auth_data:
                 bot.edit_message_text(
                     text=message,
                     chat_id=scope['chat_id'],
@@ -281,7 +281,7 @@ class TrackingCommandFactory(AbstractCommandFactory):
                 )
                 return
 
-            permission, status = self._bot_instance.jira.is_admin_permissions(**credentials)
+            permission, status = self._bot_instance.jira.is_admin_permissions(auth_data=auth_data)
 
             if not permission:
                 message = 'You have no permissions to use this function. Contact your Jira administrator'
@@ -308,9 +308,9 @@ class TrackingCommandFactory(AbstractCommandFactory):
             ChooseDateIntervalCommand(self._bot_instance).handler(bot, scope, selected_day)
             return
 
-        credentials, message = self._bot_instance.get_and_check_cred(scope['telegram_id'])
+        auth_data, message = self._bot_instance.get_and_check_cred(scope['telegram_id'])
 
-        if not credentials:
+        if not auth_data:
             bot.edit_message_text(
                 text=message,
                 chat_id=scope['chat_id'],
@@ -336,7 +336,7 @@ class TrackingCommandFactory(AbstractCommandFactory):
             )
 
         _pattern = self.patterns[cmd_scope[0]].format(cmd_scope[1] + ':' + cmd_scope[2] + ':{}')
-        obj.handler(bot, scope, credentials, pattern=_pattern, footer='tracking_menu')
+        obj.handler(bot, scope, auth_data, pattern=_pattern, footer='tracking_menu')
 
     def command_callback(self):
         return CallbackQueryHandler(self.command, pattern=r'^tracking')
@@ -358,8 +358,8 @@ class TrackingProjectCommandFactory(AbstractCommandFactory):
 
         obj = self._command_factory_method(cmd)
 
-        credentials, message = self._bot_instance.get_and_check_cred(scope['telegram_id'])
-        if not credentials:
+        auth_data, message = self._bot_instance.get_and_check_cred(scope['telegram_id'])
+        if not auth_data:
             bot.edit_message_text(
                 text=message,
                 chat_id=scope['chat_id'],
@@ -386,7 +386,7 @@ class TrackingProjectCommandFactory(AbstractCommandFactory):
             )
 
         _pattern = 'tproject_u:{start_date}:{end_date}:{project}'.format(**scope) + ':{}'
-        obj.handler(bot, scope, credentials, pattern=_pattern, footer='tracking-pu')
+        obj.handler(bot, scope, auth_data, pattern=_pattern, footer='tracking-pu')
 
     def command_callback(self):
         return CallbackQueryHandler(self.command, pattern=r'^tproject')

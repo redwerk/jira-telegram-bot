@@ -1,4 +1,4 @@
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackQueryHandler, CommandHandler
 
 from bot import utils
@@ -8,6 +8,7 @@ from .base import AbstractCommand, AbstractCommandFactory
 
 class MainMenuCommand(AbstractCommand):
 
+    @utils.login_required
     def handler(self, bot, update, *args, **kwargs):
         """
         Call order: /menu
@@ -73,22 +74,7 @@ class TrackingMenuCommand(AbstractCommand):
 class MainMenuCommandFactory(AbstractCommandFactory):
 
     def command(self, bot, update, *args, **kwargs):
-        telegram_id = update.message.chat_id
-
-        user = self._bot_instance.db.get_user_data(telegram_id)
-        access_condition = (
-            user.get('access_token'),
-            user.get('access_token_secret'),
-        )
-
-        if user and all(access_condition):
-            MainMenuCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
-        else:
-            bot.send_message(
-                chat_id=telegram_id,
-                text='<b>You did not specify credential data. Enter /login command and try again</b>',
-                parse_mode=ParseMode.HTML
-            )
+        MainMenuCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
 
     def command_callback(self):
         return CommandHandler('menu', self.command)
@@ -112,14 +98,14 @@ class MenuCommandFactory(AbstractCommandFactory):
 
 class ChooseDeveloperMenuCommand(AbstractCommand):
 
-    def handler(self, bot, scope: dict, credentials: dict, *args, **kwargs):
+    def handler(self, bot, scope, auth_data, *args, **kwargs):
         """Displaying inline keyboard with developers names"""
 
         buttons = list()
         _callback = kwargs.get('pattern')
         _footer = kwargs.get('footer')
 
-        developers, status = self._bot_instance.jira.get_developers(**credentials)
+        developers, status = self._bot_instance.jira.get_developers(auth_data=auth_data)
 
         if not developers:
             bot.edit_message_text(
@@ -152,7 +138,7 @@ class ChooseDeveloperMenuCommand(AbstractCommand):
 
 class ChooseProjectMenuCommand(AbstractCommand):
 
-    def handler(self, bot, scope, credentials, *args, **kwargs):
+    def handler(self, bot, scope, auth_data, *args, **kwargs):
         """
         Call order: /menu > Issues > Unresolved by project
         Displaying inline keyboard with names of projects
@@ -161,7 +147,7 @@ class ChooseProjectMenuCommand(AbstractCommand):
         _footer = kwargs.get('footer')
 
         projects_buttons = list()
-        projects, status_code = self._bot_instance.jira.get_projects(**credentials)
+        projects, status_code = self._bot_instance.jira.get_projects(auth_data=auth_data)
 
         if not projects:
             bot.edit_message_text(
@@ -200,7 +186,7 @@ class ChooseProjectMenuCommand(AbstractCommand):
 
 class ChooseStatusMenuCommand(AbstractCommand):
 
-    def handler(self, bot, scope, credentials, *args, **kwargs):
+    def handler(self, bot, scope, auth_data, *args, **kwargs):
         """
         Call order: /menu > Issues > Unresolved by project > Some project
         Displaying inline keyboard with available statuses
@@ -210,7 +196,7 @@ class ChooseStatusMenuCommand(AbstractCommand):
         _footer = kwargs.get('footer')
         project = kwargs.get('project')
 
-        statuses, status = self._bot_instance.jira.get_statuses(**credentials)
+        statuses, status = self._bot_instance.jira.get_statuses(auth_data=auth_data)
 
         if not statuses:
             bot.edit_message_text(
@@ -286,20 +272,20 @@ class ChooseJiraHostMenuCommand(AbstractCommand):
         )
 
 
-class LogoutMenuCommand(AbstractCommand):
+class DisconnectMenuCommand(AbstractCommand):
     positive_answer = 'Yes'
     negative_answer = 'No'
 
     def handler(self, bot, update, *args, **kwargs):
         """
-        Call order: /logout
+        /disconnect
         """
         button_list = [
             InlineKeyboardButton(
-                'Yes', callback_data='logout:{}'.format(self.positive_answer)
+                'Yes', callback_data='disconnect:{}'.format(self.positive_answer)
             ),
             InlineKeyboardButton(
-                'No', callback_data='logout:{}'.format(self.negative_answer)
+                'No', callback_data='disconnect:{}'.format(self.negative_answer)
             ),
         ]
 
