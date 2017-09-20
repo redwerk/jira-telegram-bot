@@ -444,3 +444,17 @@ class JiraBackend:
             return {f.name: f.id for f in filters}
 
         return dict()
+
+    @jira_connect
+    def get_filter_issues(self, filter_id, *args, **kwargs):
+        """Returns issues getting by filter id"""
+        jira_conn = kwargs.get('jira_conn')
+
+        try:
+            issues = jira_conn.search_issues('filter={}'.format(filter_id), maxResults=200)
+        except jira.JIRAError as e:
+            logging.exception('Failed to get issues by filter:\n{}'.format(e))
+        else:
+            return self._issues_formatting(issues)
+
+        return list()

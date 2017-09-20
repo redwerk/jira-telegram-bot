@@ -38,6 +38,8 @@ class JiraBot:
         commands.OAuthLoginCommandFactory,
         commands.BasicLoginCommandFactory,
         commands.AddHostProcessCommandFactory,
+        commands.FilterListFactory,
+        commands.FilterIssuesFactory,
     ]
 
     def __init__(self):

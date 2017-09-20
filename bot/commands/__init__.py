@@ -5,6 +5,7 @@ from .auth import (OAuthCommandFactory, OAuthLoginCommandFactory, AddHostProcess
                    DisconnectMenuCommandFactory, DisconnectCommandFactory, BasicLoginCommandFactory)
 from .track import TrackingCommandFactory, TrackingProjectCommandFactory
 from .feedback import FeedbackMessageCommandFactory
+from .filter import FilterListFactory, FilterIssuesFactory
 
 
 __all__ = (
@@ -22,4 +23,6 @@ __all__ = (
     "TrackingCommandFactory",
     "TrackingProjectCommandFactory",
     "FeedbackMessageCommandFactory",
+    "FilterListFactory",
+    "FilterIssuesFactory",
 )
