@@ -431,3 +431,17 @@ class JiraBackend:
             return [data['fullname'] for nick, data in developers.items()]
 
         return list()
+
+    @jira_connect
+    def get_favourite_filters(self, *args, **kwargs):
+        """Return list of favourite filters"""
+        jira_conn = kwargs.get('jira_conn')
+
+        try:
+            filters = jira_conn.favourite_filters()
+        except jira.JIRAError as e:
+            logging.exception('Failed to get filters:\n{}'.format(e))
+        else:
+            return {f.name: f.id for f in filters}
+
+        return dict()
