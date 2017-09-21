@@ -21,18 +21,13 @@ JIRA_DATE_FORMAT = '%Y-%m-%dT%H:%M:%S.%f%z'
 USER_DATE_FORMAT = '%Y-%m-%d'
 
 
-def get_encoder() -> Fernet:
-    secret = config('SECRET_KEY')
-    return Fernet(key=bytes(secret.encode()))
-
-
 def encrypt_password(password):
-    encoder = get_encoder()
+    encoder = Fernet(key=bytes(config('SECRET_KEY').encode()))
     return encoder.encrypt(password.encode())
 
 
 def decrypt_password(encrypted_password):
-    encoder = get_encoder()
+    encoder = Fernet(key=bytes(config('SECRET_KEY').encode()))
     password = encoder.decrypt(encrypted_password)
 
     return password.decode()

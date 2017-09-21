@@ -102,8 +102,8 @@ class ChooseDeveloperMenuCommand(AbstractCommand):
         """Displaying inline keyboard with developers names"""
 
         buttons = list()
-        _callback = kwargs.get('pattern')
-        _footer = kwargs.get('footer')
+        callback_key = kwargs.get('pattern')
+        footer = kwargs.get('footer')
 
         developers, status = self._bot_instance.jira.get_developers(auth_data=auth_data)
 
@@ -117,11 +117,11 @@ class ChooseDeveloperMenuCommand(AbstractCommand):
 
         for fullname in sorted(developers):
             buttons.append(
-                InlineKeyboardButton(text=fullname, callback_data=_callback.format(fullname))
+                InlineKeyboardButton(text=fullname, callback_data=callback_key.format(fullname))
             )
 
         footer_button = [
-            InlineKeyboardButton('« Back', callback_data=_footer)
+            InlineKeyboardButton('« Back', callback_data=footer)
         ]
 
         buttons = InlineKeyboardMarkup(
