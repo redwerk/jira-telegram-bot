@@ -38,6 +38,7 @@ class JiraBot:
         commands.OAuthLoginCommandFactory,
         commands.BasicLoginCommandFactory,
         commands.AddHostProcessCommandFactory,
+        commands.ListUnresolvedIssuesFactory,
     ]
 
     def __init__(self):

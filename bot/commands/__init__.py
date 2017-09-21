@@ -1,5 +1,5 @@
 from .issue import (IssueCommandFactory, ProjectIssuesFactory,
-                    ContentPaginatorFactory)
+                    ContentPaginatorFactory, ListUnresolvedIssuesFactory)
 from .menu import MainMenuCommandFactory, MenuCommandFactory
 from .auth import (OAuthCommandFactory, OAuthLoginCommandFactory, AddHostProcessCommandFactory,
                    DisconnectMenuCommandFactory, DisconnectCommandFactory, BasicLoginCommandFactory)
@@ -22,4 +22,5 @@ __all__ = (
     "TrackingCommandFactory",
     "TrackingProjectCommandFactory",
     "FeedbackMessageCommandFactory",
+    "ListUnresolvedIssuesFactory",
 )

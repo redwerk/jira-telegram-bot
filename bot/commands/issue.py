@@ -1,5 +1,5 @@
 from telegram import ParseMode
-from telegram.ext import CallbackQueryHandler
+from telegram.ext import CallbackQueryHandler, CommandHandler
 
 from bot import utils
 
@@ -232,3 +232,35 @@ class ContentPaginatorFactory(AbstractCommandFactory):
 
     def command_callback(self):
         return CallbackQueryHandler(self.command, pattern=r'^paginator:')
+
+
+class ListUnresolvedIssuesCommand(AbstractCommand):
+
+    def handler(self, bot, update, *args, **kwargs):
+        chat_id = update.message.chat_id
+        options = kwargs.get('args')
+
+        if not options:
+            bot.send_message(
+                chat_id=chat_id,
+                parse_mode=ParseMode.HTML,
+                text="<b>Command description:</b>\n"
+                     "<i>/listunresolved my</i> - returns a list of user's unresolved issues\n"
+                     "<i>/listunresolved user username</i> - returns a list of selected user issues\n"
+                     "<i>/listunresolved project KEY or Name</i> - returns a list of projects issues\n"
+            )
+            return
+
+        print(options)
+
+
+class ListUnresolvedIssuesFactory(AbstractCommandFactory):
+
+    @utils.login_required
+    @utils.is_user_exists
+    def command(self, bot, update, *args, **kwargs):
+        auth_data, message = self._bot_instance.get_and_check_cred(update.message.chat_id)
+        ListUnresolvedIssuesCommand(self._bot_instance).handler(bot, update, auth_data=auth_data, *args, **kwargs)
+
+    def command_callback(self):
+        return CommandHandler('listunresolved', self.command, pass_args=True)
