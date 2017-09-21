@@ -72,7 +72,7 @@ class TrackingMenuCommand(AbstractCommand):
 
 class MainMenuCommandFactory(AbstractCommandFactory):
 
-    @utils.user_exists_and_authorized
+    @utils.login_required
     def command(self, bot, update, *args, **kwargs):
         MainMenuCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
 
