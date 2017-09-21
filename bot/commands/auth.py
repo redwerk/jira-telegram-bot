@@ -199,8 +199,17 @@ class OAuthLoginCommand(AbstractCommand):
 class OAuthLoginCommandFactory(AbstractCommandFactory):
     """/oauth <host> - Login into Jira via OAuth method"""
 
-    @utils.is_user_exists
     def command(self, bot, update, *args, **kwargs):
+        telegram_id = update.message.chat_id
+        user_exists = self._bot_instance.db.is_user_exists(telegram_id)
+
+        if not user_exists:
+            bot.send_message(
+                chat_id=telegram_id,
+                text='You are not in the database. Just call the /start command',
+            )
+            return
+
         OAuthLoginCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
 
     def command_callback(self):
@@ -374,8 +383,17 @@ class BasicLoginCommand(AbstractCommand):
 
 class BasicLoginCommandFactory(AbstractCommandFactory):
 
-    @utils.is_user_exists
     def command(self, bot, update, *args, **kwargs):
+        telegram_id = update.message.chat_id
+        user_exists = self._bot_instance.db.is_user_exists(telegram_id)
+
+        if not user_exists:
+            bot.send_message(
+                chat_id=telegram_id,
+                text='You are not in the database. Just call the /start command',
+            )
+            return
+
         BasicLoginCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
 
     def command_callback(self):

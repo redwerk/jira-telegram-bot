@@ -347,33 +347,7 @@ def send_email(message):
         s.quit()
 
 
-def is_user_exists(func):
-    """
-    Decorator for commands: checking the presence of the user in the database
-    It is recommended if the command will change the data in the database
-    """
-    def wrapper(*args, **kwargs):
-        try:
-            instance, bot, update = args
-        except IndexError as e:
-            logging.exception('is_user_exists decorator: {}'.format(e))
-            return
-
-        telegram_id = update.message.chat_id
-        user_exists = instance._bot_instance.db.is_user_exists(telegram_id)
-
-        if not user_exists:
-            bot.send_message(
-                chat_id=telegram_id,
-                text='You are not in the database. Just call the /start command',
-            )
-            return
-        func(*args, **kwargs)
-
-    return wrapper
-
-
-def login_required(func):
+def user_exists_and_authorized(func):
     """Decorator for commands: to check the availability and relevance of user credentials"""
     def wrapper(*args, **kwargs):
         try:
@@ -383,7 +357,15 @@ def login_required(func):
             return
 
         telegram_id = update.message.chat_id
+        user_exists = instance._bot_instance.db.is_user_exists(telegram_id)
         auth, message = instance._bot_instance.get_and_check_cred(telegram_id)
+
+        if not user_exists:
+            bot.send_message(
+                chat_id=telegram_id,
+                text='You are not in the database. Just call the /start command',
+            )
+            return
 
         if not auth:
             bot.send_message(

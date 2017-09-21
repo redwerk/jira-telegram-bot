@@ -8,7 +8,6 @@ from .base import AbstractCommand, AbstractCommandFactory
 
 class MainMenuCommand(AbstractCommand):
 
-    @utils.login_required
     def handler(self, bot, update, *args, **kwargs):
         """
         Call order: /menu
@@ -73,6 +72,7 @@ class TrackingMenuCommand(AbstractCommand):
 
 class MainMenuCommandFactory(AbstractCommandFactory):
 
+    @utils.user_exists_and_authorized
     def command(self, bot, update, *args, **kwargs):
         MainMenuCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
 
