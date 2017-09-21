@@ -201,7 +201,11 @@ class TrackingProjectUserWorklogCommand(AbstractCommand):
             return
 
         all_worklogs, status_code = self._bot_instance.jira.get_user_project_worklogs(
-            scope.get('user'), scope.get('project'), scope.get('start_date'), scope.get('end_date'), auth_data=auth_data
+            scope.get('user'),
+            scope.get('project'),
+            scope.get('start_date'),
+            scope.get('end_date'),
+            auth_data=auth_data
         )
         all_user_logs = self._bot_instance.jira.define_user_worklogs(
             all_worklogs, scope.get('user'), name_key='author_displayName'

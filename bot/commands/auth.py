@@ -106,20 +106,31 @@ class DisconnectCommandFactory(AbstractCommandFactory):
 class OAuthLoginCommand(AbstractCommand):
     negative_answer = 'No'
 
-    @utils.is_authorized
-    @utils.is_user_exists
     def handler(self, bot, update, *args, **kwargs):
         """
         Adds a new host into a system. If a host is already in DB - returns a link for authorizing via Flask service.
         If not - request for adding a new host into DB.
         """
         chat_id = update.message.chat_id
-        domain_name = kwargs.get('args')[0]
+        auth_options = kwargs.get('args')
 
-        if not domain_name:
+        if not auth_options:
             bot.send_message(
                 chat_id=chat_id,
                 text='Host is required option'
+            )
+            return
+
+        domain_name = kwargs.get('args')[0]
+        user_data = self._bot_instance.db.get_user_data(chat_id)
+        auth, message = self._bot_instance.get_and_check_cred(chat_id)
+
+        if user_data.get('auth_method') or auth:
+            bot.send_message(
+                chat_id=chat_id,
+                text='You are already connected to {}. '
+                     'Please use /disconnect before connecting '
+                     'to another JIRA instance.'.format(user_data.get('host_url')),
             )
             return
 
@@ -188,6 +199,7 @@ class OAuthLoginCommand(AbstractCommand):
 class OAuthLoginCommandFactory(AbstractCommandFactory):
     """/oauth <host> - Login into Jira via OAuth method"""
 
+    @utils.is_user_exists
     def command(self, bot, update, *args, **kwargs):
         OAuthLoginCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
 
@@ -276,12 +288,11 @@ class AddHostProcessCommandFactory(AbstractCommandFactory):
 class BasicLoginCommand(AbstractCommand):
     """/connect <host> <username> <password> - Login into Jira via username and password"""
 
-    @utils.is_authorized
-    @utils.is_user_exists
     def handler(self, bot, update, *args, **kwargs):
         chat_id = update.message.chat_id
-        auth_data = kwargs.get('args')
-        if not auth_data:
+        auth_options = kwargs.get('args')
+
+        if not auth_options:
             # if no parameters are passed
             bot.send_message(
                 chat_id=chat_id,
@@ -289,8 +300,20 @@ class BasicLoginCommand(AbstractCommand):
             )
             return
 
+        user_data = self._bot_instance.db.get_user_data(chat_id)
+        auth, message = self._bot_instance.get_and_check_cred(chat_id)
+
+        if user_data.get('auth_method') or auth:
+            bot.send_message(
+                chat_id=chat_id,
+                text='You are already connected to {}. '
+                     'Please use /disconnect before connecting '
+                     'to another JIRA instance.'.format(user_data.get('host_url')),
+            )
+            return
+
         try:
-            host, username, password = auth_data
+            host, username, password = auth_options
         except ValueError:
             # if not passed all the parameters
             bot.send_message(
@@ -351,6 +374,7 @@ class BasicLoginCommand(AbstractCommand):
 
 class BasicLoginCommandFactory(AbstractCommandFactory):
 
+    @utils.is_user_exists
     def command(self, bot, update, *args, **kwargs):
         BasicLoginCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
 
