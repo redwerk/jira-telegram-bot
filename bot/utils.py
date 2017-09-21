@@ -9,6 +9,8 @@ from typing import Generator, List
 
 import pendulum
 import pytz
+from cryptography.fernet import Fernet
+from decouple import config
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 hostname_re = re.compile(r'^http[s]?://([^:/\s]+)?$')
@@ -17,6 +19,18 @@ email_address = re.compile(r'([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)')
 
 JIRA_DATE_FORMAT = '%Y-%m-%dT%H:%M:%S.%f%z'
 USER_DATE_FORMAT = '%Y-%m-%d'
+
+
+def encrypt_password(password):
+    encoder = Fernet(key=bytes(config('SECRET_KEY').encode()))
+    return encoder.encrypt(password.encode())
+
+
+def decrypt_password(encrypted_password):
+    encoder = Fernet(key=bytes(config('SECRET_KEY').encode()))
+    password = encoder.decrypt(encrypted_password)
+
+    return password.decode()
 
 
 def build_menu(buttons: List,
@@ -331,3 +345,35 @@ def send_email(message):
         return True
     finally:
         s.quit()
+
+
+def login_required(func):
+    """Decorator for commands: to check the availability and relevance of user credentials"""
+    def wrapper(*args, **kwargs):
+        try:
+            instance, bot, update = args
+        except IndexError as e:
+            logging.exception('login_required decorator: {}'.format(e))
+            return
+
+        telegram_id = update.message.chat_id
+        user_exists = instance._bot_instance.db.is_user_exists(telegram_id)
+        auth, message = instance._bot_instance.get_and_check_cred(telegram_id)
+
+        if not user_exists:
+            bot.send_message(
+                chat_id=telegram_id,
+                text='You are not in the database. Just call the /start command',
+            )
+            return
+
+        if not auth:
+            bot.send_message(
+                chat_id=telegram_id,
+                text=message,
+            )
+            return
+        else:
+            func(*args, **kwargs)
+
+    return wrapper

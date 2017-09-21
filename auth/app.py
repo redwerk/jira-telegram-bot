@@ -181,7 +181,10 @@ class OAuthAuthorizedView(SendToChatMixin, OAuthJiraBaseView):
                 oauth_dict['access_token'],
                 oauth_dict['access_token_secret']
             )
-            if user_exists:
+            if not user_exists:
+                self.send_to_chat(session['telegram_id'], 'You are not in the database. Just call the /start command')
+                return redirect(bot_url)
+            else:
                 user = db.get_user_data(session['telegram_id'])
                 allowed_hosts = user.get('allowed_hosts')
 
@@ -197,12 +200,6 @@ class OAuthAuthorizedView(SendToChatMixin, OAuthJiraBaseView):
                     'allowed_hosts': allowed_hosts
                 })
                 transaction_status = db.update_user(session['telegram_id'], data)
-            else:
-                data.update({
-                    'telegram_id': session['telegram_id'],
-                    'allowed_hosts': [jira_host.get('_id')]
-                })
-                transaction_status = db.create_user(data)
 
         if not transaction_status:
             message = 'Impossible to save data into the database. Please try again later.'
@@ -224,8 +221,9 @@ class OAuthAuthorizedView(SendToChatMixin, OAuthJiraBaseView):
         return {
             'host_url': host_url,
             'username': username,
-            'access_token': access_token,
-            'access_token_secret': access_token_secret
+            'auth_method': 'oauth',
+            'auth.oauth.access_token': access_token,
+            'auth.oauth.access_token_secret': access_token_secret
         }
 
 

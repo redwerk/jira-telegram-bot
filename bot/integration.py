@@ -2,10 +2,9 @@ import logging
 from collections import namedtuple
 
 import jira
-from decouple import config
 from jira.resilientsession import ConnectionError
 
-from bot.utils import JIRA_DATE_FORMAT, USER_DATE_FORMAT, add_time, read_rsa_key, to_datetime
+from bot.utils import JIRA_DATE_FORMAT, USER_DATE_FORMAT, add_time, to_datetime
 
 OK_STATUS = 200
 
@@ -18,28 +17,27 @@ def jira_connect(func):
     :param func: function in which interacts with the Jira service
     :return: requested data and status code
     """
-    def wrapper(*args, **kwargs) -> (list or bool, int):
-        auth_data = JiraBackend.getting_credentials(kwargs)
+    def wrapper(*args, **kwargs):
+        auth_data = kwargs.get('auth_data')
+        jira_conn, error = JiraBackend.check_authorization(
+            auth_method=auth_data.auth_method,
+            jira_host=auth_data.jira_host,
+            credentials=auth_data.credentials,
+        )
 
-        try:
-            jira_conn = jira.JIRA(
-                server=auth_data.jira_host,
-                oauth=auth_data.credentials,
-                max_retries=1
-            )
-        except jira.JIRAError as e:
-            logging.info('{}'.format(e.status_code))
-            return False, e.status_code
-        else:
+        if jira_conn:
             kwargs.update(
                 {
                     'jira_conn': jira_conn,
-                    'jira_host': auth_data.jira_host
+                    'jira_host': auth_data.jira_host,
+                    'username': auth_data.username
                 }
             )
             data = func(*args, **kwargs)
             jira_conn.kill_session()
             return data, OK_STATUS
+        else:
+            return False, JiraBackend.login_error[error]
 
     return wrapper
 
@@ -62,20 +60,6 @@ class JiraBackend:
     }
 
     @staticmethod
-    def getting_credentials(kwargs: dict) -> namedtuple:
-        """Forms a namedtuple for OAuth authorization"""
-        AuthData = namedtuple('AuthData', 'jira_host credentials')
-
-        oauth_dict = {
-            'access_token': kwargs.get('access_token'),
-            'access_token_secret': kwargs.get('access_token_secret'),
-            'consumer_key': kwargs.get('consumer_key'),
-            'key_cert': read_rsa_key(config('PRIVATE_KEY_PATH'))
-        }
-
-        return AuthData(jira_host=kwargs.get('url'), credentials=oauth_dict)
-
-    @staticmethod
     def is_jira_app(host: str) -> bool:
         """Determines the ownership on the Jira"""
         try:
@@ -89,23 +73,38 @@ class JiraBackend:
             jira_conn.server_info()
             return True
 
-    def check_credentials(self, credentials: dict) -> (bool, int):
+    @staticmethod
+    def check_authorization(auth_method, jira_host, credentials, base_check=None):
         """
-        Attempt to authorize the user in the JIRA service.
-        :return: Status and code
+        Used to get the connection object.
+        If the connection object is not needed - add the base_check flag (the object will be destroyed)
+        :param auth_method: basic or oauth
+        :param jira_host: https://jira.test.redwerk.com
+        :param credentials: different for each methods
+        :param base_check: to destroy the object
+        :return: Jira connection object
         """
-        auth_data = self.getting_credentials(credentials)
         try:
-            jira_conn = jira.JIRA(
-                server=auth_data.jira_host,
-                oauth=auth_data.credentials,
-                max_retries=1
-            )
+            if auth_method == 'basic':
+                jira_conn = jira.JIRA(
+                    server=jira_host,
+                    basic_auth=credentials,
+                    max_retries=0
+                )
+            else:
+                jira_conn = jira.JIRA(
+                    server=jira_host,
+                    oauth=credentials,
+                    max_retries=0
+                )
         except jira.JIRAError as e:
             return False, e.status_code
         else:
-            jira_conn.kill_session()
-            return True, OK_STATUS
+            if base_check:
+                jira_conn.kill_session()
+                return True, OK_STATUS
+            else:
+                return jira_conn, OK_STATUS
 
     @staticmethod
     def _getting_data(kwargs: dict) -> (jira.JIRA, str):
@@ -169,7 +168,7 @@ class JiraBackend:
         jira_conn = kwargs.get('jira_conn')
 
         projects = jira_conn.projects()
-        return [project.key for project in projects]
+        return sorted([project.key for project in projects])
 
     @jira_connect
     def get_open_project_issues(self, project: str, *args, **kwargs) -> list:
@@ -204,7 +203,7 @@ class JiraBackend:
         jira_conn = kwargs.get('jira_conn')
 
         statuses = jira_conn.statuses()
-        return [status.name for status in statuses]
+        return sorted([status.name for status in statuses])
 
     @jira_connect
     def get_project_status_issues(self, project: str, status: str, *args, **kwargs) -> list:
