@@ -1,7 +1,7 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackQueryHandler, CommandHandler
 
-from bot.utils import build_menu, is_user_exists, login_required
+from bot.utils import build_menu, login_required
 
 from .base import AbstractCommand, AbstractCommandFactory
 from .issue import UserUnresolvedIssuesCommand
@@ -41,7 +41,6 @@ class FilterListFactory(AbstractCommandFactory):
     """/filter - returns a list of favorite filters"""
 
     @login_required
-    @is_user_exists
     def command(self, bot, update, *args, **kwargs):
         chat_id = update.message.chat_id
         auth_data, message = self._bot_instance.get_and_check_cred(chat_id)

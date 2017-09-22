@@ -99,6 +99,8 @@ class JiraBackend:
                 )
         except jira.JIRAError as e:
             return False, e.status_code
+        except ConnectionError:
+            return False, "Can't connect to Jira host, please check the host status:\n{}".format(jira_host)
         else:
             if base_check:
                 jira_conn.kill_session()
