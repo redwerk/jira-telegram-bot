@@ -30,12 +30,16 @@ def jira_connect(func):
                 {
                     'jira_conn': jira_conn,
                     'jira_host': auth_data.jira_host,
-                    'username': auth_data.username
                 }
             )
-            data = func(*args, **kwargs)
+            # TODO: redo all commands to return errors
+            data, error = func(*args, **kwargs)
             jira_conn.kill_session()
-            return data, OK_STATUS
+
+            if data:
+                return data, OK_STATUS
+            else:
+                return False, error
         else:
             return False, JiraBackend.login_error[error]
 
@@ -121,12 +125,12 @@ class JiraBackend:
         return jira_conn, username
 
     @jira_connect
-    def get_open_issues(self, *args, **kwargs) -> list:
+    def get_open_issues(self, username, *args, **kwargs):
         """
         Getting issues assigned to the user
         :return: formatted issues list or empty list
         """
-        jira_conn, username = self._getting_data(kwargs)
+        jira_conn = kwargs.get('jira_conn')
 
         try:
             issues = jira_conn.search_issues(
@@ -139,10 +143,12 @@ class JiraBackend:
             logging.exception(
                 'Error while getting {} issues:\n{}'.format(username, e)
             )
+            return False, e.text
         else:
-            return self._issues_formatting(issues)
-
-        return list()
+            if issues:
+                return self._issues_formatting(issues), OK_STATUS
+            else:
+                return list(), 'Woohoo! No unresolved tasks'
 
     @staticmethod
     def _issues_formatting(issues) -> list:
@@ -173,7 +179,7 @@ class JiraBackend:
         return sorted([project.key for project in projects])
 
     @jira_connect
-    def get_open_project_issues(self, project: str, *args, **kwargs) -> list:
+    def get_open_project_issues(self, project, *args, **kwargs):
         """
         Getting unresolved issues by project
         :param project: abbreviation name of the project
@@ -187,14 +193,13 @@ class JiraBackend:
                 maxResults=200
             )
         except jira.JIRAError as e:
-            logging.exception(
-                'Error while getting unresolved '
-                '{} issues:\n{}'.format(project, e)
-            )
+            logging.exception('Error while getting unresolved {} issues:\n{}'.format(project, e))
+            return False, e.text
         else:
-            return self._issues_formatting(issues)
-
-        return list()
+            if issues:
+                return self._issues_formatting(issues), OK_STATUS
+            else:
+                return list(), "Project <b>{}</b> doesn't have any unresolved tasks".format(project)
 
     @jira_connect
     def get_statuses(self, *args, **kwargs) -> list:
