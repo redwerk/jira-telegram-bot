@@ -206,8 +206,8 @@ class ProjectIssuesFactory(AbstractCommandFactory):
             )
             return
 
-        _pattern = 'project_s:' + project + ':{}'
-        obj.handler(bot, scope, auth_data, project=project, status=status, pattern=_pattern, footer='issues:ps')
+        pattern = 'project_s:' + project + ':{}'
+        obj.handler(bot, scope, auth_data, project=project, status=status, pattern=pattern, footer='issues:ps')
 
     def command_callback(self):
         return CallbackQueryHandler(self.command, pattern=r'^project')

@@ -21,18 +21,13 @@ JIRA_DATE_FORMAT = '%Y-%m-%dT%H:%M:%S.%f%z'
 USER_DATE_FORMAT = '%Y-%m-%d'
 
 
-def get_encoder() -> Fernet:
-    secret = config('SECRET_KEY')
-    return Fernet(key=bytes(secret.encode()))
-
-
 def encrypt_password(password):
-    encoder = get_encoder()
+    encoder = Fernet(key=bytes(config('SECRET_KEY').encode()))
     return encoder.encrypt(password.encode())
 
 
 def decrypt_password(encrypted_password):
-    encoder = get_encoder()
+    encoder = Fernet(key=bytes(config('SECRET_KEY').encode()))
     password = encoder.decrypt(encrypted_password)
 
     return password.decode()
@@ -352,32 +347,6 @@ def send_email(message):
         s.quit()
 
 
-def is_user_exists(func):
-    """
-    Decorator for commands: checking the presence of the user in the database
-    It is recommended if the command will change the data in the database
-    """
-    def wrapper(*args, **kwargs):
-        try:
-            instance, bot, update = args
-        except IndexError as e:
-            logging.exception('is_user_exists decorator: {}'.format(e))
-            return
-
-        telegram_id = update.message.chat_id
-        user_exists = instance._bot_instance.db.is_user_exists(telegram_id)
-
-        if not user_exists:
-            bot.send_message(
-                chat_id=telegram_id,
-                text='You are not in the database. Just call the /start command',
-            )
-            return
-        func(*args, **kwargs)
-
-    return wrapper
-
-
 def login_required(func):
     """Decorator for commands: to check the availability and relevance of user credentials"""
     def wrapper(*args, **kwargs):
@@ -388,7 +357,15 @@ def login_required(func):
             return
 
         telegram_id = update.message.chat_id
+        user_exists = instance._bot_instance.db.is_user_exists(telegram_id)
         auth, message = instance._bot_instance.get_and_check_cred(telegram_id)
+
+        if not user_exists:
+            bot.send_message(
+                chat_id=telegram_id,
+                text='You are not in the database. Just call the /start command',
+            )
+            return
 
         if not auth:
             bot.send_message(
@@ -398,35 +375,5 @@ def login_required(func):
             return
         else:
             func(*args, **kwargs)
-
-    return wrapper
-
-
-def is_authorized(func):
-    """
-    Decorator for auth commands (connect & oauth): checks whether the user is authorized for any host,
-    if Yes, ask to run the command /disconnect
-    """
-    def wrapper(*args, **kwargs):
-        try:
-            instance, bot, update = args
-        except IndexError as e:
-            logging.exception('is_authorized decorator: {}'.format(e))
-            return
-
-        telegram_id = update.message.chat_id
-        user_data = instance._bot_instance.db.get_user_data(telegram_id)
-        auth, message = instance._bot_instance.get_and_check_cred(telegram_id)
-
-        if user_data.get('auth_method') or auth:
-            bot.send_message(
-                chat_id=telegram_id,
-                text='You are already connected to {}. '
-                     'Please use /disconnect before connecting '
-                     'to another JIRA instance.'.format(user_data.get('host_url')),
-            )
-            return
-
-        func(*args, **kwargs)
 
     return wrapper
