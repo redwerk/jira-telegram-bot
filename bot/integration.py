@@ -35,7 +35,7 @@ def jira_connect(func):
             )
             data = func(*args, **kwargs)
             jira_conn.kill_session()
-            return data, 'Success'
+            return data, OK_STATUS
         else:
             return False, JiraBackend.login_error[error]
 
@@ -102,9 +102,9 @@ class JiraBackend:
         else:
             if base_check:
                 jira_conn.kill_session()
-                return True, 'The verification succeeds'
+                return True, OK_STATUS
             else:
-                return jira_conn, 'The verification succeeds'
+                return jira_conn, OK_STATUS
 
     @staticmethod
     def _getting_data(kwargs: dict) -> (jira.JIRA, str):

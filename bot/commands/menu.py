@@ -8,7 +8,6 @@ from .base import AbstractCommand, AbstractCommandFactory
 
 class MainMenuCommand(AbstractCommand):
 
-    @utils.login_required
     def handler(self, bot, update, *args, **kwargs):
         """
         Call order: /menu
@@ -73,6 +72,7 @@ class TrackingMenuCommand(AbstractCommand):
 
 class MainMenuCommandFactory(AbstractCommandFactory):
 
+    @utils.login_required
     def command(self, bot, update, *args, **kwargs):
         MainMenuCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
 
@@ -102,8 +102,8 @@ class ChooseDeveloperMenuCommand(AbstractCommand):
         """Displaying inline keyboard with developers names"""
 
         buttons = list()
-        _callback = kwargs.get('pattern')
-        _footer = kwargs.get('footer')
+        callback_key = kwargs.get('pattern')
+        footer = kwargs.get('footer')
 
         developers, status = self._bot_instance.jira.get_developers(auth_data=auth_data)
 
@@ -117,11 +117,11 @@ class ChooseDeveloperMenuCommand(AbstractCommand):
 
         for fullname in sorted(developers):
             buttons.append(
-                InlineKeyboardButton(text=fullname, callback_data=_callback.format(fullname))
+                InlineKeyboardButton(text=fullname, callback_data=callback_key.format(fullname))
             )
 
         footer_button = [
-            InlineKeyboardButton('« Back', callback_data=_footer)
+            InlineKeyboardButton('« Back', callback_data=footer)
         ]
 
         buttons = InlineKeyboardMarkup(
@@ -143,8 +143,8 @@ class ChooseProjectMenuCommand(AbstractCommand):
         Call order: /menu > Issues > Unresolved by project
         Displaying inline keyboard with names of projects
         """
-        _callback = kwargs.get('pattern')
-        _footer = kwargs.get('footer')
+        callback_key = kwargs.get('pattern')
+        footer = kwargs.get('footer')
 
         projects_buttons = list()
         projects, status_code = self._bot_instance.jira.get_projects(auth_data=auth_data)
@@ -162,12 +162,12 @@ class ChooseProjectMenuCommand(AbstractCommand):
             projects_buttons.append(
                 InlineKeyboardButton(
                     text=project_name,
-                    callback_data=_callback.format(project_name)
+                    callback_data=callback_key.format(project_name)
                 )
             )
 
         footer_button = [
-            InlineKeyboardButton('« Back', callback_data=_footer)
+            InlineKeyboardButton('« Back', callback_data=footer)
         ]
         buttons = InlineKeyboardMarkup(
             utils.build_menu(
@@ -192,11 +192,11 @@ class ChooseStatusMenuCommand(AbstractCommand):
         Displaying inline keyboard with available statuses
         """
         status_buttons = list()
-        _callback = kwargs.get('pattern')
-        _footer = kwargs.get('footer')
+        callback_key = kwargs.get('pattern')
+        footer = kwargs.get('footer')
         project = kwargs.get('project')
 
-        statuses, status = self._bot_instance.jira.get_statuses(auth_data=auth_data)
+        statuses, error = self._bot_instance.jira.get_statuses(auth_data=auth_data)
 
         if not statuses:
             bot.edit_message_text(
@@ -206,15 +206,15 @@ class ChooseStatusMenuCommand(AbstractCommand):
             )
             return
 
-        for _status in statuses:
+        for status in statuses:
             status_buttons.append(
                 InlineKeyboardButton(
-                    text=_status,
-                    callback_data=_callback.format(_status)
+                    text=status,
+                    callback_data=callback_key.format(status)
                 )
             )
         footer_button = [
-            InlineKeyboardButton('« Back', callback_data=_footer)
+            InlineKeyboardButton('« Back', callback_data=footer)
         ]
 
         buttons = InlineKeyboardMarkup(

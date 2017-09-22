@@ -339,8 +339,8 @@ class TrackingCommandFactory(AbstractCommandFactory):
                 message_id=scope['message_id']
             )
 
-        _pattern = self.patterns[cmd_scope[0]].format(cmd_scope[1] + ':' + cmd_scope[2] + ':{}')
-        obj.handler(bot, scope, auth_data, pattern=_pattern, footer='tracking_menu')
+        pattern = self.patterns[cmd_scope[0]].format(cmd_scope[1] + ':' + cmd_scope[2] + ':{}')
+        obj.handler(bot, scope, auth_data, pattern=pattern, footer='tracking_menu')
 
     def command_callback(self):
         return CallbackQueryHandler(self.command, pattern=r'^tracking')
@@ -389,8 +389,8 @@ class TrackingProjectCommandFactory(AbstractCommandFactory):
                 message_id=scope['message_id']
             )
 
-        _pattern = 'tproject_u:{start_date}:{end_date}:{project}'.format(**scope) + ':{}'
-        obj.handler(bot, scope, auth_data, pattern=_pattern, footer='tracking-pu')
+        pattern = 'tproject_u:{start_date}:{end_date}:{project}'.format(**scope) + ':{}'
+        obj.handler(bot, scope, auth_data, pattern=pattern, footer='tracking-pu')
 
     def command_callback(self):
         return CallbackQueryHandler(self.command, pattern=r'^tproject')

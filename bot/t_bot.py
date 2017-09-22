@@ -127,8 +127,8 @@ class JiraBot:
         :param query_data: 'paginator:IHB#13'
         :return: ('IHB', 13)
         """
-        _data = query_data.replace('paginator:', '')
-        key, page = _data.split('#')
+        data = query_data.replace('paginator:', '')
+        key, page = data.split('#')
 
         return key, int(page)
 
