@@ -164,7 +164,7 @@ class JiraBot:
                 }
 
             auth_data = self.AuthData(auth_method, user_data.get('host_url'), user_data.get('username'), credentials)
-            status = self.jira.check_authorization(
+            status, error = self.jira.check_authorization(
                 auth_data.auth_method,
                 auth_data.jira_host,
                 auth_data.credentials,
@@ -174,7 +174,7 @@ class JiraBot:
             if status:
                 return auth_data, 'Success'
             else:
-                return False, 'Invalid credentials, please authorize again'
+                return False, error
 
     def save_into_cache(self, data: list, key: str):
         """

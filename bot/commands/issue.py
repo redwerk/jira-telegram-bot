@@ -257,7 +257,6 @@ class ListUnresolvedIssuesCommand(AbstractCommand):
 class ListUnresolvedIssuesFactory(AbstractCommandFactory):
 
     @utils.login_required
-    @utils.is_user_exists
     def command(self, bot, update, *args, **kwargs):
         auth_data, message = self._bot_instance.get_and_check_cred(update.message.chat_id)
         ListUnresolvedIssuesCommand(self._bot_instance).handler(bot, update, auth_data=auth_data, *args, **kwargs)
