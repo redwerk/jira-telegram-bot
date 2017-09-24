@@ -215,10 +215,7 @@ class JiraBackend:
     @jira_connect
     def get_project_status_issues(self, project: str, status: str, *args, **kwargs) -> list:
         """
-        Gets issues by project with a selected status
-        :param project: abbreviation name of the project
-        :param status: available status
-        :return: formatted issues list or empty list
+        Gets issues by project with a selected status and status message
         """
         jira_conn = kwargs.get('jira_conn')
 
@@ -232,8 +229,12 @@ class JiraBackend:
                 'Error while getting {} '
                 'issues with status = {}:\n{}'.format(project, status, e)
             )
+            return False, e.text
         else:
-            return self._issues_formatting(issues)
+            if issues:
+                return self._issues_formatting(issues), OK_STATUS
+            else:
+                return list(), "No tasks with <b>«{}»</b> status in <b>{}</b> project ".format(status, project)
 
         return list()
 

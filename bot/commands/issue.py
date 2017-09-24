@@ -6,33 +6,6 @@ from bot import utils
 from .base import AbstractCommand, AbstractCommandFactory
 
 
-# class ProjectStatusIssuesCommand(AbstractCommand):
-#
-#     def handler(self, bot, scope, auth_data, *args, **kwargs):
-#         # TODO: left for the /liststatus command
-#         project = kwargs.get('project')
-#         status = kwargs.get('status')
-#         project_key = '{}:{}:{}'.format(scope['telegram_id'], project, status)
-#
-#         issues, status_code = self._bot_instance.jira.get_project_status_issues(
-#             project=project, status=status, auth_data=auth_data
-#         )
-#
-#         UserUnresolvedIssuesCommand.show_title(
-#             bot,
-#             'All tasks with <b>«{}»</b> status in <b>{}</b> project:'.format(status, project),
-#             scope['chat_id'],
-#             scope['message_id'])
-#
-#         if not issues:
-#             message = "No tasks with <b>«{}»</b> status in <b>{}</b> project ".format(status, project)
-#             UserUnresolvedIssuesCommand.show_content(bot, message, scope['chat_id'])
-#             return
-#
-#         formatted_issues, buttons = self._bot_instance.save_into_cache(data=issues, key=project_key)
-#         UserUnresolvedIssuesCommand.show_content(bot, formatted_issues, scope['chat_id'], buttons)
-
-
 class ContentPaginatorCommand(AbstractCommand):
 
     def handler(self, bot, scope, user_data, *args, **kwargs):
@@ -104,7 +77,13 @@ class ListUnresolvedIssuesCommand(AbstractCommand):
 
         target, *name = options
         if target == 'my':
-            UserUnresolvedCommand(self._bot_instance).handler(bot, update, username=auth_data.username, *args, **kwargs)
+            UserUnresolvedCommand(self._bot_instance).handler(
+                bot,
+                update,
+                username=auth_data.username,
+                *args,
+                **kwargs
+            )
             return
         elif target == 'user' and name:
             UserUnresolvedCommand(self._bot_instance).handler(bot, update, username=name[0], *args, **kwargs)
@@ -194,6 +173,50 @@ class ProjectUnresolvedCommand(AbstractCommand):
 
         key = '{}:{}'.format(telegram_id, project)
         formatted_issues, buttons = self._bot_instance.save_into_cache(data=issues, key=key)
+
+        # shows list of issues
+        bot.send_message(
+            text=formatted_issues,
+            chat_id=telegram_id,
+            reply_markup=buttons,
+            parse_mode=ParseMode.HTML
+        )
+
+
+class ProjectStatusIssuesCommand(AbstractCommand):
+
+    def handler(self, bot, update, *args, **kwargs):
+        """
+        Shows project issues with selected status
+        Will be used for `/liststatus` command
+        """
+        auth_data = kwargs.get('auth_data')
+        telegram_id = update.message.chat_id
+        project = kwargs.get('project')
+        status = kwargs.get('status')
+        project_key = '{}:{}:{}'.format(telegram_id, project, status)
+
+        issues, message = self._bot_instance.jira.get_project_status_issues(
+            project=project, status=status, auth_data=auth_data
+        )
+
+        # shows title
+        bot.send_message(
+            text='All tasks with <b>«{}»</b> status in <b>{}</b> project:'.format(status, project),
+            chat_id=telegram_id,
+            parse_mode=ParseMode.HTML
+        )
+
+        if not issues:
+            # shows content
+            bot.send_message(
+                text=message,
+                chat_id=telegram_id,
+                parse_mode=ParseMode.HTML
+            )
+            return
+
+        formatted_issues, buttons = self._bot_instance.save_into_cache(data=issues, key=project_key)
 
         # shows list of issues
         bot.send_message(

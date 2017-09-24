@@ -350,7 +350,7 @@ def send_email(message):
 def login_required(func):
     """
     Decorator for commands: to check the availability and relevance of user credentials
-    If the checks are successful, then there is no need to repeatedly request the user's credentials - 
+    If the checks are successful, then there is no need to repeatedly request the user's credentials -
     they will be added to the `kwargs`
     """
     def wrapper(*args, **kwargs):
