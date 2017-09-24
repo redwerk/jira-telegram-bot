@@ -78,11 +78,7 @@ class ListUnresolvedIssuesCommand(AbstractCommand):
         target, *name = options
         if target == 'my':
             UserUnresolvedCommand(self._bot_instance).handler(
-                bot,
-                update,
-                username=auth_data.username,
-                *args,
-                **kwargs
+                bot, update, username=auth_data.username, *args, **kwargs
             )
             return
         elif target == 'user' and name:
