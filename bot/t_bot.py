@@ -7,9 +7,10 @@ from telegram.error import (BadRequest, ChatMigrated, NetworkError,
 from telegram.ext import CommandHandler, Updater
 
 import bot.commands as commands
-from bot import utils
 from bot.db import MongoBackend
 from bot.integration import JiraBackend
+from common import utils
+from common.errors import BotAuthError
 
 
 class JiraBot:
@@ -136,7 +137,7 @@ class JiraBot:
         auth_method = user_data.get('auth_method')
 
         if not auth_method:
-            return False, 'You are not authorized by any of the methods (user/pass or OAuth)'
+            raise BotAuthError('You are not authorized by any of the methods (user/pass or OAuth)')
 
         else:
             if auth_method == 'basic':
@@ -148,7 +149,9 @@ class JiraBot:
                 host_data = self.db.get_host_data(user_data.get('host_url'))
 
                 if not host_data:
-                    return False, 'In database there are no data on the {} host'.format(user_data.get('host_url'))
+                    raise BotAuthError(
+                        'In database there are no data on the {} host'.format(user_data.get('host_url'))
+                    )
 
                 credentials = {
                     'access_token': user_data.get('auth')['oauth']['access_token'],
@@ -158,17 +161,14 @@ class JiraBot:
                 }
 
             auth_data = self.AuthData(auth_method, user_data.get('host_url'), user_data.get('username'), credentials)
-            status, error = self.jira.check_authorization(
+            self.jira.check_authorization(
                 auth_data.auth_method,
                 auth_data.jira_host,
                 auth_data.credentials,
                 base_check=True
             )
 
-            if status:
-                return auth_data, 'Success'
-            else:
-                return False, error
+            return auth_data
 
     def save_into_cache(self, data: list, key: str):
         """

@@ -5,7 +5,8 @@ from decouple import config
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
 from telegram.ext import CallbackQueryHandler, CommandHandler
 
-from bot import utils
+from common import utils
+from common.errors import BotAuthError, JiraConnectionError, JiraLoginError
 
 from .base import AbstractCommand, AbstractCommandFactory
 from .menu import DisconnectMenuCommand
@@ -123,16 +124,22 @@ class OAuthLoginCommand(AbstractCommand):
 
         domain_name = kwargs.get('args')[0]
         user_data = self._bot_instance.db.get_user_data(chat_id)
-        auth, message = self._bot_instance.get_and_check_cred(chat_id)
-
-        if user_data.get('auth_method') or auth:
-            bot.send_message(
-                chat_id=chat_id,
-                text='You are already connected to {}. '
-                     'Please use /disconnect before connecting '
-                     'to another JIRA instance.'.format(user_data.get('host_url')),
-            )
+        try:
+            auth = self._bot_instance.get_and_check_cred(chat_id)
+        except (JiraLoginError, JiraConnectionError) as e:
+            bot.send_message(chat_id=chat_id, text=e.message)
             return
+        except BotAuthError:
+            pass
+        else:
+            if user_data.get('auth_method') or auth:
+                bot.send_message(
+                    chat_id=chat_id,
+                    text='You are already connected to {}. '
+                         'Please use /disconnect before connecting '
+                         'to another JIRA instance.'.format(user_data.get('host_url')),
+                )
+                return
 
         if not utils.validates_hostname(domain_name):
             jira_host = self._bot_instance.db.search_host(domain_name)
@@ -310,16 +317,22 @@ class BasicLoginCommand(AbstractCommand):
             return
 
         user_data = self._bot_instance.db.get_user_data(chat_id)
-        auth, message = self._bot_instance.get_and_check_cred(chat_id)
-
-        if user_data.get('auth_method') or auth:
-            bot.send_message(
-                chat_id=chat_id,
-                text='You are already connected to {}. '
-                     'Please use /disconnect before connecting '
-                     'to another JIRA instance.'.format(user_data.get('host_url')),
-            )
+        try:
+            auth = self._bot_instance.get_and_check_cred(chat_id)
+        except (JiraLoginError, JiraConnectionError) as e:
+            bot.send_message(chat_id=chat_id, text=e.message)
             return
+        except BotAuthError:
+            pass
+        else:
+            if user_data.get('auth_method') or auth:
+                bot.send_message(
+                    chat_id=chat_id,
+                    text='You are already connected to {}. '
+                         'Please use /disconnect before connecting '
+                         'to another JIRA instance.'.format(user_data.get('host_url')),
+                )
+                return
 
         try:
             host, username, password = auth_options
@@ -348,17 +361,15 @@ class BasicLoginCommand(AbstractCommand):
             )
             return
 
-        auth_status, *error = self._bot_instance.jira.check_authorization(
-            auth_method='basic',
-            jira_host=host_url,
-            credentials=(username, password),
-            base_check=True,
-        )
-        if not auth_status:
-            bot.send_message(
-                chat_id=chat_id,
-                text=error[0],
+        try:
+            self._bot_instance.jira.check_authorization(
+                auth_method='basic',
+                jira_host=host_url,
+                credentials=(username, password),
+                base_check=True,
             )
+        except (JiraConnectionError, JiraLoginError) as e:
+            bot.send_message(chat_id=chat_id, text=e.message)
             return
 
         basic_auth = {

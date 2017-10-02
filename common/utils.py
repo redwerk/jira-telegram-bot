@@ -13,6 +13,8 @@ from cryptography.fernet import Fernet
 from decouple import config
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
+from .errors import BotAuthError, JiraConnectionError, JiraLoginError
+
 hostname_re = re.compile(r'^http[s]?://([^:/\s]+)?$')
 http_ptotocol = re.compile(r'^http[s]?://')
 email_address = re.compile(r'([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)')
@@ -362,7 +364,6 @@ def login_required(func):
 
         telegram_id = update.message.chat_id
         user_exists = instance._bot_instance.db.is_user_exists(telegram_id)
-        auth, message = instance._bot_instance.get_and_check_cred(telegram_id)
 
         if not user_exists:
             bot.send_message(
@@ -371,11 +372,10 @@ def login_required(func):
             )
             return
 
-        if not auth:
-            bot.send_message(
-                chat_id=telegram_id,
-                text=message,
-            )
+        try:
+            auth = instance._bot_instance.get_and_check_cred(telegram_id)
+        except (JiraLoginError, JiraConnectionError, BotAuthError) as e:
+            bot.send_message(chat_id=telegram_id, text=e.message)
             return
         else:
             kwargs.update({'auth_data': auth})

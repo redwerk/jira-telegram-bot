@@ -11,7 +11,7 @@ from decouple import config
 from oauthlib.oauth1 import SIGNATURE_RSA
 
 from bot.db import MongoBackend
-from bot.utils import read_rsa_key
+from common.utils import read_rsa_key
 from run import SMTPHandlerNumb
 
 # common settings

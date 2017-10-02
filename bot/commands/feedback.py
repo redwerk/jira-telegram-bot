@@ -3,8 +3,8 @@ from telegram import ParseMode
 from telegram.ext import CommandHandler
 
 from bot.commands.base import AbstractCommand, AbstractCommandFactory
-from bot.utils import (generate_email_message, get_email_address,
-                       get_text_without_email, send_email)
+from common.utils import (generate_email_message, get_email_address,
+                          get_text_without_email, send_email)
 
 
 class FeedbackMessageCommand(AbstractCommand):

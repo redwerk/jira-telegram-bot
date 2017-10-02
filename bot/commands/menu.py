@@ -1,6 +1,6 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
-from bot import utils
+from common import utils
 
 from .base import AbstractCommand
 

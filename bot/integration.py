@@ -1,10 +1,12 @@
 import logging
 from collections import namedtuple
+from json.decoder import JSONDecodeError
 
 import jira
 from jira.resilientsession import ConnectionError
 
-from bot.utils import JIRA_DATE_FORMAT, USER_DATE_FORMAT, add_time, to_datetime
+from common.errors import JiraConnectionError, JiraEmptyData, JiraLoginError, JiraReceivingDataError
+from common.utils import JIRA_DATE_FORMAT, USER_DATE_FORMAT, add_time, to_datetime
 
 OK_STATUS = 200
 
@@ -19,29 +21,23 @@ def jira_connect(func):
     """
     def wrapper(*args, **kwargs):
         auth_data = kwargs.get('auth_data')
-        jira_conn, error = JiraBackend.check_authorization(
+        jira_conn = JiraBackend.check_authorization(
             auth_method=auth_data.auth_method,
             jira_host=auth_data.jira_host,
             credentials=auth_data.credentials,
         )
 
-        if jira_conn:
-            kwargs.update(
-                {
-                    'jira_conn': jira_conn,
-                    'jira_host': auth_data.jira_host,
-                }
-            )
-            # TODO: redo all commands to return errors
-            data, error = func(*args, **kwargs)
-            jira_conn.kill_session()
+        kwargs.update(
+            {
+                'jira_conn': jira_conn,
+                'jira_host': auth_data.jira_host,
+            }
+        )
+        # TODO: redo all commands to return errors
+        data = func(*args, **kwargs)
+        jira_conn.kill_session()
 
-            if data:
-                return data, OK_STATUS
-            else:
-                return False, error
-        else:
-            return False, JiraBackend.login_error[error]
+        return data
 
     return wrapper
 
@@ -52,17 +48,6 @@ class JiraBackend:
     """
     issue_data = namedtuple('IssueData', 'key permalink')
 
-    # description of the error for each action
-    login_error = {
-        401: 'Invalid credentials',
-        403: 'Login is denied due to a CAPTCHA requirement, or any other '
-             'reason. Please, login (relogin) into Jira via browser '
-             'and try again.',
-        409: 'Login is denied due to an unverified email. '
-             'The email must be verified by logging in to JIRA through a '
-             'browser and verifying the email.'
-    }
-
     @staticmethod
     def is_jira_app(host: str) -> bool:
         """Determines the ownership on the Jira"""
@@ -71,7 +56,8 @@ class JiraBackend:
                 server=host,
                 max_retries=0
             )
-        except (jira.JIRAError, ConnectionError):
+        except (jira.JIRAError, ConnectionError, JSONDecodeError):
+            # JSONDecodeError - because jira-python does not handle this exception
             return False
         else:
             jira_conn.server_info()
@@ -102,15 +88,14 @@ class JiraBackend:
                     max_retries=0
                 )
         except jira.JIRAError as e:
-            return False, e.status_code
+            raise JiraLoginError(e.status_code)
         except ConnectionError:
-            return False, "Can't connect to Jira host, please check the host status:\n{}".format(jira_host)
+            raise JiraConnectionError(jira_host)
         else:
             if base_check:
                 jira_conn.kill_session()
-                return True, OK_STATUS
             else:
-                return jira_conn, OK_STATUS
+                return jira_conn
 
     @staticmethod
     def _getting_data(kwargs: dict) -> (jira.JIRA, str):
@@ -128,7 +113,7 @@ class JiraBackend:
     def get_open_issues(self, username, *args, **kwargs):
         """
         Getting issues assigned to the user
-        :return: formatted issues list or empty list
+        :return: formatted issues list
         """
         jira_conn = kwargs.get('jira_conn')
 
@@ -143,12 +128,12 @@ class JiraBackend:
             logging.exception(
                 'Error while getting {} issues:\n{}'.format(username, e)
             )
-            return False, e.text
+            raise JiraReceivingDataError(e.text)
         else:
-            if issues:
-                return self._issues_formatting(issues), OK_STATUS
-            else:
-                return list(), 'Woohoo! No unresolved tasks'
+            if not issues:
+                raise JiraEmptyData('Woohoo! No unresolved tasks')
+
+            return self._issues_formatting(issues)
 
     @staticmethod
     def _issues_formatting(issues) -> list:
@@ -194,12 +179,12 @@ class JiraBackend:
             )
         except jira.JIRAError as e:
             logging.exception('Error while getting unresolved {} issues:\n{}'.format(project, e))
-            return False, e.text
+            raise JiraReceivingDataError(e.text)
         else:
-            if issues:
-                return self._issues_formatting(issues), OK_STATUS
-            else:
-                return list(), "Project <b>{}</b> doesn't have any unresolved tasks".format(project)
+            if not issues:
+                raise JiraEmptyData("Project <b>{}</b> doesn't have any unresolved tasks".format(project))
+
+            return self._issues_formatting(issues)
 
     @jira_connect
     def get_statuses(self, *args, **kwargs) -> list:
@@ -213,7 +198,7 @@ class JiraBackend:
         return sorted([status.name for status in statuses])
 
     @jira_connect
-    def get_project_status_issues(self, project: str, status: str, *args, **kwargs) -> list:
+    def get_project_status_issues(self, project: str, status: str, *args, **kwargs):
         """
         Gets issues by project with a selected status and status message
         """
@@ -229,14 +214,12 @@ class JiraBackend:
                 'Error while getting {} '
                 'issues with status = {}:\n{}'.format(project, status, e)
             )
-            return False, e.text
+            raise JiraReceivingDataError(e.text)
         else:
-            if issues:
-                return self._issues_formatting(issues), OK_STATUS
-            else:
-                return list(), "No tasks with <b>«{}»</b> status in <b>{}</b> project ".format(status, project)
+            if not issues:
+                raise JiraEmptyData("No tasks with <b>«{}»</b> status in <b>{}</b> project ".format(status, project))
 
-        return list()
+            return self._issues_formatting(issues)
 
     @jira_connect
     def get_all_user_worklogs(self, start_date: str, end_date: str, *args, **kwargs) -> list:

@@ -1,7 +1,8 @@
 from telegram import ParseMode
 from telegram.ext import CallbackQueryHandler, CommandHandler
 
-from bot import utils
+from common import utils
+from common.errors import JiraEmptyData, JiraReceivingDataError
 
 from .base import AbstractCommand, AbstractCommandFactory
 
@@ -112,7 +113,6 @@ class UserUnresolvedCommand(AbstractCommand):
         telegram_id = update.message.chat_id
         auth_data = kwargs.get('auth_data')
         username = kwargs.get('username')
-        issues, message = self._bot_instance.jira.get_open_issues(username=username, auth_data=auth_data)
 
         # shot title
         bot.send_message(
@@ -121,25 +121,26 @@ class UserUnresolvedCommand(AbstractCommand):
             parse_mode=ParseMode.HTML
         )
 
-        if not issues:
-            # shows content
+        try:
+            issues = self._bot_instance.jira.get_open_issues(username=username, auth_data=auth_data)
+        except (JiraEmptyData, JiraReceivingDataError) as e:
             bot.send_message(
-                text=message,
+                text=e.message,
                 chat_id=telegram_id,
                 parse_mode=ParseMode.HTML
             )
             return
+        else:
+            key = '{}:{}'.format(telegram_id, auth_data.username)
+            formatted_issues, buttons = self._bot_instance.save_into_cache(data=issues, key=key)
 
-        key = '{}:{}'.format(telegram_id, auth_data.username)
-        formatted_issues, buttons = self._bot_instance.save_into_cache(data=issues, key=key)
-
-        # shows list of issues
-        bot.send_message(
-            text=formatted_issues,
-            chat_id=telegram_id,
-            reply_markup=buttons,
-            parse_mode=ParseMode.HTML
-        )
+            # shows list of issues
+            bot.send_message(
+                text=formatted_issues,
+                chat_id=telegram_id,
+                reply_markup=buttons,
+                parse_mode=ParseMode.HTML
+            )
 
 
 class ProjectUnresolvedCommand(AbstractCommand):
@@ -149,7 +150,6 @@ class ProjectUnresolvedCommand(AbstractCommand):
         telegram_id = update.message.chat_id
         auth_data = kwargs.get('auth_data')
         project = kwargs.get('project')
-        issues, message = self._bot_instance.jira.get_open_project_issues(project=project, auth_data=auth_data)
 
         # shows title
         bot.send_message(
@@ -158,25 +158,26 @@ class ProjectUnresolvedCommand(AbstractCommand):
             parse_mode=ParseMode.HTML
         )
 
-        if not issues:
-            # shows content
+        try:
+            issues = self._bot_instance.jira.get_open_project_issues(project=project, auth_data=auth_data)
+        except (JiraEmptyData, JiraReceivingDataError) as e:
             bot.send_message(
-                text=message,
+                text=e.message,
                 chat_id=telegram_id,
                 parse_mode=ParseMode.HTML
             )
             return
+        else:
+            key = '{}:{}'.format(telegram_id, project)
+            formatted_issues, buttons = self._bot_instance.save_into_cache(data=issues, key=key)
 
-        key = '{}:{}'.format(telegram_id, project)
-        formatted_issues, buttons = self._bot_instance.save_into_cache(data=issues, key=key)
-
-        # shows list of issues
-        bot.send_message(
-            text=formatted_issues,
-            chat_id=telegram_id,
-            reply_markup=buttons,
-            parse_mode=ParseMode.HTML
-        )
+            # shows list of issues
+            bot.send_message(
+                text=formatted_issues,
+                chat_id=telegram_id,
+                reply_markup=buttons,
+                parse_mode=ParseMode.HTML
+            )
 
 
 class ProjectStatusIssuesCommand(AbstractCommand):

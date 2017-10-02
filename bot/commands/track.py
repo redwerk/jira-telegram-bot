@@ -3,7 +3,7 @@ import logging
 import pendulum
 from telegram.ext import CallbackQueryHandler
 
-from bot import utils
+from common import utils
 
 from .base import AbstractCommand, AbstractCommandFactory
 from .issue import UserUnresolvedIssuesCommand
