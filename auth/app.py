@@ -185,20 +185,6 @@ class OAuthAuthorizedView(SendToChatMixin, OAuthJiraBaseView):
                 self.send_to_chat(session['telegram_id'], 'You are not in the database. Just call the /start command')
                 return redirect(bot_url)
             else:
-                user = db.get_user_data(session['telegram_id'])
-                allowed_hosts = user.get('allowed_hosts')
-
-                # bind the jira host to the user
-                if jira_host.get('_id') not in allowed_hosts:
-                    allowed_hosts.append(jira_host.get('_id'))
-
-                # confirm the jira host, since it was performed at least one successful authentication
-                if not jira_host.get('is_confirmed'):
-                    transaction_status = db.update_host(session['host'], {'is_confirmed': True})
-
-                data.update({
-                    'allowed_hosts': allowed_hosts
-                })
                 transaction_status = db.update_user(session['telegram_id'], data)
 
         if not transaction_status:

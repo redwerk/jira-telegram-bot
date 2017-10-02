@@ -79,7 +79,6 @@ class JiraBot:
                     'oauth': dict(access_token=None, access_token_secret=None),
                     'basic': dict(password=None),
                 },
-                'allowed_hosts': list()
             }
             transaction_status = self.db.create_user(data)
 

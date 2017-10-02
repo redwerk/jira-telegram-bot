@@ -175,15 +175,7 @@ class OAuthLoginCommand(AbstractCommand):
             )
             return
 
-    def get_app_links_data(self, bot, jira_host, chat_id):
-        user = self._bot_instance.db.get_user_data(user_id=chat_id)
-        allowed_hosts = user.get('allowed_hosts')
-
-        # bind the jira host to the user
-        if jira_host.get('_id') not in allowed_hosts:
-            allowed_hosts.append(jira_host.get('_id'))
-            self._bot_instance.db.update_user(telegram_id=chat_id, user_data={'allowed_hosts': allowed_hosts})
-
+    def get_app_links_data(self, bot, jira_host):
         data = {
             'consumer_key': jira_host.get('consumer_key'),
             'public_key': utils.read_rsa_key(config('PUBLIC_KEY_PATH')),
@@ -191,7 +183,6 @@ class OAuthLoginCommand(AbstractCommand):
             'application_name': 'JiraTelegramBot',
         }
 
-        src_text = None
         with open(os.path.join(config('DOCS_PATH'), 'app_links.txt')) as file:
             src_text = Template(file.read())
 
@@ -257,14 +248,13 @@ class AddHostProcessCommand(AbstractCommand):
             'url': host_url,
             'readable_name': utils.generate_readable_name(host_url),
             'consumer_key': utils.generate_consumer_key(),
-            'is_confirmed': False
         }
 
         host_status = self._bot_instance.db.create_host(host_data)
 
         if host_status:
             created_host = self._bot_instance.db.get_host_data(host_url)
-            message = OAuthLoginCommand(self._bot_instance).get_app_links_data(bot, created_host, scope['chat_id'])
+            message = OAuthLoginCommand(self._bot_instance).get_app_links_data(bot, created_host)
 
         bot.edit_message_text(
             chat_id=scope['chat_id'],
