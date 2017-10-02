@@ -6,7 +6,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
 from telegram.ext import CallbackQueryHandler, CommandHandler
 
 from common import utils
-from common.errors import BotAuthError, JiraConnectionError, JiraLoginError
+from common.errors import BotAuthError
 
 from .base import AbstractCommand, AbstractCommandFactory
 from .menu import DisconnectMenuCommand
@@ -116,20 +116,15 @@ class OAuthLoginCommand(AbstractCommand):
         auth_options = kwargs.get('args')
 
         if not auth_options:
-            bot.send_message(
-                chat_id=chat_id,
-                text='Host is required option'
-            )
+            bot.send_message(chat_id=chat_id, text='Host is required option')
             return
 
         domain_name = kwargs.get('args')[0]
         user_data = self._bot_instance.db.get_user_data(chat_id)
         try:
             auth = self._bot_instance.get_and_check_cred(chat_id)
-        except (JiraLoginError, JiraConnectionError) as e:
-            bot.send_message(chat_id=chat_id, text=e.message)
-            return
         except BotAuthError:
+            # ignore authorization check
             pass
         else:
             if user_data.get('auth_method') or auth:
@@ -319,10 +314,8 @@ class BasicLoginCommand(AbstractCommand):
         user_data = self._bot_instance.db.get_user_data(chat_id)
         try:
             auth = self._bot_instance.get_and_check_cred(chat_id)
-        except (JiraLoginError, JiraConnectionError) as e:
-            bot.send_message(chat_id=chat_id, text=e.message)
-            return
         except BotAuthError:
+            # ignore authorization check
             pass
         else:
             if user_data.get('auth_method') or auth:
@@ -361,16 +354,12 @@ class BasicLoginCommand(AbstractCommand):
             )
             return
 
-        try:
-            self._bot_instance.jira.check_authorization(
-                auth_method='basic',
-                jira_host=host_url,
-                credentials=(username, password),
-                base_check=True,
-            )
-        except (JiraConnectionError, JiraLoginError) as e:
-            bot.send_message(chat_id=chat_id, text=e.message)
-            return
+        self._bot_instance.jira.check_authorization(
+            auth_method='basic',
+            jira_host=host_url,
+            credentials=(username, password),
+            base_check=True,
+        )
 
         basic_auth = {
             'host_url': host_url,

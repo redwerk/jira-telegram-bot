@@ -1,4 +1,7 @@
-class JiraLoginError(Exception):
+from telegram.error import TelegramError
+
+
+class JiraLoginError(TelegramError):
     """Login error during login into Jira"""
     login_error = {
         401: 'Invalid credentials',
@@ -11,23 +14,26 @@ class JiraLoginError(Exception):
     }
 
     def __init__(self, status_code):
+        super(TelegramError, self).__init__()
         self.message = self.login_error.get(status_code, 'Some problems with login')
 
     def __str__(self):
         return self.message
 
 
-class JiraConnectionError(Exception):
+class JiraConnectionError(TelegramError):
     """Error if jira host does not exist or temporal unavailable"""
     def __init__(self, host):
+        super(TelegramError, self).__init__()
         self.jira_host = host
 
     def __str__(self):
         return "Can't connect to Jira host, please check the host status:\n{}".format(self.jira_host)
 
 
-class BaseMessageError(Exception):
+class BaseMessageError(TelegramError):
     def __init__(self, message):
+        super(TelegramError, self).__init__()
         self.message = message
 
     def __str__(self):

@@ -2,15 +2,14 @@ import logging
 from collections import namedtuple
 
 from decouple import config
-from telegram.error import (BadRequest, ChatMigrated, NetworkError,
-                            TelegramError, Unauthorized)
+from telegram.error import NetworkError, TelegramError, TimedOut
 from telegram.ext import CommandHandler, Updater
 
 import bot.commands as commands
 from bot.db import MongoBackend
 from bot.integration import JiraBackend
 from common import utils
-from common.errors import BotAuthError
+from common.errors import BaseMessageError, BotAuthError, JiraConnectionError, JiraLoginError
 
 
 class JiraBot:
@@ -208,9 +207,14 @@ class JiraBot:
             chat_id=update.message.chat_id, text='\n'.join(self.bot_commands)
         )
 
-    @staticmethod
-    def __error_callback(bot, update, error):
+    def __error_callback(self, bot, update, error):
+        telegram_id = update.message.chat_id
         try:
             raise error
-        except (Unauthorized, BadRequest, NetworkError, ChatMigrated, TelegramError) as e:
+        except (JiraLoginError, JiraConnectionError, BaseMessageError, BotAuthError) as e:
+            bot.send_message(chat_id=telegram_id, text=e.message)
+            return
+        except TimedOut:
+            pass
+        except (NetworkError, TelegramError) as e:
             logging.exception('{}'.format(e))

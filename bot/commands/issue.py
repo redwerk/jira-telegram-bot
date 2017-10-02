@@ -2,7 +2,6 @@ from telegram import ParseMode
 from telegram.ext import CallbackQueryHandler, CommandHandler
 
 from common import utils
-from common.errors import JiraEmptyData, JiraReceivingDataError
 
 from .base import AbstractCommand, AbstractCommandFactory
 
@@ -121,26 +120,17 @@ class UserUnresolvedCommand(AbstractCommand):
             parse_mode=ParseMode.HTML
         )
 
-        try:
-            issues = self._bot_instance.jira.get_open_issues(username=username, auth_data=auth_data)
-        except (JiraEmptyData, JiraReceivingDataError) as e:
-            bot.send_message(
-                text=e.message,
-                chat_id=telegram_id,
-                parse_mode=ParseMode.HTML
-            )
-            return
-        else:
-            key = '{}:{}'.format(telegram_id, auth_data.username)
-            formatted_issues, buttons = self._bot_instance.save_into_cache(data=issues, key=key)
+        issues = self._bot_instance.jira.get_open_issues(username=username, auth_data=auth_data)
+        key = '{}:{}'.format(telegram_id, auth_data.username)
+        formatted_issues, buttons = self._bot_instance.save_into_cache(data=issues, key=key)
 
-            # shows list of issues
-            bot.send_message(
-                text=formatted_issues,
-                chat_id=telegram_id,
-                reply_markup=buttons,
-                parse_mode=ParseMode.HTML
-            )
+        # shows list of issues
+        bot.send_message(
+            text=formatted_issues,
+            chat_id=telegram_id,
+            reply_markup=buttons,
+            parse_mode=ParseMode.HTML
+        )
 
 
 class ProjectUnresolvedCommand(AbstractCommand):
@@ -158,26 +148,17 @@ class ProjectUnresolvedCommand(AbstractCommand):
             parse_mode=ParseMode.HTML
         )
 
-        try:
-            issues = self._bot_instance.jira.get_open_project_issues(project=project, auth_data=auth_data)
-        except (JiraEmptyData, JiraReceivingDataError) as e:
-            bot.send_message(
-                text=e.message,
-                chat_id=telegram_id,
-                parse_mode=ParseMode.HTML
-            )
-            return
-        else:
-            key = '{}:{}'.format(telegram_id, project)
-            formatted_issues, buttons = self._bot_instance.save_into_cache(data=issues, key=key)
+        issues = self._bot_instance.jira.get_open_project_issues(project=project, auth_data=auth_data)
+        key = '{}:{}'.format(telegram_id, project)
+        formatted_issues, buttons = self._bot_instance.save_into_cache(data=issues, key=key)
 
-            # shows list of issues
-            bot.send_message(
-                text=formatted_issues,
-                chat_id=telegram_id,
-                reply_markup=buttons,
-                parse_mode=ParseMode.HTML
-            )
+        # shows list of issues
+        bot.send_message(
+            text=formatted_issues,
+            chat_id=telegram_id,
+            reply_markup=buttons,
+            parse_mode=ParseMode.HTML
+        )
 
 
 class ProjectStatusIssuesCommand(AbstractCommand):
@@ -193,10 +174,6 @@ class ProjectStatusIssuesCommand(AbstractCommand):
         status = kwargs.get('status')
         project_key = '{}:{}:{}'.format(telegram_id, project, status)
 
-        issues, message = self._bot_instance.jira.get_project_status_issues(
-            project=project, status=status, auth_data=auth_data
-        )
-
         # shows title
         bot.send_message(
             text='All tasks with <b>«{}»</b> status in <b>{}</b> project:'.format(status, project),
@@ -204,15 +181,7 @@ class ProjectStatusIssuesCommand(AbstractCommand):
             parse_mode=ParseMode.HTML
         )
 
-        if not issues:
-            # shows content
-            bot.send_message(
-                text=message,
-                chat_id=telegram_id,
-                parse_mode=ParseMode.HTML
-            )
-            return
-
+        issues = self._bot_instance.jira.get_project_status_issues(project=project, status=status, auth_data=auth_data)
         formatted_issues, buttons = self._bot_instance.save_into_cache(data=issues, key=project_key)
 
         # shows list of issues
