@@ -3,11 +3,10 @@ import logging
 import pendulum
 from telegram.ext import CallbackQueryHandler
 
-from bot import utils
+from common import utils
 
 from .base import AbstractCommand, AbstractCommandFactory
 from .issue import UserUnresolvedIssuesCommand
-from .menu import ChooseDeveloperMenuCommand, ChooseProjectMenuCommand
 
 
 class ShowCalendarCommand(AbstractCommand):
@@ -254,8 +253,6 @@ class TrackingCommandFactory(AbstractCommandFactory):
 
     commands = {
         'tracking-my': TrackingUserWorklogCommand,
-        'tracking-p': ChooseProjectMenuCommand,
-        'tracking-pu': ChooseProjectMenuCommand,
     }
 
     patterns = {
@@ -350,7 +347,6 @@ class TrackingProjectCommandFactory(AbstractCommandFactory):
     commands = {
         'tproject': TrackingProjectWorklogCommand,
         'tproject_u': TrackingProjectUserWorklogCommand,
-        'tproject_u_menu': ChooseDeveloperMenuCommand,
     }
 
     def command(self, bot, update, *args, **kwargs):

@@ -15,8 +15,7 @@
     "basic": {
       "password": none
     }
-  },
-  "allowed_hosts": []
+  }
 }
 
 // Пользователь авторизован c помощью username/password
@@ -35,8 +34,7 @@
       "password": BinData(0,
       "Z0FBQUFBQlp2ODFpS1BEZ0pRbjl1ekZzS0JlZFcySDFNa0gzTV9VRE5zU2doZG5FMDY3RC1DSnpsc1U0ZDRMbDhMaDNaSUJKSk9tdzlMX1pBRGlaZ0VGZE93Y1hFdDRTbXc9PQ==")
     }
-  },
-  "allowed_hosts": []
+  }
 }
 
 // Пользователь авторизован c помощью OAuth
@@ -54,10 +52,7 @@
     "basic": {
       "password": none
     }
-  },
-  "allowed_hosts": [
-    ObjectId("59bf8c1aa47e652e6af9312a")
-  ]
+  }
 }
 
 // При выполнении команды logout
@@ -75,27 +70,16 @@
     "basic": {
       "password": none
     }
-  },
-  "allowed_hosts": [ObjectId("59bf8c1aa47e652e6af9312a")]
+  }
 }
 ```
 
 ### jira_hosts collection
 ```json
-// Ключи сгенерированны, но ни один пользователь не авторизован
 {
   "url": "https://jira.redwerk.com",
   "readable_name": "Redwerk",
   "consumer_key": "OAuthKey",
-  "is_confirmed": false,
-}
-
-// Факт авторизации подтвержден
-{
-  "url": "https://jira.test.redwerk.com",
-  "readable_name": "Test Redwerk",
-  "consumer_key": "OAuthKey",
-  "is_confirmed": true,
 }
 ```
 

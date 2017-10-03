@@ -348,7 +348,11 @@ def send_email(message):
 
 
 def login_required(func):
-    """Decorator for commands: to check the availability and relevance of user credentials"""
+    """
+    Decorator for commands: to check the availability and relevance of user credentials
+    If the checks are successful, then there is no need to repeatedly request the user's credentials -
+    they will be added to the `kwargs`
+    """
     def wrapper(*args, **kwargs):
         try:
             instance, bot, update = args
@@ -358,7 +362,6 @@ def login_required(func):
 
         telegram_id = update.message.chat_id
         user_exists = instance._bot_instance.db.is_user_exists(telegram_id)
-        auth, message = instance._bot_instance.get_and_check_cred(telegram_id)
 
         if not user_exists:
             bot.send_message(
@@ -367,13 +370,8 @@ def login_required(func):
             )
             return
 
-        if not auth:
-            bot.send_message(
-                chat_id=telegram_id,
-                text=message,
-            )
-            return
-        else:
-            func(*args, **kwargs)
+        auth = instance._bot_instance.get_and_check_cred(telegram_id)
+        kwargs.update({'auth_data': auth})
+        func(*args, **kwargs)
 
     return wrapper

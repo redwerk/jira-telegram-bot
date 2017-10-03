@@ -2,14 +2,14 @@ import logging
 from collections import namedtuple
 
 from decouple import config
-from telegram.error import (BadRequest, ChatMigrated, NetworkError,
-                            TelegramError, Unauthorized)
+from telegram.error import NetworkError, TelegramError, TimedOut
 from telegram.ext import CommandHandler, Updater
 
 import bot.commands as commands
-from bot import utils
 from bot.db import MongoBackend
 from bot.integration import JiraBackend
+from common import utils
+from common.exceptions import BotAuthError, BaseJTBException
 
 
 class JiraBot:
@@ -17,7 +17,7 @@ class JiraBot:
 
     bot_commands = [
         '/start - Starts the bot',
-        '/menu - Displays options to interact with Jira',
+        '/listunresolved - Shows different issues',
         '/connect jira.yourcompany.com username password - Login into host using user/pass',
         '/oauth jira.yourcompany.com - Login into host using OAuth',
         '/disconnect - Deletes user credentials from DB',
@@ -25,16 +25,11 @@ class JiraBot:
     ]
     issues_per_page = 10
     commands_factories = [
-        commands.IssueCommandFactory,
-        commands.ProjectIssuesFactory,
+        commands.ListUnresolvedIssuesFactory,
         commands.ContentPaginatorFactory,
-        commands.MainMenuCommandFactory,
-        commands.MenuCommandFactory,
         commands.OAuthCommandFactory,
         commands.DisconnectMenuCommandFactory,
         commands.DisconnectCommandFactory,
-        commands.TrackingCommandFactory,
-        commands.TrackingProjectCommandFactory,
         commands.OAuthLoginCommandFactory,
         commands.BasicLoginCommandFactory,
         commands.AddHostProcessCommandFactory,
@@ -86,7 +81,6 @@ class JiraBot:
                     'oauth': dict(access_token=None, access_token_secret=None),
                     'basic': dict(password=None),
                 },
-                'allowed_hosts': list()
             }
             transaction_status = self.db.create_user(data)
 
@@ -143,7 +137,7 @@ class JiraBot:
         auth_method = user_data.get('auth_method')
 
         if not auth_method:
-            return False, 'You are not authorized by any of the methods (user/pass or OAuth)'
+            raise BotAuthError('You are not authorized by any of the methods (user/pass or OAuth)')
 
         else:
             if auth_method == 'basic':
@@ -155,7 +149,9 @@ class JiraBot:
                 host_data = self.db.get_host_data(user_data.get('host_url'))
 
                 if not host_data:
-                    return False, 'In database there are no data on the {} host'.format(user_data.get('host_url'))
+                    raise BotAuthError(
+                        'In database there are no data on the {} host'.format(user_data.get('host_url'))
+                    )
 
                 credentials = {
                     'access_token': user_data.get('auth')['oauth']['access_token'],
@@ -165,17 +161,14 @@ class JiraBot:
                 }
 
             auth_data = self.AuthData(auth_method, user_data.get('host_url'), user_data.get('username'), credentials)
-            status, error = self.jira.check_authorization(
+            self.jira.check_authorization(
                 auth_data.auth_method,
                 auth_data.jira_host,
                 auth_data.credentials,
                 base_check=True
             )
 
-            if status:
-                return auth_data, 'Success'
-            else:
-                return False, error
+            return auth_data
 
     def save_into_cache(self, data: list, key: str):
         """
@@ -215,9 +208,13 @@ class JiraBot:
             chat_id=update.message.chat_id, text='\n'.join(self.bot_commands)
         )
 
-    @staticmethod
-    def __error_callback(bot, update, error):
+    def __error_callback(self, bot, update, error):
+        telegram_id = update.message.chat_id
         try:
             raise error
-        except (Unauthorized, BadRequest, NetworkError, ChatMigrated, TelegramError) as e:
+        except BaseJTBException as e:
+            bot.send_message(chat_id=telegram_id, text=e.message)
+        except TimedOut:
+            pass
+        except (NetworkError, TelegramError) as e:
             logging.exception('{}'.format(e))
