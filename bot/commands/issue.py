@@ -1,115 +1,9 @@
 from telegram import ParseMode
-from telegram.ext import CallbackQueryHandler
+from telegram.ext import CallbackQueryHandler, CommandHandler
 
-from bot import utils
+from common import utils
 
 from .base import AbstractCommand, AbstractCommandFactory
-from .menu import ChooseProjectMenuCommand, ChooseStatusMenuCommand
-
-
-class UserUnresolvedIssuesCommand(AbstractCommand):
-
-    def handler(self, bot, scope, auth_data, *args, **kwargs):
-        """
-        Receiving open user issues and modifying the current message
-        :return: Message with a list of open user issues
-        """
-        issues, status = self._bot_instance.jira.get_open_issues(auth_data=auth_data)
-        self.show_title(bot, '<b>All your unresolved tasks:</b>', scope['chat_id'], scope['message_id'])
-
-        if not issues:
-            self.show_content(bot, 'Woohoo! You have no unresolved tasks', scope['chat_id'])
-            return
-
-        key = '{}:{}'.format(scope['telegram_id'], auth_data.username)
-        formatted_issues, buttons = self._bot_instance.save_into_cache(data=issues, key=key)
-        self.show_content(bot, formatted_issues, scope['chat_id'], buttons)
-
-    @staticmethod
-    def show_title(bot, title, chat_id, message_id):
-        """
-        Shows title of the request in chat with a user
-        It is possible to display data in HTML mode
-        """
-        bot.edit_message_text(
-            text=title,
-            chat_id=chat_id,
-            message_id=message_id,
-            parse_mode=ParseMode.HTML
-        )
-
-    @staticmethod
-    def show_content(bot, content, chat_id, buttons=None):
-        """
-        Shows a requested data in chat with a user
-        It is possible to display data in HTML mode
-        """
-        bot.send_message(
-            text=content,
-            chat_id=chat_id,
-            reply_markup=buttons,
-            parse_mode=ParseMode.HTML
-        )
-
-
-class ProjectUnresolvedIssuesCommand(AbstractCommand):
-
-    def handler(self, bot, scope, auth_data, *args, **kwargs):
-        """
-        Call order: /menu > Issues > Open project issues > Some project
-        Shows unresolved issues by selected project
-        """
-        project = kwargs.get('project')
-        issues, status_code = self._bot_instance.jira.get_open_project_issues(project=project, auth_data=auth_data)
-
-        UserUnresolvedIssuesCommand.show_title(
-            bot,
-            '<b>Unresolved tasks of project {}:</b>'.format(project),
-            scope['chat_id'],
-            scope['message_id'])
-
-        if not issues:
-            UserUnresolvedIssuesCommand.show_content(
-                bot,
-                "Project <b>{}</b> doesn't have any unresolved tasks".format(project),
-                scope['chat_id']
-            )
-            return
-
-        key = '{}:{}'.format(scope['telegram_id'], project)
-        formatted_issues, buttons = self._bot_instance.save_into_cache(data=issues, key=key)
-        UserUnresolvedIssuesCommand.show_content(bot, formatted_issues, scope['chat_id'], buttons)
-
-
-class ProjectStatusIssuesCommand(AbstractCommand):
-
-    def handler(self, bot, scope, auth_data, *args, **kwargs):
-        """
-        Call order: /menu > Issues > Open project issues >
-                    > Some project  > Some status
-        Shows project issues with selected status
-        """
-        project = kwargs.get('project')
-        status = kwargs.get('status')
-        project_key = '{}:{}:{}'.format(scope['telegram_id'], project, status)
-
-        issues, status_code = self._bot_instance.jira.get_project_status_issues(
-            project=project, status=status, auth_data=auth_data
-        )
-
-        UserUnresolvedIssuesCommand.show_title(
-            bot,
-            'All tasks with <b>«{}»</b> status in <b>{}</b> project:'.format(status, project),
-            scope['chat_id'],
-            scope['message_id'])
-
-        if not issues:
-            message = "No tasks with <b>«{}»</b> status in <b>{}</b> project ".format(status, project)
-            UserUnresolvedIssuesCommand.show_content(bot, message, scope['chat_id'])
-            return
-
-        formatted_issues, buttons = self._bot_instance.save_into_cache(data=issues, key=project_key)
-        UserUnresolvedIssuesCommand.show_content(bot, formatted_issues, scope['chat_id'], buttons)
 
 
 class ContentPaginatorCommand(AbstractCommand):
@@ -141,78 +35,6 @@ class ContentPaginatorCommand(AbstractCommand):
         )
 
 
-class IssueCommandFactory(AbstractCommandFactory):
-
-    commands = {
-        "issues:my": UserUnresolvedIssuesCommand,
-        "issues:p": ChooseProjectMenuCommand,
-        "issues:ps": ChooseProjectMenuCommand
-    }
-
-    patterns = {
-        "issues:my": 'ignore',
-        "issues:p": 'project:{}',
-        "issues:ps": 'project_s_menu:{}'
-    }
-
-    def command(self, bot, update, *args, **kwargs):
-        """
-        Call order: /menu > Issues > Any option
-        """
-        scope = self._bot_instance.get_query_scope(update)
-        auth_data, message = self._bot_instance.get_and_check_cred(scope['telegram_id'])
-
-        if not auth_data:
-            bot.edit_message_text(
-                text=message,
-                chat_id=scope['chat_id'],
-                message_id=scope['message_id']
-            )
-            return
-
-        obj = self._command_factory_method(scope['data'])
-        obj.handler(bot, scope, auth_data, pattern=self.patterns[scope['data']], footer='issues_menu')
-
-    def command_callback(self):
-        return CallbackQueryHandler(self.command, pattern=r'^issues:')
-
-
-class ProjectIssuesFactory(AbstractCommandFactory):
-    commands = {
-        'project': ProjectUnresolvedIssuesCommand,
-        'project_s': ProjectStatusIssuesCommand,
-        'project_s_menu': ChooseStatusMenuCommand
-    }
-
-    def command(self, bot, update, *args, **kwargs):
-        """
-        Call order: /menu > Issues > Any option
-        """
-        scope = self._bot_instance.get_query_scope(update)
-        cmd, project, *status = scope['data'].split(':')
-        if status:
-            status = status[0]
-
-        obj = self._command_factory_method(cmd)
-        auth_data, message = self._bot_instance.get_and_check_cred(
-            scope['telegram_id']
-        )
-
-        if not auth_data:
-            bot.edit_message_text(
-                text=message,
-                chat_id=scope['chat_id'],
-                message_id=scope['message_id']
-            )
-            return
-
-        pattern = 'project_s:' + project + ':{}'
-        obj.handler(bot, scope, auth_data, project=project, status=status, pattern=pattern, footer='issues:ps')
-
-    def command_callback(self):
-        return CallbackQueryHandler(self.command, pattern=r'^project')
-
-
 class ContentPaginatorFactory(AbstractCommandFactory):
 
     def command(self, bot, update, *args, **kwargs):
@@ -232,3 +54,140 @@ class ContentPaginatorFactory(AbstractCommandFactory):
 
     def command_callback(self):
         return CallbackQueryHandler(self.command, pattern=r'^paginator:')
+
+
+class ListUnresolvedIssuesCommand(AbstractCommand):
+    targest = ('my', 'user', 'project')
+
+    def handler(self, bot, update, *args, **kwargs):
+        chat_id = update.message.chat_id
+        auth_data = kwargs.get('auth_data')
+        options = kwargs.get('args')
+
+        if not options or options[0] not in self.targest:
+            bot.send_message(
+                chat_id=chat_id,
+                parse_mode=ParseMode.HTML,
+                text="<b>Command description:</b>\n"
+                     "/listunresolved my - returns a list of user's unresolved issues\n"
+                     "/listunresolved user <i>username</i> - returns a list of selected user issues\n"
+                     "/listunresolved project <i>KEY or Name</i> - returns a list of projects issues\n"
+            )
+            return
+
+        target, *name = options
+        if target == 'my':
+            UserUnresolvedCommand(self._bot_instance).handler(
+                bot, update, username=auth_data.username, *args, **kwargs
+            )
+            return
+        elif target == 'user' and name:
+            UserUnresolvedCommand(self._bot_instance).handler(bot, update, username=name[0], *args, **kwargs)
+            return
+        elif target == 'project' and name:
+            ProjectUnresolvedCommand(self._bot_instance).handler(bot, update, project=name[0], *args, **kwargs)
+            return
+
+        bot.send_message(
+            chat_id=chat_id,
+            parse_mode=ParseMode.HTML,
+            text='You did not specify <b>username</b> or <b>project key</b>'
+        )
+
+
+class ListUnresolvedIssuesFactory(AbstractCommandFactory):
+
+    @utils.login_required
+    def command(self, bot, update, *args, **kwargs):
+        ListUnresolvedIssuesCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
+
+    def command_callback(self):
+        return CommandHandler('listunresolved', self.command, pass_args=True)
+
+
+class UserUnresolvedCommand(AbstractCommand):
+
+    def handler(self, bot, update, *args, **kwargs):
+        """Shows user's unresolved issues"""
+        telegram_id = update.message.chat_id
+        auth_data = kwargs.get('auth_data')
+        username = kwargs.get('username')
+
+        # shot title
+        bot.send_message(
+            text='<b>All unresolved tasks of {}:</b>'.format(username),
+            chat_id=telegram_id,
+            parse_mode=ParseMode.HTML
+        )
+
+        issues = self._bot_instance.jira.get_open_issues(username=username, auth_data=auth_data)
+        key = '{}:{}'.format(telegram_id, auth_data.username)
+        formatted_issues, buttons = self._bot_instance.save_into_cache(data=issues, key=key)
+
+        # shows list of issues
+        bot.send_message(
+            text=formatted_issues,
+            chat_id=telegram_id,
+            reply_markup=buttons,
+            parse_mode=ParseMode.HTML
+        )
+
+
+class ProjectUnresolvedCommand(AbstractCommand):
+
+    def handler(self, bot, update, *args, **kwargs):
+        """Shows project unresolved issues"""
+        telegram_id = update.message.chat_id
+        auth_data = kwargs.get('auth_data')
+        project = kwargs.get('project')
+
+        # shows title
+        bot.send_message(
+            text='<b>Unresolved tasks of project {}:</b>'.format(project),
+            chat_id=telegram_id,
+            parse_mode=ParseMode.HTML
+        )
+
+        issues = self._bot_instance.jira.get_open_project_issues(project=project, auth_data=auth_data)
+        key = '{}:{}'.format(telegram_id, project)
+        formatted_issues, buttons = self._bot_instance.save_into_cache(data=issues, key=key)
+
+        # shows list of issues
+        bot.send_message(
+            text=formatted_issues,
+            chat_id=telegram_id,
+            reply_markup=buttons,
+            parse_mode=ParseMode.HTML
+        )
+
+
+class ProjectStatusIssuesCommand(AbstractCommand):
+
+    def handler(self, bot, update, *args, **kwargs):
+        """
+        Shows project issues with selected status
+        Will be used for `/liststatus` command
+        """
+        auth_data = kwargs.get('auth_data')
+        telegram_id = update.message.chat_id
+        project = kwargs.get('project')
+        status = kwargs.get('status')
+        project_key = '{}:{}:{}'.format(telegram_id, project, status)
+
+        # shows title
+        bot.send_message(
+            text='All tasks with <b>«{}»</b> status in <b>{}</b> project:'.format(status, project),
+            chat_id=telegram_id,
+            parse_mode=ParseMode.HTML
+        )
+
+        issues = self._bot_instance.jira.get_project_status_issues(project=project, status=status, auth_data=auth_data)
+        formatted_issues, buttons = self._bot_instance.save_into_cache(data=issues, key=project_key)
+
+        # shows list of issues
+        bot.send_message(
+            text=formatted_issues,
+            chat_id=telegram_id,
+            reply_markup=buttons,
+            parse_mode=ParseMode.HTML
+        )

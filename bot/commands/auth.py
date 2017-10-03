@@ -5,7 +5,8 @@ from decouple import config
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
 from telegram.ext import CallbackQueryHandler, CommandHandler
 
-from bot import utils
+from common import utils
+from common.exceptions import BotAuthError
 
 from .base import AbstractCommand, AbstractCommandFactory
 from .menu import DisconnectMenuCommand
@@ -115,24 +116,25 @@ class OAuthLoginCommand(AbstractCommand):
         auth_options = kwargs.get('args')
 
         if not auth_options:
-            bot.send_message(
-                chat_id=chat_id,
-                text='Host is required option'
-            )
+            bot.send_message(chat_id=chat_id, text='Host is required option')
             return
 
         domain_name = kwargs.get('args')[0]
         user_data = self._bot_instance.db.get_user_data(chat_id)
-        auth, message = self._bot_instance.get_and_check_cred(chat_id)
-
-        if user_data.get('auth_method') or auth:
-            bot.send_message(
-                chat_id=chat_id,
-                text='You are already connected to {}. '
-                     'Please use /disconnect before connecting '
-                     'to another JIRA instance.'.format(user_data.get('host_url')),
-            )
-            return
+        try:
+            auth = self._bot_instance.get_and_check_cred(chat_id)
+        except BotAuthError:
+            # ignore authorization check
+            pass
+        else:
+            if user_data.get('auth_method') or auth:
+                bot.send_message(
+                    chat_id=chat_id,
+                    text='You are already connected to {}. '
+                         'Please use /disconnect before connecting '
+                         'to another JIRA instance.'.format(user_data.get('host_url')),
+                )
+                return
 
         if not utils.validates_hostname(domain_name):
             jira_host = self._bot_instance.db.search_host(domain_name)
@@ -173,15 +175,7 @@ class OAuthLoginCommand(AbstractCommand):
             )
             return
 
-    def get_app_links_data(self, bot, jira_host, chat_id):
-        user = self._bot_instance.db.get_user_data(user_id=chat_id)
-        allowed_hosts = user.get('allowed_hosts')
-
-        # bind the jira host to the user
-        if jira_host.get('_id') not in allowed_hosts:
-            allowed_hosts.append(jira_host.get('_id'))
-            self._bot_instance.db.update_user(telegram_id=chat_id, user_data={'allowed_hosts': allowed_hosts})
-
+    def get_app_links_data(self, bot, jira_host):
         data = {
             'consumer_key': jira_host.get('consumer_key'),
             'public_key': utils.read_rsa_key(config('PUBLIC_KEY_PATH')),
@@ -189,7 +183,6 @@ class OAuthLoginCommand(AbstractCommand):
             'application_name': 'JiraTelegramBot',
         }
 
-        src_text = None
         with open(os.path.join(config('DOCS_PATH'), 'app_links.txt')) as file:
             src_text = Template(file.read())
 
@@ -255,14 +248,13 @@ class AddHostProcessCommand(AbstractCommand):
             'url': host_url,
             'readable_name': utils.generate_readable_name(host_url),
             'consumer_key': utils.generate_consumer_key(),
-            'is_confirmed': False
         }
 
         host_status = self._bot_instance.db.create_host(host_data)
 
         if host_status:
             created_host = self._bot_instance.db.get_host_data(host_url)
-            message = OAuthLoginCommand(self._bot_instance).get_app_links_data(bot, created_host, scope['chat_id'])
+            message = OAuthLoginCommand(self._bot_instance).get_app_links_data(bot, created_host)
 
         bot.edit_message_text(
             chat_id=scope['chat_id'],
@@ -310,16 +302,20 @@ class BasicLoginCommand(AbstractCommand):
             return
 
         user_data = self._bot_instance.db.get_user_data(chat_id)
-        auth, message = self._bot_instance.get_and_check_cred(chat_id)
-
-        if user_data.get('auth_method') or auth:
-            bot.send_message(
-                chat_id=chat_id,
-                text='You are already connected to {}. '
-                     'Please use /disconnect before connecting '
-                     'to another JIRA instance.'.format(user_data.get('host_url')),
-            )
-            return
+        try:
+            auth = self._bot_instance.get_and_check_cred(chat_id)
+        except BotAuthError:
+            # ignore authorization check
+            pass
+        else:
+            if user_data.get('auth_method') or auth:
+                bot.send_message(
+                    chat_id=chat_id,
+                    text='You are already connected to {}. '
+                         'Please use /disconnect before connecting '
+                         'to another JIRA instance.'.format(user_data.get('host_url')),
+                )
+                return
 
         try:
             host, username, password = auth_options
@@ -348,18 +344,12 @@ class BasicLoginCommand(AbstractCommand):
             )
             return
 
-        auth_status, *error = self._bot_instance.jira.check_authorization(
+        self._bot_instance.jira.check_authorization(
             auth_method='basic',
             jira_host=host_url,
             credentials=(username, password),
             base_check=True,
         )
-        if not auth_status:
-            bot.send_message(
-                chat_id=chat_id,
-                text=error[0],
-            )
-            return
 
         basic_auth = {
             'host_url': host_url,
