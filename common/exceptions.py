@@ -1,7 +1,16 @@
 from telegram.error import TelegramError
 
 
-class JiraLoginError(TelegramError):
+class BaseJTBException(TelegramError):
+    def __init__(self, message):
+        super(TelegramError, self).__init__()
+        self.message = message
+
+    def __str__(self):
+        return self.message
+
+
+class JiraLoginError(BaseJTBException):
     """Login error during login into Jira"""
     login_error = {
         401: 'Invalid credentials',
@@ -17,39 +26,24 @@ class JiraLoginError(TelegramError):
         super(TelegramError, self).__init__()
         self.message = self.login_error.get(status_code, 'Some problems with login')
 
-    def __str__(self):
-        return self.message
 
-
-class JiraConnectionError(TelegramError):
+class JiraConnectionError(BaseJTBException):
     """Error if jira host does not exist or temporal unavailable"""
     def __init__(self, host):
         super(TelegramError, self).__init__()
-        self.jira_host = host
-
-    def __str__(self):
-        return "Can't connect to Jira host, please check the host status:\n{}".format(self.jira_host)
+        self.message = "Can't connect to Jira host, please check the host status:\n{}".format(host)
 
 
-class BaseMessageError(TelegramError):
-    def __init__(self, message):
-        super(TelegramError, self).__init__()
-        self.message = message
-
-    def __str__(self):
-        return self.message
-
-
-class JiraReceivingDataError(BaseMessageError):
+class JiraReceivingDataError(BaseJTBException):
     """Any errors during receiving data from Jira API"""
     pass
 
 
-class JiraEmptyData(BaseMessageError):
+class JiraEmptyData(BaseJTBException):
     """Signal that the response did not return any data to display to the user"""
     pass
 
 
-class BotAuthError(BaseMessageError):
+class BotAuthError(BaseJTBException):
     """Errors in validating user credentials"""
     pass

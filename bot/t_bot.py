@@ -9,7 +9,7 @@ import bot.commands as commands
 from bot.db import MongoBackend
 from bot.integration import JiraBackend
 from common import utils
-from common.errors import BaseMessageError, BotAuthError, JiraConnectionError, JiraLoginError
+from common.exceptions import BotAuthError, BaseJTBException
 
 
 class JiraBot:
@@ -210,7 +210,7 @@ class JiraBot:
         telegram_id = update.message.chat_id
         try:
             raise error
-        except (JiraLoginError, JiraConnectionError, BaseMessageError) as e:
+        except BaseJTBException as e:
             bot.send_message(chat_id=telegram_id, text=e.message)
         except TimedOut:
             pass

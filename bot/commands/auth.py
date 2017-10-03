@@ -6,7 +6,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
 from telegram.ext import CallbackQueryHandler, CommandHandler
 
 from common import utils
-from common.errors import BotAuthError
+from common.exceptions import BotAuthError
 
 from .base import AbstractCommand, AbstractCommandFactory
 from .menu import DisconnectMenuCommand
