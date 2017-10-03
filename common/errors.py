@@ -46,8 +46,10 @@ class JiraReceivingDataError(BaseMessageError):
 
 
 class JiraEmptyData(BaseMessageError):
+    """Signal that the response did not return any data to display to the user"""
     pass
 
 
 class BotAuthError(BaseMessageError):
+    """Errors in validating user credentials"""
     pass

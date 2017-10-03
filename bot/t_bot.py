@@ -210,9 +210,8 @@ class JiraBot:
         telegram_id = update.message.chat_id
         try:
             raise error
-        except (JiraLoginError, JiraConnectionError, BaseMessageError, BotAuthError) as e:
+        except (JiraLoginError, JiraConnectionError, BaseMessageError) as e:
             bot.send_message(chat_id=telegram_id, text=e.message)
-            return
         except TimedOut:
             pass
         except (NetworkError, TelegramError) as e:
