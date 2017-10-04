@@ -113,6 +113,9 @@ class UserUnresolvedCommand(AbstractCommand):
         auth_data = kwargs.get('auth_data')
         username = kwargs.get('username')
 
+        # check if the user exists on Jira host
+        self._bot_instance.jira.is_user_on_host(host=auth_data.jira_host, username=username, auth_data=auth_data)
+
         # shot title
         bot.send_message(
             text='<b>All unresolved tasks of {}:</b>'.format(username),
@@ -140,6 +143,9 @@ class ProjectUnresolvedCommand(AbstractCommand):
         telegram_id = update.message.chat_id
         auth_data = kwargs.get('auth_data')
         project = kwargs.get('project')
+
+        # check if the project exists on Jira host
+        self._bot_instance.jira.is_project_exists(host=auth_data.jira_host, project=project, auth_data=auth_data)
 
         # shows title
         bot.send_message(
