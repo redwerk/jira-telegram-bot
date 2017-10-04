@@ -216,6 +216,7 @@ class JiraBot:
                 # must send a new message
                 bot.send_message(chat_id=update.message.chat_id, text=e.message)
             else:
+                # if the command is executed after pressing the inline keyboard
                 # must update the last message
                 bot.edit_message_text(chat_id=scope['chat_id'], message_id=scope['message_id'], text=e.message)
         except TimedOut:
