@@ -431,13 +431,12 @@ class JiraBackend:
             filters = jira_conn.favourite_filters()
         except jira.JIRAError as e:
             logging.exception('Failed to get filters:\n{}'.format(e))
+            raise JiraReceivingDataError(e.text)
         else:
             return {f.name: f.id for f in filters}
 
-        return dict()
-
     @jira_connect
-    def get_filter_issues(self, filter_id, *args, **kwargs):
+    def get_filter_issues(self, filter_name, filter_id, *args, **kwargs):
         """Returns issues getting by filter id"""
         jira_conn = kwargs.get('jira_conn')
 
@@ -445,7 +444,9 @@ class JiraBackend:
             issues = jira_conn.search_issues('filter={}'.format(filter_id), maxResults=200)
         except jira.JIRAError as e:
             logging.exception('Failed to get issues by filter:\n{}'.format(e))
+            raise JiraReceivingDataError(e.text)
         else:
-            return self._issues_formatting(issues)
+            if not issues:
+                raise JiraEmptyData('No tasks which filtered by <b>«{}»</b>'.format(filter_name))
 
-        return list()
+            return self._issues_formatting(issues)

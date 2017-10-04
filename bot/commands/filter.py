@@ -1,23 +1,31 @@
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
 from telegram.ext import CallbackQueryHandler, CommandHandler
 
-from bot.utils import build_menu, login_required
+from common.utils import build_menu, login_required
 
 from .base import AbstractCommand, AbstractCommandFactory
-from .issue import UserUnresolvedIssuesCommand
 
 
-class FilterListCommand(AbstractCommand):
+class FilterDispatcherCommand(AbstractCommand):
 
     def handler(self, bot, update, *args, **kwargs):
         auth_data = kwargs.get('auth_data')
+        options = kwargs.get('args')
         chat_id = update.message.chat_id
         filter_buttons = list()
 
         message = "You don't have any favourite filters"
-        callback_data = 'filter:{}:{}'
+        callback_data = 'filter_p:{}:{}'
 
-        filters, error = self._bot_instance.jira.get_favourite_filters(auth_data=auth_data)
+        filters = self._bot_instance.jira.get_favourite_filters(auth_data=auth_data)
+        if options:
+            filter_name = ' '.join(options)
+
+            if filter_name in filters.keys():
+                kwargs.update({'filter_name': filter_name, 'filter_id': filters.get(filter_name)})
+                FilterIssuesCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
+                return
+
         for name in filters.keys():
             filter_buttons.append(
                 InlineKeyboardButton(text=name, callback_data=callback_data.format(name, filters[name]))
@@ -37,51 +45,70 @@ class FilterListCommand(AbstractCommand):
         )
 
 
-class FilterListFactory(AbstractCommandFactory):
+class FilterDispatcherFactory(AbstractCommandFactory):
     """/filter - returns a list of favorite filters"""
 
     @login_required
     def command(self, bot, update, *args, **kwargs):
-        chat_id = update.message.chat_id
-        auth_data, message = self._bot_instance.get_and_check_cred(chat_id)
-        FilterListCommand(self._bot_instance).handler(bot, update, auth_data=auth_data, *args, **kwargs)
+        FilterDispatcherCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
 
     def command_callback(self):
-        return CommandHandler('filter', self.command)
+        return CommandHandler('filter', self.command, pass_args=True)
 
 
 class FilterIssuesCommand(AbstractCommand):
 
     def handler(self, bot, update, *args, **kwargs):
         auth_data = kwargs.get('auth_data')
-        scope = self._bot_instance.get_query_scope(update)
-        filter_name, filter_id = scope['data'].replace('filter:', '').split(':')
-        filter_key = 'filter:{}:{}'.format(scope['telegram_id'], filter_id)
+        telegram_id = update.message.chat_id
+        new_message = True
 
-        issues, error = self._bot_instance.jira.get_filter_issues(filter_id=filter_id, auth_data=auth_data)
-        UserUnresolvedIssuesCommand.show_title(
-            bot,
-            'All tasks which filtered by <b>«{}»</b>:'.format(filter_name),
-            scope['chat_id'],
-            scope['message_id']
+        try:
+            scope = self._bot_instance.get_query_scope(update)
+        except AttributeError:
+            filter_name = kwargs.get('filter_name')
+            filter_id = kwargs.get('filter_id')
+        else:
+            new_message = False
+            filter_name, filter_id = scope['data'].replace('filter_p:', '').split(':')
+
+        filter_key = 'filter_p:{}:{}'.format(telegram_id, filter_id)
+
+        # shot title
+        if new_message:
+            bot.send_message(
+                text='All tasks which filtered by <b>«{}»</b>:'.format(filter_name),
+                chat_id=telegram_id,
+                parse_mode=ParseMode.HTML
+            )
+        else:
+            bot.edit_message_text(
+                chat_id=telegram_id,
+                message_id=scope['message_id'],
+                text='All tasks which filtered by <b>«{}»</b>:'.format(filter_name),
+                parse_mode=ParseMode.HTML
+            )
+
+        issues = self._bot_instance.jira.get_filter_issues(
+            filter_id=filter_id, filter_name=filter_name, auth_data=auth_data
         )
-
-        if not issues:
-            message = 'No tasks which filtered by <b>«{}»</b>'.format(filter_name)
-            UserUnresolvedIssuesCommand.show_content(bot, message, scope['chat_id'])
-            return
-
         formatted_issues, buttons = self._bot_instance.save_into_cache(data=issues, key=filter_key)
-        UserUnresolvedIssuesCommand.show_content(bot, formatted_issues, scope['chat_id'], buttons)
+
+        # shows list of issues
+        bot.send_message(
+            text=formatted_issues,
+            chat_id=telegram_id,
+            reply_markup=buttons,
+            parse_mode=ParseMode.HTML
+        )
 
 
 class FilterIssuesFactory(AbstractCommandFactory):
     """/filter -> some filter - return issues getting by a selected filter"""
 
+    @login_required
     def command(self, bot, update, *args, **kwargs):
-        chat_id = update.callback_query.from_user.id
-        auth_data, message = self._bot_instance.get_and_check_cred(chat_id)
-        FilterIssuesCommand(self._bot_instance).handler(bot, update, auth_data=auth_data, *args, **kwargs)
+        FilterIssuesCommand(self._bot_instance).handler(bot, update,  *args, **kwargs)
 
     def command_callback(self):
-        return CallbackQueryHandler(self.command, pattern=r'^filter')
+        return CallbackQueryHandler(self.command, pattern=r'^filter_p:')

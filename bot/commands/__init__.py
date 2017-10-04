@@ -2,7 +2,7 @@ from .issue import ListUnresolvedIssuesFactory, ContentPaginatorFactory
 from .auth import (OAuthCommandFactory, OAuthLoginCommandFactory, AddHostProcessCommandFactory,
                    DisconnectMenuCommandFactory, DisconnectCommandFactory, BasicLoginCommandFactory)
 from .feedback import FeedbackMessageCommandFactory
-from .filter import FilterListFactory, FilterIssuesFactory
+from .filter import FilterDispatcherFactory, FilterIssuesFactory
 
 
 __all__ = (
@@ -15,6 +15,6 @@ __all__ = (
     "DisconnectMenuCommandFactory",
     "DisconnectCommandFactory",
     "FeedbackMessageCommandFactory",
-    "FilterListFactory",
+    "FilterDispatcherFactory",
     "FilterIssuesFactory",
 )
