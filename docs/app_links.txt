@@ -1,6 +1,6 @@
 The host is already added to the database, but it is not activated.
 To activate the host, add the following information to the
-<a href="https://www.prodpad.com/blog/tech-tutorial-oauth-in-jira/">Application links</a>.
+<a href="http://telegra.ph/Nastrojka-avtorizacii-cherez-OAuth-dlya-JiraBot-10-04">Application links</a>.
 <b>NOTE:</b> you must have administrator permissions
 
 <b>Application URL:</b> $application_url
@@ -12,5 +12,4 @@ To activate the host, add the following information to the
 <b>Consumer Name:</b> $application_name
 <b>Public Key:</b> $public_key
 
-Fields that are not specified must be filled in (e.g. "example")
-This host was attached to you. After adding the specified data try to authorize via the command /login
+After creating the link, repeat the entered command again
