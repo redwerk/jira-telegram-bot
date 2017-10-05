@@ -2,7 +2,7 @@ import os
 from string import Template
 
 from decouple import config
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
+from telegram import ParseMode
 from telegram.ext import CallbackQueryHandler, CommandHandler
 
 from common import utils
@@ -31,15 +31,6 @@ class UserOAuthCommand(AbstractCommand):
     @staticmethod
     def generate_auth_link(telegram_id: int, host_url: str) -> str:
         return '{}/authorize/{}/?host={}'.format(config('OAUTH_SERVICE_URL'), telegram_id, host_url)
-
-
-class OAuthCommandFactory(AbstractCommandFactory):
-
-    def command(self, bot, update, *args, **kwargs):
-        UserOAuthCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
-
-    def command_callback(self):
-        return CallbackQueryHandler(self.command, pattern=r'^oauth:')
 
 
 class DisconnectMenuCommandFactory(AbstractCommandFactory):
@@ -105,21 +96,24 @@ class DisconnectCommandFactory(AbstractCommandFactory):
 
 
 class OAuthLoginCommand(AbstractCommand):
-    negative_answer = 'No'
 
     def handler(self, bot, update, *args, **kwargs):
         """
-        Adds a new host into a system. If a host is already in DB - returns a link for authorizing via Flask service.
-        If not - request for adding a new host into DB.
+        If the host does not exist - generating data for creating an Application link in Jira, displaying the data
+        to the user and displaying a link for authorization.
+        If the host exists and is confirmed (successfully logged in) - return the link for authorization.
+        If the host exists but is not confirmed - generating a new consumer key, displaying the data for
+        creating the Application link and displaying the link for authorization
         """
         chat_id = update.message.chat_id
         auth_options = kwargs.get('args')
+        message = 'Failed to create a new host'
 
         if not auth_options:
             bot.send_message(chat_id=chat_id, text='Host is required option')
             return
 
-        domain_name = kwargs.get('args')[0]
+        domain_name = auth_options[0]
         user_data = self._bot_instance.db.get_user_data(chat_id)
         try:
             auth = self._bot_instance.get_and_check_cred(chat_id)
@@ -141,41 +135,51 @@ class OAuthLoginCommand(AbstractCommand):
         else:
             jira_host = self._bot_instance.db.get_host_data(domain_name)
 
-        if jira_host:
+        if jira_host and jira_host.get('is_confirmed'):
             message = 'Follow the link to confirm authorization\n{}'.format(
                 UserOAuthCommand.generate_auth_link(telegram_id=chat_id, host_url=jira_host.get('url'))
             )
-            bot.send_message(
-                chat_id=chat_id,
-                text=message,
-            )
-            return
+        elif jira_host and not jira_host.get('is_confirmed'):
+            jira_host.update({'consumer_key': utils.generate_consumer_key()})
+            host_updated = self._bot_instance.db.update_host(host_url=jira_host.get('url'), host_data=jira_host)
 
+            if host_updated:
+                # sends data for creating an Application link
+                bot.send_message(chat_id=chat_id, text=self.get_app_links_data(jira_host), parse_mode=ParseMode.HTML)
+                # sends a link for authorization via OAuth
+                message = 'Follow the link to confirm authorization\n{}'.format(
+                    UserOAuthCommand.generate_auth_link(telegram_id=chat_id, host_url=jira_host.get('url'))
+                )
         else:
-            button_list = [
-                InlineKeyboardButton(
-                    'Yes', callback_data='add_host:{}'.format(domain_name)
-                ),
-                InlineKeyboardButton(
-                    'No', callback_data='add_host:{}'.format(self.negative_answer)
-                ),
-            ]
+            domain_name = self.check_hosturl(domain_name)
 
-            reply_markup = InlineKeyboardMarkup(utils.build_menu(
-                button_list, n_cols=2
-            ))
+            if not domain_name:
+                bot.send_message(chat_id=chat_id, text="This is not a Jira application. Please try again")
+                return
 
-            bot.send_message(
-                chat_id=chat_id,
-                text='This host is not supported at the moment, '
-                     'do you want to go through the procedure of adding a new host?\n'
-                     '<b>NOTE:</b> you must have administrator permissions to add a generated data into Jira',
-                reply_markup=reply_markup,
-                parse_mode=ParseMode.HTML
-            )
-            return
+            host_data = {
+                'url': domain_name,
+                'is_confirmed': False,
+                'consumer_key': utils.generate_consumer_key(),
+            }
 
-    def get_app_links_data(self, bot, jira_host):
+            host_status = self._bot_instance.db.create_host(host_data)
+
+            if host_status:
+                # sends data for creating an Application link
+                bot.send_message(chat_id=chat_id, text=self.get_app_links_data(jira_host), parse_mode=ParseMode.HTML)
+                # sends a link for authorization via OAuth
+                message = 'Follow the link to confirm authorization\n{}'.format(
+                    UserOAuthCommand.generate_auth_link(telegram_id=chat_id, host_url=jira_host.get('url'))
+                )
+
+        bot.send_message(
+            chat_id=chat_id,
+            text=message,
+            parse_mode=ParseMode.HTML
+        )
+
+    def get_app_links_data(self, jira_host):
         data = {
             'consumer_key': jira_host.get('consumer_key'),
             'public_key': utils.read_rsa_key(config('PUBLIC_KEY_PATH')),
@@ -187,6 +191,19 @@ class OAuthLoginCommand(AbstractCommand):
             src_text = Template(file.read())
 
         return src_text.substitute(data)
+
+    def check_hosturl(self, host_url):
+        if utils.validates_hostname(host_url):
+            return host_url
+
+        elif not utils.validates_hostname(host_url):
+            for protocol in ('https://', 'http://'):
+                test_host_url = '{}{}'.format(protocol, host_url)
+
+                if self._bot_instance.jira.is_jira_app(test_host_url):
+                    return test_host_url
+            else:
+                return False
 
 
 class OAuthLoginCommandFactory(AbstractCommandFactory):
@@ -207,83 +224,6 @@ class OAuthLoginCommandFactory(AbstractCommandFactory):
 
     def command_callback(self):
         return CommandHandler('oauth', self.command, pass_args=True)
-
-
-class AddHostProcessCommand(AbstractCommand):
-
-    def handler(self, bot, update, *args, **kwargs):
-        """
-        Validates Jira host URL, returns consumer key, public key and link on Flask OAuth service
-        """
-        scope = self._bot_instance.get_query_scope(update)
-        host_url = scope['data'].replace('add_host:', '')
-        message = 'Failed to create a new host'
-
-        if host_url == OAuthLoginCommand.negative_answer:
-            bot.edit_message_text(
-                chat_id=scope['chat_id'],
-                message_id=scope['message_id'],
-                text='Request for adding a new host was declined',
-            )
-            return
-
-        bot.edit_message_text(
-            chat_id=scope['chat_id'],
-            message_id=scope['message_id'],
-            text='Processing...',
-        )
-
-        host_url = self.check_hosturl(host_url)
-
-        if not host_url:
-            bot.edit_message_text(
-                chat_id=scope['chat_id'],
-                message_id=scope['message_id'],
-                text="This is not Jira host. "
-                     "Please try again or use /feedback command so we can help you to fix this issue",
-            )
-            return
-
-        host_data = {
-            'url': host_url,
-            'readable_name': utils.generate_readable_name(host_url),
-            'consumer_key': utils.generate_consumer_key(),
-        }
-
-        host_status = self._bot_instance.db.create_host(host_data)
-
-        if host_status:
-            created_host = self._bot_instance.db.get_host_data(host_url)
-            message = OAuthLoginCommand(self._bot_instance).get_app_links_data(bot, created_host)
-
-        bot.edit_message_text(
-            chat_id=scope['chat_id'],
-            message_id=scope['message_id'],
-            text=message,
-            parse_mode=ParseMode.HTML
-        )
-
-    def check_hosturl(self, host_url):
-        if utils.validates_hostname(host_url):
-            return host_url
-
-        elif not utils.validates_hostname(host_url):
-            for protocol in ('https://', 'http://'):
-                test_host_url = '{}{}'.format(protocol, host_url)
-
-                if self._bot_instance.jira.is_jira_app(test_host_url):
-                    return test_host_url
-            else:
-                return False
-
-
-class AddHostProcessCommandFactory(AbstractCommandFactory):
-
-    def command(self, bot, update, *args, **kwargs):
-        AddHostProcessCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
-
-    def command_callback(self):
-        return CallbackQueryHandler(self.command, pattern=r'^add_host:')
 
 
 class BasicLoginCommand(AbstractCommand):
@@ -336,7 +276,7 @@ class BasicLoginCommand(AbstractCommand):
         )
 
         # getting the URL to the Jira app
-        host_url = AddHostProcessCommand(self._bot_instance).check_hosturl(host)
+        host_url = OAuthLoginCommand(self._bot_instance).check_hosturl(host)
         if not host_url:
             bot.send_message(
                 chat_id=chat_id,

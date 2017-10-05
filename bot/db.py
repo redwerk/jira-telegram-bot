@@ -77,17 +77,6 @@ class MongoBackend:
         return True if status else False
 
     @mongodb_connect
-    def update_host(self, url: str, host_data: dict, **kwargs) -> bool:
-        """
-        Updates the specified fields in host collection
-        Matching by: host url
-        """
-        collection = self._get_collection('host', kwargs)
-        status = collection.update({'url': url}, {'$set': host_data})
-
-        return True if status else False
-
-    @mongodb_connect
     def is_user_exists(self, telegram_id: int, **kwargs) -> bool:
         collection = self._get_collection('user', kwargs)
         return collection.count({"telegram_id": telegram_id}) > 0
@@ -110,6 +99,17 @@ class MongoBackend:
         return True if status else False
 
     @mongodb_connect
+    def update_host(self, host_url, host_data, **kwargs):
+        """
+        Updates the specified fields in host collection
+        Matching by: host url
+        """
+        collection = self._get_collection('host', kwargs)
+        status = collection.update({'url': host_url}, {'$set': host_data})
+
+        return True if status else False
+
+    @mongodb_connect
     def get_host_data(self, url, **kwargs):
         """Returns host data according to host URL"""
         collection = self._get_collection('host', kwargs)
@@ -123,17 +123,6 @@ class MongoBackend:
         collection = self._get_collection('host', kwargs)
         host = collection.find_one({'url': {'$regex': 'http(s)?://' + host}})
         return host
-
-    @mongodb_connect
-    def get_hosts(self, ids_list: list, **kwargs):
-        """
-        Returns matched hosts
-        Matching by: ObjectId
-        """
-        collection = self._get_collection('host', kwargs)
-        hosts = collection.find({'_id': {'$in': ids_list}})
-
-        return hosts
 
     @mongodb_connect
     def create_cache(self, key: str, content: list, page_count: int, **kwargs) -> bool:

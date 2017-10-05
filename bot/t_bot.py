@@ -26,13 +26,11 @@ class JiraBot:
     issues_per_page = 10
     commands_factories = [
         commands.ListUnresolvedIssuesFactory,
-        commands.ContentPaginatorFactory,
-        commands.OAuthCommandFactory,
+        commands.BasicLoginCommandFactory,
+        commands.OAuthLoginCommandFactory,
         commands.DisconnectMenuCommandFactory,
         commands.DisconnectCommandFactory,
-        commands.OAuthLoginCommandFactory,
-        commands.BasicLoginCommandFactory,
-        commands.AddHostProcessCommandFactory,
+        commands.ContentPaginatorFactory,
     ]
 
     def __init__(self):
