@@ -139,15 +139,13 @@ class JiraBackend:
 
         try:
             issues = jira_conn.search_issues(
-                'assignee = {username} and resolution = Unresolved'.format(
+                'assignee = "{username}" and resolution = Unresolved'.format(
                     username=username
                 ),
                 maxResults=200
             )
         except jira.JIRAError as e:
-            logging.exception(
-                'Error while getting {} issues:\n{}'.format(username, e)
-            )
+            logging.exception('Error while getting {} issues:\n{}'.format(username, e))
             raise JiraReceivingDataError(e.text)
         else:
             if not issues:
