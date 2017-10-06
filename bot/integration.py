@@ -97,6 +97,26 @@ class JiraBackend:
             else:
                 return jira_conn
 
+    @jira_connect
+    def is_user_on_host(self, host, username, *args, **kwargs):
+        """Checking the existence of the user on the Jira host"""
+        jira_conn = kwargs.get('jira_conn')
+
+        try:
+            jira_conn._session.get('{0}/rest/api/2/user?username={1}'.format(host, username))
+        except jira.JIRAError as e:
+            raise JiraReceivingDataError(e.text)
+
+    @jira_connect
+    def is_project_exists(self, host, project, *args, **kwargs):
+        """Checking the existence of the project on the Jira host"""
+        jira_conn = kwargs.get('jira_conn')
+
+        try:
+            jira_conn._session.get('{0}/rest/api/2/project/{1}'.format(host, project.upper()))
+        except jira.JIRAError as e:
+            raise JiraReceivingDataError(e.text)
+
     @staticmethod
     def _getting_data(kwargs: dict) -> (jira.JIRA, str):
         """
@@ -119,15 +139,13 @@ class JiraBackend:
 
         try:
             issues = jira_conn.search_issues(
-                'assignee = {username} and resolution = Unresolved'.format(
+                'assignee = "{username}" and resolution = Unresolved'.format(
                     username=username
                 ),
                 maxResults=200
             )
         except jira.JIRAError as e:
-            logging.exception(
-                'Error while getting {} issues:\n{}'.format(username, e)
-            )
+            logging.exception('Error while getting {} issues:\n{}'.format(username, e))
             raise JiraReceivingDataError(e.text)
         else:
             if not issues:
