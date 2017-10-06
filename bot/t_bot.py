@@ -18,6 +18,7 @@ class JiraBot:
     bot_commands = [
         '/start - Starts the bot',
         '/listunresolved - Shows different issues',
+        '/filter - shows issues by favourite filters',
         '/connect jira.yourcompany.com username password - Login into host using user/pass',
         '/oauth jira.yourcompany.com - Login into host using OAuth',
         '/disconnect - Deletes user credentials from DB',
@@ -26,13 +27,13 @@ class JiraBot:
     issues_per_page = 10
     commands_factories = [
         commands.ListUnresolvedIssuesFactory,
-        commands.ContentPaginatorFactory,
-        commands.OAuthCommandFactory,
+        commands.FilterDispatcherFactory,
+        commands.FilterIssuesFactory,
+        commands.BasicLoginCommandFactory,
+        commands.OAuthLoginCommandFactory,
         commands.DisconnectMenuCommandFactory,
         commands.DisconnectCommandFactory,
-        commands.OAuthLoginCommandFactory,
-        commands.BasicLoginCommandFactory,
-        commands.AddHostProcessCommandFactory,
+        commands.ContentPaginatorFactory,
     ]
 
     def __init__(self):

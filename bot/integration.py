@@ -139,15 +139,13 @@ class JiraBackend:
 
         try:
             issues = jira_conn.search_issues(
-                'assignee = {username} and resolution = Unresolved'.format(
+                'assignee = "{username}" and resolution = Unresolved'.format(
                     username=username
                 ),
                 maxResults=200
             )
         except jira.JIRAError as e:
-            logging.exception(
-                'Error while getting {} issues:\n{}'.format(username, e)
-            )
+            logging.exception('Error while getting {} issues:\n{}'.format(username, e))
             raise JiraReceivingDataError(e.text)
         else:
             if not issues:
@@ -441,3 +439,32 @@ class JiraBackend:
             return [data['fullname'] for nick, data in developers.items()]
 
         return list()
+
+    @jira_connect
+    def get_favourite_filters(self, *args, **kwargs):
+        """Return list of favourite filters"""
+        jira_conn = kwargs.get('jira_conn')
+
+        try:
+            filters = jira_conn.favourite_filters()
+        except jira.JIRAError as e:
+            logging.exception('Failed to get filters:\n{}'.format(e))
+            raise JiraReceivingDataError(e.text)
+        else:
+            return {f.name: f.id for f in filters}
+
+    @jira_connect
+    def get_filter_issues(self, filter_name, filter_id, *args, **kwargs):
+        """Returns issues getting by filter id"""
+        jira_conn = kwargs.get('jira_conn')
+
+        try:
+            issues = jira_conn.search_issues('filter={}'.format(filter_id), maxResults=200)
+        except jira.JIRAError as e:
+            logging.exception('Failed to get issues by filter:\n{}'.format(e))
+            raise JiraReceivingDataError(e.text)
+        else:
+            if not issues:
+                raise JiraEmptyData('No tasks which filtered by <b>«{}»</b>'.format(filter_name))
+
+            return self._issues_formatting(issues)

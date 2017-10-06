@@ -125,8 +125,15 @@ class AuthorizeView(SendToChatMixin, OAuthJiraBaseView):
         try:
             return self.jira_app.authorize(callback=callback)
         except OAuthException as e:
+            # unconfirmed host
+            jira_host = db.get_host_data(url=request.args.get('host'))
+            if jira_host:
+                jira_host.update({'is_confirmed': False})
+                db.update_host(host_url=jira_host.get('url'), host_data=jira_host)
+
             logging.exception('{}, Telegram ID: {}, Host: {}'.format(e.message, telegram_id, session['host']))
-            message = '{}\nPlease check if you created an Application link in your Jira'.format(e.message)
+            message = '{}\nPlease check if you created an Application link in your Jira.\n' \
+                      'You can get settings for creating Application link via /oauth command'.format(e.message)
             self.send_to_chat(session['telegram_id'], message)
             return redirect(bot_url)
 
@@ -186,6 +193,10 @@ class OAuthAuthorizedView(SendToChatMixin, OAuthJiraBaseView):
                 return redirect(bot_url)
             else:
                 transaction_status = db.update_user(session['telegram_id'], data)
+
+            # host verified
+            jira_host.update({'is_confirmed': True})
+            db.update_host(host_url=jira_host.get('url'), host_data=jira_host)
 
         if not transaction_status:
             message = 'Impossible to save data into the database. Please try again later.'

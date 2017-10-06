@@ -78,7 +78,7 @@
 ```json
 {
   "url": "https://jira.redwerk.com",
-  "readable_name": "Redwerk",
+  "is_confirmed": true,
   "consumer_key": "OAuthKey",
 }
 ```
