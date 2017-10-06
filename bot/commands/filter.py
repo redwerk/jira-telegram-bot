@@ -113,7 +113,7 @@ class FilterIssuesFactory(AbstractCommandFactory):
 
     @login_required
     def command(self, bot, update, *args, **kwargs):
-        FilterIssuesCommand(self._bot_instance).handler(bot, update,  *args, **kwargs)
+        FilterIssuesCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
 
     def command_callback(self):
         return CallbackQueryHandler(self.command, pattern=r'^filter_p:')
