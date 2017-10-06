@@ -360,7 +360,13 @@ def login_required(func):
             logging.exception('login_required decorator: {}'.format(e))
             return
 
-        telegram_id = update.message.chat_id
+        try:
+            # update came from CommandHandler (after execute /command)
+            telegram_id = update.message.chat_id
+        except AttributeError:
+            # update came from CallbackQueryHandler (after press button on inline keyboard)
+            telegram_id = update.callback_query.from_user.id
+
         user_exists = instance._bot_instance.db.is_user_exists(telegram_id)
 
         if not user_exists:

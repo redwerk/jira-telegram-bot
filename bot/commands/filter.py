@@ -11,6 +11,7 @@ class FilterDispatcherCommand(AbstractCommand):
     def handler(self, bot, update, *args, **kwargs):
         auth_data = kwargs.get('auth_data')
         options = kwargs.get('args')
+        buttons = None
         chat_id = update.message.chat_id
         filter_buttons = list()
 
@@ -18,25 +19,29 @@ class FilterDispatcherCommand(AbstractCommand):
         callback_data = 'filter_p:{}:{}'
 
         filters = self._bot_instance.jira.get_favourite_filters(auth_data=auth_data)
-        if options:
+        if options and filters:
             filter_name = ' '.join(options)
 
             if filter_name in filters.keys():
                 kwargs.update({'filter_name': filter_name, 'filter_id': filters.get(filter_name)})
                 FilterIssuesCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
                 return
+            else:
+                message = 'This filter is not in your favorites'
+        elif filters:
+            for name in filters.keys():
+                filter_buttons.append(
+                    InlineKeyboardButton(text=name, callback_data=callback_data.format(name, filters[name]))
+                )
 
-        for name in filters.keys():
-            filter_buttons.append(
-                InlineKeyboardButton(text=name, callback_data=callback_data.format(name, filters[name]))
+            buttons = InlineKeyboardMarkup(
+                build_menu(filter_buttons, n_cols=2)
             )
 
-        buttons = InlineKeyboardMarkup(
-            build_menu(filter_buttons, n_cols=2)
-        )
-
-        if buttons:
-            message = 'Pick up one of the filters:'
+            if buttons:
+                message = 'Pick up one of the filters:'
+        else:
+            message = "You don't have any favourite filters"
 
         bot.send_message(
             chat_id=chat_id,
@@ -60,15 +65,16 @@ class FilterIssuesCommand(AbstractCommand):
 
     def handler(self, bot, update, *args, **kwargs):
         auth_data = kwargs.get('auth_data')
-        telegram_id = update.message.chat_id
         new_message = True
 
         try:
             scope = self._bot_instance.get_query_scope(update)
         except AttributeError:
+            telegram_id = update.message.chat_id
             filter_name = kwargs.get('filter_name')
             filter_id = kwargs.get('filter_id')
         else:
+            telegram_id = scope['telegram_id']
             new_message = False
             filter_name, filter_id = scope['data'].replace('filter_p:', '').split(':')
 
