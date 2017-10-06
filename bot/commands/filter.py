@@ -24,8 +24,7 @@ class FilterDispatcherCommand(AbstractCommand):
 
             if filter_name in filters.keys():
                 kwargs.update({'filter_name': filter_name, 'filter_id': filters.get(filter_name)})
-                FilterIssuesCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
-                return
+                return FilterIssuesCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
             else:
                 message = 'This filter is not in your favorites'
         elif filters:
