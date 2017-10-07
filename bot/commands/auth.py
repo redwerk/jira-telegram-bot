@@ -25,7 +25,7 @@ class UserOAuthCommand(AbstractCommand):
         bot.edit_message_text(
             chat_id=scope['chat_id'],
             message_id=scope['message_id'],
-            text='Follow the link to confirm authorization\n{}'.format(service_url),
+            text='Follow the <a href="{}">link</a> to confirm authorization'.format(service_url),
         )
 
     @staticmethod
@@ -136,7 +136,7 @@ class OAuthLoginCommand(AbstractCommand):
             jira_host = self._bot_instance.db.get_host_data(domain_name)
 
         if jira_host and jira_host.get('is_confirmed'):
-            message = 'Follow the link to confirm authorization\n{}'.format(
+            message = 'Follow the <a href="{}">link</a> to confirm authorization'.format(
                 UserOAuthCommand.generate_auth_link(telegram_id=chat_id, host_url=jira_host.get('url'))
             )
         elif jira_host and not jira_host.get('is_confirmed'):
@@ -147,7 +147,7 @@ class OAuthLoginCommand(AbstractCommand):
                 # sends data for creating an Application link
                 bot.send_message(chat_id=chat_id, text=self.get_app_links_data(jira_host), parse_mode=ParseMode.HTML)
                 # sends a link for authorization via OAuth
-                message = 'Follow the link to confirm authorization\n{}'.format(
+                message = 'Follow the <a href="{}">link</a> to confirm authorization'.format(
                     UserOAuthCommand.generate_auth_link(telegram_id=chat_id, host_url=jira_host.get('url'))
                 )
         else:
@@ -167,10 +167,10 @@ class OAuthLoginCommand(AbstractCommand):
 
             if host_status:
                 # sends data for creating an Application link
-                bot.send_message(chat_id=chat_id, text=self.get_app_links_data(jira_host), parse_mode=ParseMode.HTML)
+                bot.send_message(chat_id=chat_id, text=self.get_app_links_data(host_data), parse_mode=ParseMode.HTML)
                 # sends a link for authorization via OAuth
-                message = 'Follow the link to confirm authorization\n{}'.format(
-                    UserOAuthCommand.generate_auth_link(telegram_id=chat_id, host_url=jira_host.get('url'))
+                message = 'Follow the <a href="{}">link</a> to confirm authorization'.format(
+                    UserOAuthCommand.generate_auth_link(telegram_id=chat_id, host_url=host_data.get('url'))
                 )
 
         bot.send_message(
@@ -193,10 +193,11 @@ class OAuthLoginCommand(AbstractCommand):
         return src_text.substitute(data)
 
     def check_hosturl(self, host_url):
-        if utils.validates_hostname(host_url):
-            return host_url
+        valid = utils.validates_hostname(host_url)
 
-        elif not utils.validates_hostname(host_url):
+        if valid and self._bot_instance.jira.is_jira_app(host_url):
+            return host_url
+        elif not valid:
             for protocol in ('https://', 'http://'):
                 test_host_url = '{}{}'.format(protocol, host_url)
 
