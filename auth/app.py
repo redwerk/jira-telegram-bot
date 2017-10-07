@@ -119,7 +119,7 @@ class AuthorizeView(SendToChatMixin, OAuthJiraBaseView):
         generates an authorization request
         """
 
-        # TelegramBot, which tries to download a preview of the site to uaser chat,
+        # TelegramBot, which tries to download a preview of the site to user chat,
         # do not start sending a request for authorization to Jiri
         if 'TelegramBot' in request.headers.get('User-Agent'):
             return Response(status=200)
