@@ -1,7 +1,7 @@
 import logging
 from logging.config import fileConfig
 
-from flask import Flask, redirect, request, session, url_for
+from flask import Flask, redirect, request, session, url_for, Response
 from flask.views import View
 from flask_oauthlib.client import OAuth, OAuthException
 
@@ -114,8 +114,16 @@ class AuthorizeView(SendToChatMixin, OAuthJiraBaseView):
     methods = ['GET']
 
     def dispatch_request(self, telegram_id):
-        # Endpoint which saves telegram_id into session and
-        # generates an authorization request
+        """
+        Endpoint which saves telegram_id into session and
+        generates an authorization request
+        """
+
+        # TelegramBot, which tries to download a preview of the site to uaser chat,
+        # do not start sending a request for authorization to Jiri
+        if 'TelegramBot' in request.headers.get('User-Agent'):
+            return Response(status=200)
+
         session['telegram_id'] = telegram_id
         session['host'] = request.args.get('host')
         callback = url_for(
