@@ -1,5 +1,4 @@
-ENV_ROOT=venv/
-PYBINARYDIR=$(ENV_ROOT)bin/
+PYBINARYDIR=venv/bin/
 PYTHON=$(PYBINARYDIR)python
 
 help:
@@ -18,4 +17,4 @@ run-oauth-service:
 	$(PYTHON) auth_run.py
 
 run-code-chaker:
-	$(PYBINARYDIR)flake8 --exclude=$(ENV_ROOT)
+	$(PYBINARYDIR)flake8

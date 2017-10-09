@@ -176,7 +176,8 @@ class OAuthLoginCommand(AbstractCommand):
         bot.send_message(
             chat_id=chat_id,
             text=message,
-            parse_mode=ParseMode.HTML
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True
         )
 
     def get_app_links_data(self, jira_host):
