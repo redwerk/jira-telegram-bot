@@ -5,7 +5,7 @@ import smtplib
 import uuid
 from datetime import datetime, timedelta
 from email.mime.text import MIMEText
-from typing import Generator, List
+from typing import List
 
 import pendulum
 import pytz
@@ -63,12 +63,12 @@ def split_by_pages(issues: list, item_per_page: int) -> list:
     :param item_per_page: count of items per page
     :return: list of lists
     """
+    splitted_issues = list()
 
-    def slice_generator(sequence: list, item_per_page: int) -> Generator:
-        for start in range(0, len(sequence), item_per_page):
-            yield sequence[start:start + item_per_page]
+    for start in range(0, len(issues), item_per_page):
+        splitted_issues.append(issues[start:start + item_per_page])
 
-    return list(slice_generator(issues, item_per_page))
+    return splitted_issues
 
 
 def get_pagination_keyboard(current: int,
@@ -276,38 +276,13 @@ def read_rsa_key(path):
 
 
 def validates_hostname(url: str) -> bool:
-    """
-    Validates hostname by next patterns:
-
-    https://jira.redwerk.com                 True
-    https://jira.test.redwerk.com            True
-    https://jira.test.redwerk.com/           False
-    test                                     False
-    www.test.com                             False
-    http//test.com                           False
-    https//test.com                          False
-    https://test.com                         True
-    """
+    """Validates hostname"""
     return True if hostname_re.match(url) else False
 
 
 def generate_consumer_key() -> str:
     """Generates a consumer key"""
     return uuid.uuid4().hex
-
-
-def generate_key_name(host_url: str) -> str:
-    """Generates a name for private key from host name"""
-    name = http_ptotocol.sub('', host_url)
-    return '{}_key.pem'.format(name.replace('.', '_'))
-
-
-def generate_readable_name(host_url: str) -> str:
-    """Generates a readable name for Jira host in DB"""
-    name = http_ptotocol.sub('', host_url)
-    name_list = name.replace('.com', '').split('.')
-
-    return ' '.join([word[0].upper() + word[1:] for word in name_list])
 
 
 def get_email_address(text):

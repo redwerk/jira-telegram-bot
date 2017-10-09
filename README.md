@@ -51,6 +51,10 @@ DEV_EMAILS = user1@email.com,user2@email.com
 
 For further deployment see [/docs](docs) folder
 
+### Running project tests
+
+Run command in root folder of project: `pytest -v`
+
 ### Running via Docker Compose
 
 1. Set value `DB_HOST = mongo` to **.env** and file And fill in the remaining fields.
