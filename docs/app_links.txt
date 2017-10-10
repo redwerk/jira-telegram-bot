@@ -12,4 +12,4 @@ To activate the host, add the following information to the
 <b>Consumer Name:</b> $application_name
 <b>Public Key:</b> $public_key
 
-After creating the link, repeat the entered command again
+After creating Application link in JIRA, follow the link to confirm authorization in next message.
