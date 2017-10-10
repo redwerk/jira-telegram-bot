@@ -221,7 +221,10 @@ class JiraBot:
                 # if the command is executed after pressing the inline keyboard
                 # must update the last message
                 bot.edit_message_text(
-                    chat_id=scope['chat_id'], message_id=scope['message_id'], text=e.message, parse_mode=ParseMode.HTML
+                    chat_id=scope['chat_id'],
+                    message_id=scope['message_id'],
+                    text=e.message,
+                    parse_mode=ParseMode.HTML
                 )
         except TimedOut:
             pass
