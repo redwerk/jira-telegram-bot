@@ -10,8 +10,8 @@ import requests
 from decouple import config
 from oauthlib.oauth1 import SIGNATURE_RSA
 
-from bot.db import MongoBackend
 from common.utils import read_rsa_key
+from common.db import MongoBackend
 from run import SMTPHandlerNumb
 
 # common settings
@@ -21,7 +21,13 @@ logger.handlers[SMTPHandlerNumb].fromaddr = config('LOGGER_EMAIL')
 logger.handlers[SMTPHandlerNumb].toaddrs = [email.strip() for email in config('DEV_EMAILS').split(',')]
 
 bot_url = config('BOT_URL')
-db = MongoBackend()
+db = MongoBackend(
+    user=config('DB_USER'),
+    password=config('DB_PASS'),
+    host=config('DB_HOST'),
+    port=config('DB_PORT'),
+    db_name=config('DB_NAME')
+)
 
 
 # Flask settings

@@ -6,45 +6,6 @@ from pymongo import MongoClient
 from pymongo.errors import OperationFailure, ServerSelectionTimeoutError, WriteError
 
 
-def mongodb_connect(func):
-    """
-    Decorator establishes a connection to the database and checks it.
-    If the connection is - passes the object to the function to execute
-    the query. If you have no connection - writes to the log.
-    In any case closes the connection to the database.
-    :param func: function in which the actions with the DB will be performed
-    :return: data from DB
-    """
-
-    def wrapper(*args, **kwargs):
-        db_name = config('DB_NAME')
-        data = False
-        uri = 'mongodb://{user}:{password}@{host}:{port}/{db_name}'.format(
-            user=config('DB_USER'), password=config('DB_PASS'), host=config('DB_HOST'),
-            port=config('DB_PORT'), db_name=db_name
-        )
-
-        client = MongoClient(uri, serverSelectionTimeoutMS=1)
-
-        try:
-            client.server_info()  # checking a connection to DB
-        except (ServerSelectionTimeoutError, OperationFailure) as error:
-            logging.exception("Can't connect to DB: {}".format(error))
-        else:
-            db = client[db_name]
-            kwargs.update({'db': db})
-            try:
-                data = func(*args, **kwargs)
-            except WriteError as e:
-                logging.exception('Error while writing to database: {}'.format(e))
-        finally:
-            client.close()
-
-        return data
-
-    return wrapper
-
-
 class MongoBackend:
     """An interface that contains basic methods for working with the database"""
     collection_mapping = {
@@ -53,19 +14,41 @@ class MongoBackend:
         'cache': config('DB_CACHE_COLLECTION'),
     }
 
+    def __init__(self, user, password, host, port, db_name):
+        self.uri = 'mongodb://{user}:{password}@{host}:{port}/{db_name}'.format(
+            user=user,
+            password=password,
+            host=host,
+            port=port,
+            db_name=db_name
+        )
+        self.db_name = db_name
+
+    def _get_connect(self):
+        """
+        Creates and checks connect to MongoDB
+        :return MongoClient object to db_name
+        """
+        client = MongoClient(self.uri, serverSelectionTimeoutMS=1)
+
+        try:
+            client.server_info()  # checking a connection to DB
+        except (ServerSelectionTimeoutError, OperationFailure) as error:
+            logging.exception("Can't connect to DB: {}".format(error))
+        else:
+            return client[self.db_name]
+
     def _get_collection(self, name: str, kwargs: dict) -> MongoClient:
         """Returns MongoClient object which links to selected collection"""
-        db = kwargs.get('db')
+        db = self._get_connect()
         return db[self.collection_mapping.get(name)]
 
-    @mongodb_connect
     def create_user(self, user_data: dict, **kwargs) -> bool:
         collection = self._get_collection('user', kwargs)
         status = collection.insert(user_data)
 
         return True if status else False
 
-    @mongodb_connect
     def update_user(self, telegram_id: int, user_data: dict, **kwargs) -> bool:
         """
         Updates the specified fields in user collection
@@ -76,12 +59,10 @@ class MongoBackend:
 
         return True if status else False
 
-    @mongodb_connect
     def is_user_exists(self, telegram_id: int, **kwargs) -> bool:
         collection = self._get_collection('user', kwargs)
         return collection.count({"telegram_id": telegram_id}) > 0
 
-    @mongodb_connect
     def get_user_data(self, user_id: int, **kwargs) -> dict:
         collection = self._get_collection('user', kwargs)
         user = collection.find_one({'telegram_id': user_id})
@@ -91,14 +72,12 @@ class MongoBackend:
 
         return dict()
 
-    @mongodb_connect
     def create_host(self, host_data: dict, **kwargs) -> bool:
         collection = self._get_collection('host', kwargs)
         status = collection.insert(host_data)
 
         return True if status else False
 
-    @mongodb_connect
     def update_host(self, host_url, host_data, **kwargs):
         """
         Updates the specified fields in host collection
@@ -109,7 +88,6 @@ class MongoBackend:
 
         return True if status else False
 
-    @mongodb_connect
     def get_host_data(self, url, **kwargs):
         """Returns host data according to host URL"""
         collection = self._get_collection('host', kwargs)
@@ -117,14 +95,12 @@ class MongoBackend:
 
         return host
 
-    @mongodb_connect
     def search_host(self, host, **kwargs):
         """Search a host in DB by pattern matching"""
         collection = self._get_collection('host', kwargs)
         host = collection.find_one({'url': {'$regex': 'http(s)?://' + host}})
         return host
 
-    @mongodb_connect
     def create_cache(self, key: str, content: list, page_count: int, **kwargs) -> bool:
         """
         Creates a document for content which has the ability to paginate
@@ -142,7 +118,6 @@ class MongoBackend:
 
         return True if status else False
 
-    @mongodb_connect
     def get_cached_content(self, key: str, **kwargs) -> dict:
         """Gets document from cache collection"""
         collection = self._get_collection('cache', kwargs)

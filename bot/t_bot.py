@@ -7,10 +7,10 @@ from telegram.error import NetworkError, TelegramError, TimedOut
 from telegram.ext import CommandHandler, Updater
 
 import bot.commands as commands
-from bot.db import MongoBackend
 from bot.integration import JiraBackend
 from common import utils
 from common.exceptions import BotAuthError, BaseJTBException
+from common.db import MongoBackend
 
 
 class JiraBot:
@@ -40,7 +40,13 @@ class JiraBot:
     def __init__(self):
         self.__updater = Updater(config('BOT_TOKEN'), workers=config('WORKERS', cast=int, default=3))
 
-        self.db = MongoBackend()
+        self.db = MongoBackend(
+            user=config('DB_USER'),
+            password=config('DB_PASS'),
+            host=config('DB_HOST'),
+            port=config('DB_PORT'),
+            db_name=config('DB_NAME')
+        )
         self.jira = JiraBackend()
         self.AuthData = namedtuple('AuthData', 'auth_method jira_host username credentials')
 
