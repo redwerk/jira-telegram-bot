@@ -38,33 +38,33 @@ class MongoBackend:
         else:
             return client[self.db_name]
 
-    def _get_collection(self, name: str, kwargs: dict) -> MongoClient:
+    def _get_collection(self, name: str) -> MongoClient:
         """Returns MongoClient object which links to selected collection"""
         db = self._get_connect()
         return db[self.collection_mapping.get(name)]
 
-    def create_user(self, user_data: dict, **kwargs) -> bool:
-        collection = self._get_collection('user', kwargs)
+    def create_user(self, user_data: dict) -> bool:
+        collection = self._get_collection('user')
         status = collection.insert(user_data)
 
         return True if status else False
 
-    def update_user(self, telegram_id: int, user_data: dict, **kwargs) -> bool:
+    def update_user(self, telegram_id: int, user_data: dict) -> bool:
         """
         Updates the specified fields in user collection
         Matching by: telegram id
         """
-        collection = self._get_collection('user', kwargs)
+        collection = self._get_collection('user')
         status = collection.update({'telegram_id': telegram_id}, {'$set': user_data})
 
         return True if status else False
 
-    def is_user_exists(self, telegram_id: int, **kwargs) -> bool:
-        collection = self._get_collection('user', kwargs)
+    def is_user_exists(self, telegram_id: int) -> bool:
+        collection = self._get_collection('user')
         return collection.count({"telegram_id": telegram_id}) > 0
 
-    def get_user_data(self, user_id: int, **kwargs) -> dict:
-        collection = self._get_collection('user', kwargs)
+    def get_user_data(self, user_id: int) -> dict:
+        collection = self._get_collection('user')
         user = collection.find_one({'telegram_id': user_id})
 
         if user:
@@ -72,41 +72,41 @@ class MongoBackend:
 
         return dict()
 
-    def create_host(self, host_data: dict, **kwargs) -> bool:
-        collection = self._get_collection('host', kwargs)
+    def create_host(self, host_data: dict) -> bool:
+        collection = self._get_collection('host')
         status = collection.insert(host_data)
 
         return True if status else False
 
-    def update_host(self, host_url, host_data, **kwargs):
+    def update_host(self, host_url, host_data):
         """
         Updates the specified fields in host collection
         Matching by: host url
         """
-        collection = self._get_collection('host', kwargs)
+        collection = self._get_collection('host')
         status = collection.update({'url': host_url}, {'$set': host_data})
 
         return True if status else False
 
-    def get_host_data(self, url, **kwargs):
+    def get_host_data(self, url):
         """Returns host data according to host URL"""
-        collection = self._get_collection('host', kwargs)
+        collection = self._get_collection('host')
         host = collection.find_one({'url': url})
 
         return host
 
-    def search_host(self, host, **kwargs):
+    def search_host(self, host):
         """Search a host in DB by pattern matching"""
-        collection = self._get_collection('host', kwargs)
+        collection = self._get_collection('host')
         host = collection.find_one({'url': {'$regex': 'http(s)?://' + host}})
         return host
 
-    def create_cache(self, key: str, content: list, page_count: int, **kwargs) -> bool:
+    def create_cache(self, key: str, content: list, page_count: int) -> bool:
         """
         Creates a document for content which has the ability to paginate
         Documents will delete by MongoDB when they will expire
         """
-        collection = self._get_collection('cache', kwargs)
+        collection = self._get_collection('cache')
         status = collection.insert_one(
             {
                 'key': key,
@@ -118,9 +118,9 @@ class MongoBackend:
 
         return True if status else False
 
-    def get_cached_content(self, key: str, **kwargs) -> dict:
+    def get_cached_content(self, key: str) -> dict:
         """Gets document from cache collection"""
-        collection = self._get_collection('cache', kwargs)
+        collection = self._get_collection('cache')
         document = collection.find_one({'key': key})
 
         if document:
