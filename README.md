@@ -13,11 +13,11 @@
 
 2. Navigate into *jira-telegram-bot* folder
 
-3. Create a virtualenv: `python3.6 -m venv .venv`
+3. Create a virtualenv: `python3.6 -m venv venv`
 
 4. Install requirements: `pip install -r requirements.txt`
 
-5. Install and setting up MongoDB (create DB and collection).
+5. Install and setting up [MongoDB](#creating-mongodb-dbs-for-local-development).
 
 6. Create **.env** text file with following data:
 
@@ -48,6 +48,35 @@ LOGGER_EMAIL = logger@email.com
 FEEDBACK_RECIPIENT = feedback@email.com
 DEV_EMAILS = user1@email.com,user2@email.com
 ```
+
+### Creating MongoDB dbs for local development
+
+#### Main dev DB and collection (in MongoDB shell)
+```
+use telegram_jira_db
+db.createUser(
+  {
+    user: "telegramJiraAdmin",
+    pwd: "admin2321",
+    roles: [ { role: "readWrite", db: "telegram_jira_db" } ]
+  }
+)
+db.cache.createIndex( { "createdAt": 1 }, { expireAfterSeconds: 3600 } )
+```
+
+#### For tests (in MongoDB shell)
+```
+use test_telegram_jira_db
+db.createUser(
+  {
+    user: "telegramJiraAdmin",
+    pwd: "admin2321",
+    roles: [ { role: "readWrite", db: "test_telegram_jira_db" } ]
+  }
+)
+db.cache.createIndex( { "createdAt": 1 }, { expireAfterSeconds: 3600 } )
+```
+
 
 For further deployment see [/docs](docs) folder
 
