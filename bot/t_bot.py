@@ -2,6 +2,7 @@ import logging
 from collections import namedtuple
 
 from decouple import config
+from telegram import ParseMode
 from telegram.error import NetworkError, TelegramError, TimedOut
 from telegram.ext import CommandHandler, Updater
 
@@ -215,11 +216,16 @@ class JiraBot:
                 scope = self.get_query_scope(update)
             except AttributeError:
                 # must send a new message
-                bot.send_message(chat_id=update.message.chat_id, text=e.message)
+                bot.send_message(chat_id=update.message.chat_id, text=e.message, parse_mode=ParseMode.HTML)
             else:
                 # if the command is executed after pressing the inline keyboard
                 # must update the last message
-                bot.edit_message_text(chat_id=scope['chat_id'], message_id=scope['message_id'], text=e.message)
+                bot.edit_message_text(
+                    chat_id=scope['chat_id'],
+                    message_id=scope['message_id'],
+                    text=e.message,
+                    parse_mode=ParseMode.HTML
+                )
         except TimedOut:
             pass
         except (NetworkError, TelegramError) as e:

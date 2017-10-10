@@ -13,7 +13,7 @@ class BaseJTBException(TelegramError):
 class JiraLoginError(BaseJTBException):
     """Login error during login into Jira"""
     login_error = {
-        401: 'Invalid credentials',
+        401: 'Invalid credentials or token was rejected.\nPlease try login again',
         403: 'Login is denied due to a CAPTCHA requirement, or any other '
              'reason. Please, login (relogin) into Jira via browser '
              'and try again.',
