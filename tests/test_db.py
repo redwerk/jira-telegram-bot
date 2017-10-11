@@ -1,17 +1,22 @@
 from common import utils
 from common.db import MongoBackend
 from decouple import config
+from pymongo import MongoClient
 
 
 class TestMongoBackend:
 
     def setup_class(cls):
+        cls.client = MongoClient('{host}:{port}'.format(host=config('DB_HOST'), port=config('DB_PORT')))
+        cls.client.admin.authenticate(config('DB_ADMIN_NAME'), config('DB_ADMIN_PASS'))
+        cls.client.test_db.add_user(config('DB_USER'), config('DB_PASS'), roles=[{'role': 'readWrite','db': 'test_db'}])
+
         cls.db = MongoBackend(
             user=config('DB_USER'),
             password=config('DB_PASS'),
             host=config('DB_HOST'),
             port=config('DB_PORT'),
-            db_name =config('DB_NAME')
+            db_name ='test_db'
         )
 
         # user data
@@ -114,10 +119,5 @@ class TestMongoBackend:
         assert len(created_cashe.get('content')) == len(self.test_cache_item)
         assert created_cashe.get('page_count') == self.item_per_page
 
-    def test_clean_db(self):
-        self.db._get_collection('user').drop()
-        self.db._get_collection('host').drop()
-        self.db._get_collection('cache').drop()
-        assert self.db.is_user_exists(self.test_user.get('telegram_id')) is False
-        assert self.db.get_host_data(self.test_host.get('url')) is None
-        assert self.db.get_cached_content(self.test_cache_key) == dict()
+    def test_remove_test_db(self):
+        self.client.drop_database('test_db')
