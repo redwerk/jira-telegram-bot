@@ -9,14 +9,18 @@ class TestMongoBackend:
     def setup_class(cls):
         cls.client = MongoClient('{host}:{port}'.format(host=config('DB_HOST'), port=config('DB_PORT')))
         cls.client.admin.authenticate(config('DB_ADMIN_NAME'), config('DB_ADMIN_PASS'))
-        cls.client.test_db.add_user(config('DB_USER'), config('DB_PASS'), roles=[{'role': 'readWrite','db': 'test_db'}])
+        cls.client.test_db.add_user(
+            config('DB_USER'),
+            config('DB_PASS'),
+            roles=[{'role': 'readWrite', 'db': 'test_db'}]
+        )
 
         cls.db = MongoBackend(
             user=config('DB_USER'),
             password=config('DB_PASS'),
             host=config('DB_HOST'),
             port=config('DB_PORT'),
-            db_name ='test_db'
+            db_name='test_db'
         )
 
         # user data

@@ -3,7 +3,7 @@ from datetime import datetime
 
 from decouple import config
 from pymongo import MongoClient
-from pymongo.errors import OperationFailure, ServerSelectionTimeoutError, WriteError
+from pymongo.errors import OperationFailure, ServerSelectionTimeoutError
 
 
 class MongoBackend:
