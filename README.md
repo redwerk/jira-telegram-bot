@@ -13,11 +13,11 @@
 
 2. Navigate into *jira-telegram-bot* folder
 
-3. Create a virtualenv: `python3.6 -m venv .venv`
+3. Create a virtualenv: `python3.6 -m venv venv`
 
 4. Install requirements: `pip install -r requirements.txt`
 
-5. Install and setting up MongoDB (create DB and collection).
+5. Install and setting up [MongoDB](#creating-mongodb-dbs-for-local-development).
 
 6. Create **.env** text file with following data:
 
@@ -52,6 +52,8 @@ DEV_EMAILS = user1@email.com,user2@email.com
 For further deployment see [/docs](docs) folder
 
 ### Running project tests
+
+`DB_NAME` must be a database administrator (with rights to create collections)
 
 Run command in root folder of project: `pytest -v`
 
