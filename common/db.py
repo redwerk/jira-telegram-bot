@@ -15,12 +15,11 @@ class MongoBackend:
     }
 
     def __init__(self, user=None, password=None, host=None, port=None, db_name=None):
-        self.uri = 'mongodb://{user}:{password}@{host}:{port}/{db_name}'.format(
+        self.uri = 'mongodb://{user}:{password}@{host}:{port}'.format(
             user=user or config('DB_USER'),
             password=password or config('DB_PASS'),
             host=host or config('DB_HOST'),
             port=port or config('DB_PORT'),
-            db_name=db_name or config('DB_NAME')
         )
         self.db_name = db_name or config('DB_NAME')
 
