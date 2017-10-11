@@ -21,14 +21,7 @@ logger.handlers[SMTPHandlerNumb].fromaddr = config('LOGGER_EMAIL')
 logger.handlers[SMTPHandlerNumb].toaddrs = [email.strip() for email in config('DEV_EMAILS').split(',')]
 
 bot_url = config('BOT_URL')
-db = MongoBackend(
-    user=config('DB_USER'),
-    password=config('DB_PASS'),
-    host=config('DB_HOST'),
-    port=config('DB_PORT'),
-    db_name=config('DB_NAME')
-)
-
+db = MongoBackend()
 
 # Flask settings
 app = Flask(__name__)

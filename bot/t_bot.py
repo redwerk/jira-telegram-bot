@@ -40,13 +40,7 @@ class JiraBot:
     def __init__(self):
         self.__updater = Updater(config('BOT_TOKEN'), workers=config('WORKERS', cast=int, default=3))
 
-        self.db = MongoBackend(
-            user=config('DB_USER'),
-            password=config('DB_PASS'),
-            host=config('DB_HOST'),
-            port=config('DB_PORT'),
-            db_name=config('DB_NAME')
-        )
+        self.db = MongoBackend()
         self.jira = JiraBackend()
         self.AuthData = namedtuple('AuthData', 'auth_method jira_host username credentials')
 

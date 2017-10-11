@@ -1,27 +1,31 @@
-from common import utils
-from common.db import MongoBackend
+import time
+
 from decouple import config
 from pymongo import MongoClient
+
+from common import utils
+from common.db import MongoBackend
 
 
 class TestMongoBackend:
 
     def setup_class(cls):
+        # creates a test database and initialize all test data
+        cls.test_db_name = 'test_' + config('DB_NAME')
         cls.client = MongoClient('{host}:{port}'.format(host=config('DB_HOST'), port=config('DB_PORT')))
         cls.client.admin.authenticate(config('DB_ADMIN_NAME'), config('DB_ADMIN_PASS'))
-        cls.client.test_db.add_user(
+        cls.client[cls.test_db_name].add_user(
             config('DB_USER'),
             config('DB_PASS'),
-            roles=[{'role': 'readWrite', 'db': 'test_db'}]
+            roles=[{'role': 'readWrite', 'db': cls.test_db_name}]
         )
+        cls.db = MongoBackend(db_name=cls.test_db_name)
 
-        cls.db = MongoBackend(
-            user=config('DB_USER'),
-            password=config('DB_PASS'),
-            host=config('DB_HOST'),
-            port=config('DB_PORT'),
-            db_name='test_db'
-        )
+        # creates a collection and index (TTL with expire after 5 seconds)
+        test_client = cls.db._get_connect()
+        cache_name = config('DB_CACHE_COLLECTION')
+        test_client.create_collection(cache_name)
+        test_client[cache_name].create_index('createdAt', expireAfterSeconds=5, background=True)
 
         # user data
         cls.test_user = {
@@ -54,6 +58,10 @@ class TestMongoBackend:
         cls.item_per_page = 10
         cls.test_cache_item = utils.split_by_pages(['test_cache{}'.format(i) for i in range(25)], cls.item_per_page)
         cls.test_cache_key = 'test_cache:{}'.format(cls.test_user.get('telegram_id'))
+
+    def teardown_class(cls):
+        # drops a database after calling all test cases
+        cls.client.drop_database(cls.test_db_name)
 
     def test_create_user(self):
         status = self.db.create_user(self.test_user)
@@ -123,5 +131,7 @@ class TestMongoBackend:
         assert len(created_cashe.get('content')) == len(self.test_cache_item)
         assert created_cashe.get('page_count') == self.item_per_page
 
-    def test_remove_test_db(self):
-        self.client.drop_database('test_db')
+    def test_get_cached_content_after_expired(self):
+        time.sleep(60)  # need time to build an index
+        created_cashe = self.db.get_cached_content(self.test_cache_key)
+        assert created_cashe == dict()

@@ -14,15 +14,15 @@ class MongoBackend:
         'cache': config('DB_CACHE_COLLECTION'),
     }
 
-    def __init__(self, user, password, host, port, db_name):
+    def __init__(self, user=None, password=None, host=None, port=None, db_name=None):
         self.uri = 'mongodb://{user}:{password}@{host}:{port}/{db_name}'.format(
-            user=user,
-            password=password,
-            host=host,
-            port=port,
-            db_name=db_name
+            user=user if user else config('DB_USER'),
+            password=password if password else config('DB_PASS'),
+            host=host if host else config('DB_HOST'),
+            port=port if port else config('DB_PORT'),
+            db_name=db_name if db_name else config('DB_NAME')
         )
-        self.db_name = db_name
+        self.db_name = db_name if db_name else config('DB_NAME')
 
     def _get_connect(self):
         """
