@@ -49,38 +49,11 @@ FEEDBACK_RECIPIENT = feedback@email.com
 DEV_EMAILS = user1@email.com,user2@email.com
 ```
 
-### Creating MongoDB dbs for local development
-
-#### Main dev DB and collection (in MongoDB shell)
-```
-use telegram_jira_db
-db.createUser(
-  {
-    user: "telegramJiraAdmin",
-    pwd: "admin2321",
-    roles: [ { role: "readWrite", db: "telegram_jira_db" } ]
-  }
-)
-db.cache.createIndex( { "createdAt": 1 }, { expireAfterSeconds: 3600 } )
-```
-
-#### For tests (in MongoDB shell)
-```
-use test_telegram_jira_db
-db.createUser(
-  {
-    user: "telegramJiraAdmin",
-    pwd: "admin2321",
-    roles: [ { role: "readWrite", db: "test_telegram_jira_db" } ]
-  }
-)
-db.cache.createIndex( { "createdAt": 1 }, { expireAfterSeconds: 3600 } )
-```
-
-
 For further deployment see [/docs](docs) folder
 
 ### Running project tests
+
+Change `DB_NAME` in **.env** file to `test_telegram_jira_db`
 
 Run command in root folder of project: `pytest -v`
 
