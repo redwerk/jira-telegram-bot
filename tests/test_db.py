@@ -13,7 +13,7 @@ class TestMongoBackend:
         # creates a test database and initialize all test data
         cls.test_db_name = 'test_' + config('DB_NAME')
         cls.client = MongoClient('{host}:{port}'.format(host=config('DB_HOST'), port=config('DB_PORT')))
-        cls.client.admin.authenticate(config('DB_ADMIN_NAME'), config('DB_ADMIN_PASS'))
+        cls.client.admin.authenticate(config('DB_USER'), config('DB_PASS'))
         cls.client[cls.test_db_name].add_user(
             config('DB_USER'),
             config('DB_PASS'),

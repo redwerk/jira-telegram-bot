@@ -29,8 +29,6 @@ SECRET_KEY = <string> # from cryptography.fernet import Fernet; Fernet.generate_
 DB_HOST = <string>
 DB_PORT = <string>
 
-DB_ADMIN_NAME = <string> # only for tests
-DB_ADMIN_PASS = <string> # only for tests
 DB_USER = <string>
 DB_PASS = <string>
 DB_NAME = <string>
@@ -55,7 +53,7 @@ For further deployment see [/docs](docs) folder
 
 ### Running project tests
 
-You must add admin credentials for MongoDB: `DB_ADMIN_NAME` and `DB_ADMIN_PASS`
+`DB_NAME` must be a database administrator (with rights to create collections)
 
 Run command in root folder of project: `pytest -v`
 
