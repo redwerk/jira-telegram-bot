@@ -2,14 +2,13 @@ import os
 from string import Template
 
 from decouple import config
-from telegram import ParseMode
+from telegram import ParseMode, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackQueryHandler, CommandHandler
 
 from common import utils
 from common.exceptions import BotAuthError
 
 from .base import AbstractCommand, AbstractCommandFactory
-from .menu import DisconnectMenuCommand
 
 
 class UserOAuthCommand(AbstractCommand):
@@ -33,15 +32,39 @@ class UserOAuthCommand(AbstractCommand):
         return '{}/authorize/{}/?host={}'.format(config('OAUTH_SERVICE_URL'), telegram_id, host_url)
 
 
-class DisconnectMenuCommandFactory(AbstractCommandFactory):
+class DisconnectMenuCommand(AbstractCommand):
     """
     /disconnect - request to delete credentials from the database
     """
-    def command(self, bot, update, *args, **kwargs):
-        DisconnectMenuCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
+    positive_answer = 'Yes'
+    negative_answer = 'No'
+
+    def handler(self, bot, update, *args, **kwargs):
+        """
+        /disconnect
+        """
+        message_type = self.get_message_type(update)
+        result = dict()
+
+        button_list = [
+            InlineKeyboardButton(
+                'Yes', callback_data='disconnect:{}'.format(self.positive_answer)
+            ),
+            InlineKeyboardButton(
+                'No', callback_data='disconnect:{}'.format(self.negative_answer)
+            ),
+        ]
+
+        reply_markup = InlineKeyboardMarkup(utils.build_menu(
+            button_list, n_cols=2
+        ))
+
+        result['text'] = 'Are you sure you want to log out? All credentials associated with this user will be lost.'
+        result['buttons'] = reply_markup
+        self.send_factory.send(message_type, bot, update, result, with_buttons=True)
 
     def command_callback(self):
-        return CommandHandler('disconnect', self.command)
+        return CommandHandler('disconnect', self.handler)
 
 
 class DisconnectCommand(AbstractCommand):
@@ -50,6 +73,8 @@ class DisconnectCommand(AbstractCommand):
         """Deletes user credentials from DB"""
         scope = self._bot_instance.get_query_scope(update)
         answer = scope['data'].replace('disconnect:', '')
+        message_type = self.get_message_type(update)
+        result = dict()
 
         if answer == DisconnectMenuCommand.positive_answer:
             reset_dict = {
@@ -63,36 +88,20 @@ class DisconnectCommand(AbstractCommand):
             status = self._bot_instance.db.update_user(scope['telegram_id'], reset_dict)
 
             if status:
-                bot.edit_message_text(
-                    chat_id=scope['chat_id'],
-                    message_id=scope['message_id'],
-                    text='Credentials were successfully reset.',
-                )
+                result['text'] = 'Credentials were successfully reset.'
+                self.send_factory.send(message_type, bot, update, result, simple_message=True)
                 return
             else:
-                bot.edit_message_text(
-                    chat_id=scope['chat_id'],
-                    message_id=scope['message_id'],
-                    text='Credentials were not removed from the database, please try again later.',
-                )
+                result['text'] = 'Credentials were not removed from the database, please try again later.'
+                self.send_factory.send(message_type, bot, update, result, simple_message=True)
                 return
 
         else:
-            bot.edit_message_text(
-                chat_id=scope['chat_id'],
-                message_id=scope['message_id'],
-                text='Resetting credentials was not confirmed',
-            )
-            return
-
-
-class DisconnectCommandFactory(AbstractCommandFactory):
-
-    def command(self, bot, update, *args, **kwargs):
-        DisconnectCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
+            result['text'] = 'Resetting credentials was not confirmed'
+            self.send_factory.send(message_type, bot, update, result, simple_message=True)
 
     def command_callback(self):
-        return CallbackQueryHandler(self.command, pattern=r'^disconnect:')
+        return CallbackQueryHandler(self.handler, pattern=r'^disconnect:')
 
 
 class OAuthLoginCommand(AbstractCommand):
@@ -232,15 +241,15 @@ class BasicLoginCommand(AbstractCommand):
     """/connect <host> <username> <password> - Login into Jira via username and password"""
 
     def handler(self, bot, update, *args, **kwargs):
+        message_type = self.get_message_type(update)
+        result = dict()
         chat_id = update.message.chat_id
         auth_options = kwargs.get('args')
 
         if not auth_options:
             # if no parameters are passed
-            bot.send_message(
-                chat_id=chat_id,
-                text='You did not specify parameters for authorization',
-            )
+            result['text'] = 'You did not specify parameters for authorization'
+            self.send_factory.send(message_type, bot, update, result, simple_message=True)
             return
 
         user_data = self._bot_instance.db.get_user_data(chat_id)
@@ -251,39 +260,27 @@ class BasicLoginCommand(AbstractCommand):
             pass
         else:
             if user_data.get('auth_method') or auth:
-                bot.send_message(
-                    chat_id=chat_id,
-                    text='You are already connected to {}. '
-                         'Please use /disconnect before connecting '
-                         'to another JIRA instance.'.format(user_data.get('host_url')),
-                )
+                result['text'] = 'You are already connected to {}. ' \
+                                 'Please use /disconnect before connecting ' \
+                                 'to another JIRA instance.'.format(user_data.get('host_url'))
+                self.send_factory.send(message_type, bot, update, result, simple_message=True)
                 return
 
         try:
             host, username, password = auth_options
         except ValueError:
             # if not passed all the parameters
-            bot.send_message(
-                chat_id=chat_id,
-                text='You have not specified all the parameters for authorization. '
-                     'Try again using the following instructions:\n'
-                     '/connect <host> <username> <password>',
-            )
+            result['text'] = 'You have not specified all the parameters for authorization. ' \
+                             'Try again using the following instructions:\n' \
+                             '/connect <host> <username> <password>'
+            self.send_factory.send(message_type, bot, update, result, simple_message=True)
             return
-
-        bot.send_message(
-            chat_id=chat_id,
-            text='Authorization to <b>{}</b>...'.format(host),
-            parse_mode=ParseMode.HTML
-        )
 
         # getting the URL to the Jira app
         host_url = OAuthLoginCommand(self._bot_instance).check_hosturl(host)
         if not host_url:
-            bot.send_message(
-                chat_id=chat_id,
-                text='This is not a Jira application. Please try again',
-            )
+            result['text'] = 'This is not a Jira application. Please try again'
+            self.send_factory.send(message_type, bot, update, result, simple_message=True)
             return
 
         self._bot_instance.jira.check_authorization(
@@ -302,15 +299,11 @@ class BasicLoginCommand(AbstractCommand):
 
         status = self._bot_instance.db.update_user(chat_id, basic_auth)
         if status:
-            bot.send_message(
-                chat_id=chat_id,
-                text='You were successfully authorized in {}'.format(host_url),
-            )
+            result['text'] = 'You were successfully authorized in {}'.format(host_url)
+            self.send_factory.send(message_type, bot, update, result, simple_message=True)
         else:
-            bot.send_message(
-                chat_id=chat_id,
-                text='Failed to save data to database, please try again later',
-            )
+            result['text'] = 'Failed to save data to database, please try again later'
+            self.send_factory.send(message_type, bot, update, result, simple_message=True)
 
 
 class BasicLoginCommandFactory(AbstractCommandFactory):

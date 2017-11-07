@@ -32,8 +32,8 @@ class JiraBot:
         commands.FilterIssuesFactory,
         commands.BasicLoginCommandFactory,
         commands.OAuthLoginCommandFactory,
-        commands.DisconnectMenuCommandFactory,
-        commands.DisconnectCommandFactory,
+        commands.DisconnectMenuCommand,
+        commands.DisconnectCommand,
         commands.ContentPaginatorFactory,
     ]
 
