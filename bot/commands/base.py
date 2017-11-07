@@ -1,4 +1,7 @@
 from abc import ABCMeta, abstractmethod
+
+from telegram import ParseMode
+
 from common.exceptions import SendMessageHandlerError
 
 
@@ -28,13 +31,17 @@ class ChatSendMessage(BaseSendMessage):
         if kwargs.get('simple_message'):
             bot.send_message(
                 chat_id=chat_id,
-                text=result.get('text')
+                text=result.get('text'),
+                parse_mode=ParseMode.HTML,
+                disable_web_page_preview=True
             )
         elif kwargs.get('with_buttons'):
             bot.send_message(
                 chat_id=chat_id,
                 text=result.get('text'),
-                reply_markup=result.get('buttons')
+                reply_markup=result.get('buttons'),
+                parse_mode=ParseMode.HTML,
+                disable_web_page_preview=True
             )
 
     def message_format(self, result):
@@ -53,14 +60,18 @@ class AfterActionSendMessage(ChatSendMessage):
             bot.edit_message_text(
                 chat_id=chat_id,
                 message_id=message_id,
-                text=result.get('text')
+                text=result.get('text'),
+                parse_mode=ParseMode.HTML,
+                disable_web_page_preview=True
             )
         elif kwargs.get('with_buttons'):
             bot.edit_message_text(
                 chat_id=chat_id,
                 message_id=message_id,
                 text=result.get('text'),
-                reply_markup=result.get('buttons')
+                reply_markup=result.get('buttons'),
+                parse_mode=ParseMode.HTML,
+                disable_web_page_preview=True
             )
 
     def get_metadata(self, update):

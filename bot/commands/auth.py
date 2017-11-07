@@ -11,27 +11,6 @@ from common.exceptions import BotAuthError
 from .base import AbstractCommand, AbstractCommandFactory
 
 
-class UserOAuthCommand(AbstractCommand):
-
-    def handler(self, bot, update, *args, **kwargs):
-        """Command generates URL for further authorization via Flask OAuth service"""
-        scope = self._bot_instance.get_query_scope(update)
-        host_url = scope['data'].replace('oauth:', '')
-        host = self._bot_instance.db.get_host_data(host_url)
-
-        service_url = self.generate_auth_link(scope['telegram_id'], host['url'])
-
-        bot.edit_message_text(
-            chat_id=scope['chat_id'],
-            message_id=scope['message_id'],
-            text='Follow the <a href="{}">link</a> to confirm authorization'.format(service_url),
-        )
-
-    @staticmethod
-    def generate_auth_link(telegram_id: int, host_url: str) -> str:
-        return '{}/authorize/{}/?host={}'.format(config('OAUTH_SERVICE_URL'), telegram_id, host_url)
-
-
 class DisconnectMenuCommand(AbstractCommand):
     """
     /disconnect - request to delete credentials from the database
@@ -116,10 +95,12 @@ class OAuthLoginCommand(AbstractCommand):
         """
         chat_id = update.message.chat_id
         auth_options = kwargs.get('args')
-        message = 'Failed to create a new host'
+        result = dict()
+        message_type = self.get_message_type(update)
 
         if not auth_options:
-            bot.send_message(chat_id=chat_id, text='Host is required option')
+            result['text'] = 'Host is required option'
+            self.send_factory.send(message_type, bot, update, result, simple_message=True)
             return
 
         domain_name = auth_options[0]
@@ -131,12 +112,16 @@ class OAuthLoginCommand(AbstractCommand):
             pass
         else:
             if user_data.get('auth_method') or auth:
-                bot.send_message(
-                    chat_id=chat_id,
-                    text='You are already connected to {}. '
-                         'Please use /disconnect before connecting '
-                         'to another JIRA instance.'.format(user_data.get('host_url')),
-                )
+                result['text'] = 'You are already connected to {}. ' \
+                                 'Please use /disconnect before connecting ' \
+                                 'to another JIRA instance.'.format(user_data.get('host_url'))
+                self.send_factory.send(message_type, bot, update, result, simple_message=True)
+                # bot.send_message(
+                #     chat_id=chat_id,
+                #     text='You are already connected to {}. '
+                #          'Please use /disconnect before connecting '
+                #          'to another JIRA instance.'.format(user_data.get('host_url')),
+                # )
                 return
 
         if not utils.validates_hostname(domain_name):
@@ -145,8 +130,8 @@ class OAuthLoginCommand(AbstractCommand):
             jira_host = self._bot_instance.db.get_host_data(domain_name)
 
         if jira_host and jira_host.get('is_confirmed'):
-            message = 'Follow the <a href="{}">link</a> to confirm authorization'.format(
-                UserOAuthCommand.generate_auth_link(telegram_id=chat_id, host_url=jira_host.get('url'))
+            result['text'] = 'Follow the <a href="{}">link</a> to confirm authorization'.format(
+                self.generate_auth_link(chat_id, jira_host.get('url'))
             )
         elif jira_host and not jira_host.get('is_confirmed'):
             jira_host.update({'consumer_key': utils.generate_consumer_key()})
@@ -154,10 +139,11 @@ class OAuthLoginCommand(AbstractCommand):
 
             if host_updated:
                 # sends data for creating an Application link
-                bot.send_message(chat_id=chat_id, text=self.get_app_links_data(jira_host), parse_mode=ParseMode.HTML)
+                result['text'] = self.get_app_links_data(jira_host)
+                self.send_factory.send(message_type, bot, update, result, simple_message=True)
                 # sends a link for authorization via OAuth
-                message = 'Follow the <a href="{}">link</a> to confirm authorization'.format(
-                    UserOAuthCommand.generate_auth_link(telegram_id=chat_id, host_url=jira_host.get('url'))
+                result['text'] = 'Follow the <a href="{}">link</a> to confirm authorization'.format(
+                    self.generate_auth_link(chat_id, jira_host.get('url'))
                 )
         else:
             domain_name = self.check_hosturl(domain_name)
@@ -176,18 +162,17 @@ class OAuthLoginCommand(AbstractCommand):
 
             if host_status:
                 # sends data for creating an Application link
-                bot.send_message(chat_id=chat_id, text=self.get_app_links_data(host_data), parse_mode=ParseMode.HTML)
+                result['text'] = self.get_app_links_data(jira_host)
+                self.send_factory.send(message_type, bot, update, result, simple_message=True)
                 # sends a link for authorization via OAuth
-                message = 'Follow the <a href="{}">link</a> to confirm authorization'.format(
-                    UserOAuthCommand.generate_auth_link(telegram_id=chat_id, host_url=host_data.get('url'))
+                result['text'] = 'Follow the <a href="{}">link</a> to confirm authorization'.format(
+                    self.generate_auth_link(chat_id, host_data.get('url'))
                 )
 
-        bot.send_message(
-            chat_id=chat_id,
-            text=message,
-            parse_mode=ParseMode.HTML,
-            disable_web_page_preview=True
-        )
+        self.send_factory.send(message_type, bot, update, result, simple_message=True)
+
+    def generate_auth_link(self, telegram_id, host_url):
+        return '{}/authorize/{}/?host={}'.format(config('OAUTH_SERVICE_URL'), telegram_id, host_url)
 
     def get_app_links_data(self, jira_host):
         data = {
