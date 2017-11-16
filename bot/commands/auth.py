@@ -116,12 +116,6 @@ class OAuthLoginCommand(AbstractCommand):
                                  'Please use /disconnect before connecting ' \
                                  'to another JIRA instance.'.format(user_data.get('host_url'))
                 self.send_factory.send(message_type, bot, update, result, simple_message=True)
-                # bot.send_message(
-                #     chat_id=chat_id,
-                #     text='You are already connected to {}. '
-                #          'Please use /disconnect before connecting '
-                #          'to another JIRA instance.'.format(user_data.get('host_url')),
-                # )
                 return
 
         if not utils.validates_hostname(domain_name):

@@ -1,9 +1,12 @@
 from abc import ABCMeta, abstractmethod
-
+import logging
 from telegram import ParseMode
 
 from common.exceptions import SendMessageHandlerError
 
+
+# TODO: remove logger after testing!
+logger = logging.getLogger()
 
 # Message types
 BASE = 'base'
@@ -26,6 +29,7 @@ class BaseSendMessage:
 class ChatSendMessage(BaseSendMessage):
 
     def send(self, bot, update, result, *args, **kwargs):
+        logger.info('ChatSendMessage: {:.30}...'.format(result.get('text')))
         chat_id = self.get_metadata(update)
 
         if kwargs.get('simple_message'):
@@ -43,9 +47,13 @@ class ChatSendMessage(BaseSendMessage):
                 parse_mode=ParseMode.HTML,
                 disable_web_page_preview=True
             )
+        else:
+            logging.error('Formatting type not passed')
 
     def message_format(self, result):
-        pass
+        title = '<b>{}</b>\n\n'.format(result.get('title'))
+        issues = '\n\n'.join(result.get('items'))
+        return title + issues
 
     def get_metadata(self, update):
         return update.message.chat_id
@@ -54,6 +62,7 @@ class ChatSendMessage(BaseSendMessage):
 class AfterActionSendMessage(ChatSendMessage):
 
     def send(self, bot, update, result, *args, **kwargs):
+        logger.info('AfterActionSendMessage: {:.30}...'.format(result.get('text')))
         chat_id, message_id = self.get_metadata(update)
 
         if kwargs.get('simple_message'):
@@ -73,6 +82,8 @@ class AfterActionSendMessage(ChatSendMessage):
                 parse_mode=ParseMode.HTML,
                 disable_web_page_preview=True
             )
+        else:
+            logging.error('Formatting type not passed')
 
     def get_metadata(self, update):
         query = update.callback_query
@@ -84,6 +95,7 @@ class AfterActionSendMessage(ChatSendMessage):
 class InlineSendMessage(BaseSendMessage):
 
     def send(self, bot, update, result, *args, **kwargs):
+        logger.info('InlineSendMessage: {:.30}...'.format(result.get('text')))
         print('send message from InlineSendMessage')
 
 

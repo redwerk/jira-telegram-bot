@@ -27,14 +27,14 @@ class JiraBot:
     ]
     issues_per_page = 10
     commands_factories = [
-        commands.ListUnresolvedIssuesFactory,
+        commands.ListUnresolvedIssuesCommand,
         commands.FilterDispatcherFactory,
         commands.FilterIssuesFactory,
         commands.BasicLoginCommandFactory,
         commands.OAuthLoginCommandFactory,
         commands.DisconnectMenuCommand,
         commands.DisconnectCommand,
-        commands.ContentPaginatorFactory,
+        commands.ContentPaginatorCommand,
     ]
 
     def __init__(self):
