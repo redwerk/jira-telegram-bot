@@ -2,7 +2,9 @@ from abc import ABCMeta, abstractmethod
 import logging
 from telegram import ParseMode
 
+from common import utils
 from common.exceptions import SendMessageHandlerError
+from common.db import MongoBackend
 
 
 # TODO: remove logger after testing!
@@ -15,11 +17,14 @@ INLINE = 'inline'
 
 
 class BaseSendMessage:
+    db = MongoBackend()
+    issues_per_page = 10
+    callback_paginator_key = 'paginator:{}'
 
     def send(self, bot, update, result, *args, **kwargs):
         pass
 
-    def message_format(self, result):
+    def message_format(self, title, items):
         pass
 
     def get_metadata(self, update):
@@ -29,17 +34,10 @@ class BaseSendMessage:
 class ChatSendMessage(BaseSendMessage):
 
     def send(self, bot, update, result, *args, **kwargs):
-        logger.info('ChatSendMessage: {:.30}...'.format(result.get('text')))
+        logger.info('ChatSendMessage: {:.30}...'.format(result.get('text', 'Test')))
         chat_id = self.get_metadata(update)
 
         if kwargs.get('simple_message'):
-            bot.send_message(
-                chat_id=chat_id,
-                text=result.get('text'),
-                parse_mode=ParseMode.HTML,
-                disable_web_page_preview=True
-            )
-        elif kwargs.get('with_buttons'):
             bot.send_message(
                 chat_id=chat_id,
                 text=result.get('text'),
@@ -47,22 +45,73 @@ class ChatSendMessage(BaseSendMessage):
                 parse_mode=ParseMode.HTML,
                 disable_web_page_preview=True
             )
+        elif kwargs.get('items'):
+            title = result.get('title')
+            items = result.get('items')
+
+            if len(items) > self.issues_per_page:
+                text, buttons = self.processing_multiple_pages(title, items, result)
+            else:
+                text, buttons = self.processing_single_page(title, items, result)
+
+            bot.send_message(
+                chat_id=chat_id,
+                text=text,
+                reply_markup=buttons,
+                parse_mode=ParseMode.HTML,
+                disable_web_page_preview=True
+            )
         else:
             logging.error('Formatting type not passed')
 
-    def message_format(self, result):
-        title = '<b>{}</b>\n\n'.format(result.get('title'))
-        issues = '\n\n'.join(result.get('items'))
-        return title + issues
+    def message_format(self, title, items):
+        f_title = '<b>{}</b>\n\n'.format(title)
+        f_issues = '\n\n'.join(items)
+        return f_title + f_issues
 
     def get_metadata(self, update):
         return update.message.chat_id
+
+    def save_into_cache(self, title, splitted_data, key):
+        page_count = len(splitted_data)
+        status = self.db.create_cache(key, title, splitted_data, page_count)
+
+        if not status:
+            logging.exception('An attempt to write content to the cache failed: {}'.format(key))
+
+    def processing_multiple_pages(self, title, items, result):
+        callback_key = self.callback_paginator_key.format(result.get('key'))
+        splitted_data = utils.split_by_pages(items, self.issues_per_page)
+        self.save_into_cache(title, splitted_data, result.get('key'))
+
+        text = self.message_format(title, splitted_data[0])  # return first page
+        buttons = utils.get_pagination_keyboard(
+            current=1,
+            max_page=len(splitted_data),
+            str_key=callback_key + '#{}'
+        )
+
+        return text, buttons
+
+    def processing_single_page(self, title, items, result):
+        buttons = None
+        callback_key = self.callback_paginator_key.format(result.get('key'))
+        text = self.message_format(title, items)
+
+        if result.get('page') and result.get('page_count'):
+            buttons = utils.get_pagination_keyboard(
+                current=result.get('page'),
+                max_page=result.get('page_count'),
+                str_key=callback_key + '#{}'
+            )
+
+        return text, buttons
 
 
 class AfterActionSendMessage(ChatSendMessage):
 
     def send(self, bot, update, result, *args, **kwargs):
-        logger.info('AfterActionSendMessage: {:.30}...'.format(result.get('text')))
+        logger.info('AfterActionSendMessage: {:.30}...'.format(result.get('text', 'Test')))
         chat_id, message_id = self.get_metadata(update)
 
         if kwargs.get('simple_message'):
@@ -70,15 +119,24 @@ class AfterActionSendMessage(ChatSendMessage):
                 chat_id=chat_id,
                 message_id=message_id,
                 text=result.get('text'),
+                reply_markup=result.get('buttons'),
                 parse_mode=ParseMode.HTML,
                 disable_web_page_preview=True
             )
-        elif kwargs.get('with_buttons'):
+        elif kwargs.get('items'):
+            title = result.get('title')
+            items = result.get('items')
+
+            if len(items) > self.issues_per_page:
+                text, buttons = self.processing_multiple_pages(title, items, result)
+            else:
+                text, buttons = self.processing_single_page(title, items, result)
+
             bot.edit_message_text(
                 chat_id=chat_id,
                 message_id=message_id,
-                text=result.get('text'),
-                reply_markup=result.get('buttons'),
+                text=text,
+                reply_markup=buttons,
                 parse_mode=ParseMode.HTML,
                 disable_web_page_preview=True
             )

@@ -100,7 +100,7 @@ class MongoBackend:
         host = collection.find_one({'url': {'$regex': 'http(s)?://' + host}})
         return host
 
-    def create_cache(self, key: str, content: list, page_count: int) -> bool:
+    def create_cache(self, key, title, content, page_count):
         """
         Creates a document for content which has the ability to paginate
         Documents will delete by MongoDB when they will expire
@@ -109,6 +109,7 @@ class MongoBackend:
         status = collection.insert_one(
             {
                 'key': key,
+                'title': title,
                 'content': content,
                 'page_count': page_count,
                 'createdAt': datetime.utcnow(),
@@ -123,6 +124,10 @@ class MongoBackend:
         document = collection.find_one({'key': key})
 
         if document:
-            return dict(content=document.get('content'), page_count=document.get('page_count'))
+            return {
+                'title': document.get('title'),
+                'content': document.get('content'),
+                'page_count': document.get('page_count')
+            }
 
         return dict()

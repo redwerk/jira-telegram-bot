@@ -18,7 +18,6 @@ class ContentPaginatorCommand(AbstractCommand):
         scope = self._bot_instance.get_query_scope(update)
         key, page = self._bot_instance.get_issue_data(scope['data'])
         user_data = self._bot_instance.db.get_cached_content(key=key)
-        str_key = 'paginator:{}'.format(key)
         message_type = self.get_message_type(update)
         result = dict()
 
@@ -27,16 +26,12 @@ class ContentPaginatorCommand(AbstractCommand):
             self.send_factory.send(message_type, bot, update, result, simple_message=True)
             return
 
-        buttons = utils.get_pagination_keyboard(
-            current=page,
-            max_page=user_data['page_count'],
-            str_key=str_key + '#{}'
-        )
-        formatted_issues = '\n\n'.join(user_data['content'][page - 1])
-
-        result['text'] = formatted_issues
-        result['buttons'] = buttons
-        self.send_factory.send(message_type, bot, update, result, with_buttons=True)
+        result['title'] = user_data['title']
+        result['items'] = user_data['content'][page - 1]
+        result['page'] = page
+        result['key'] = key
+        result['page_count'] = user_data['page_count']
+        self.send_factory.send(message_type, bot, update, result, items=True)
 
     def command_callback(self):
         return CallbackQueryHandler(self.handler, pattern=r'^paginator:')
@@ -88,30 +83,18 @@ class UserUnresolvedCommand(AbstractCommand):
     def handler(self, bot, update, *args, **kwargs):
         """Shows user's unresolved issues"""
         telegram_id = update.message.chat_id
+        message_type = self.get_message_type(update)
+        result = dict()
         auth_data = kwargs.get('auth_data')
         username = kwargs.get('username')
 
         # check if the user exists on Jira host
         self._bot_instance.jira.is_user_on_host(host=auth_data.jira_host, username=username, auth_data=auth_data)
 
-        # shot title
-        bot.send_message(
-            text='<b>All unresolved tasks of {}:</b>'.format(username),
-            chat_id=telegram_id,
-            parse_mode=ParseMode.HTML
-        )
-
-        issues = self._bot_instance.jira.get_open_issues(username=username, auth_data=auth_data)
-        key = '{}:{}'.format(telegram_id, auth_data.username)
-        formatted_issues, buttons = self._bot_instance.save_into_cache(data=issues, key=key)
-
-        # shows list of issues
-        bot.send_message(
-            text=formatted_issues,
-            chat_id=telegram_id,
-            reply_markup=buttons,
-            parse_mode=ParseMode.HTML
-        )
+        result['title'] = 'All unresolved tasks of {}:'.format(username)
+        result['items'] = self._bot_instance.jira.get_open_issues(username=username, auth_data=auth_data)
+        result['key'] = '{}:{}'.format(telegram_id, username)
+        self.send_factory.send(message_type, bot, update, result, items=True)
 
 
 class ProjectUnresolvedCommand(AbstractCommand):
