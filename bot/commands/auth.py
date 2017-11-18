@@ -2,7 +2,7 @@ import os
 from string import Template
 
 from decouple import config
-from telegram import ParseMode, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackQueryHandler, CommandHandler
 
 from common import utils
@@ -40,7 +40,7 @@ class DisconnectMenuCommand(AbstractCommand):
 
         result['text'] = 'Are you sure you want to log out? All credentials associated with this user will be lost.'
         result['buttons'] = reply_markup
-        self.send_factory.send(message_type, bot, update, result, with_buttons=True)
+        self.send_factory.send(message_type, bot, update, result, simple_message=True)
 
     def command_callback(self):
         return CommandHandler('disconnect', self.handler)
@@ -220,16 +220,19 @@ class BasicLoginCommand(AbstractCommand):
     """/connect <host> <username> <password> - Login into Jira via username and password"""
 
     def handler(self, bot, update, *args, **kwargs):
-        message_type = self.get_message_type(update)
-        result = dict()
         chat_id = update.message.chat_id
         auth_options = kwargs.get('args')
+        message_type = self.get_message_type(update)
+        result = dict()
+
+        if not self._bot_instance.db.is_user_exists(chat_id):
+            result['text'] = 'You are not in the database. Just call the /start command'
+            return self.send_factory.send(message_type, bot, update, result, simple_message=True)
 
         if not auth_options:
             # if no parameters are passed
             result['text'] = 'You did not specify parameters for authorization'
-            self.send_factory.send(message_type, bot, update, result, simple_message=True)
-            return
+            return self.send_factory.send(message_type, bot, update, result, simple_message=True)
 
         user_data = self._bot_instance.db.get_user_data(chat_id)
         try:
@@ -242,8 +245,7 @@ class BasicLoginCommand(AbstractCommand):
                 result['text'] = 'You are already connected to {}. ' \
                                  'Please use /disconnect before connecting ' \
                                  'to another JIRA instance.'.format(user_data.get('host_url'))
-                self.send_factory.send(message_type, bot, update, result, simple_message=True)
-                return
+                return self.send_factory.send(message_type, bot, update, result, simple_message=True)
 
         try:
             host, username, password = auth_options
@@ -252,15 +254,13 @@ class BasicLoginCommand(AbstractCommand):
             result['text'] = 'You have not specified all the parameters for authorization. ' \
                              'Try again using the following instructions:\n' \
                              '/connect <host> <username> <password>'
-            self.send_factory.send(message_type, bot, update, result, simple_message=True)
-            return
+            return self.send_factory.send(message_type, bot, update, result, simple_message=True)
 
         # getting the URL to the Jira app
         host_url = OAuthLoginCommand(self._bot_instance).check_hosturl(host)
         if not host_url:
             result['text'] = 'This is not a Jira application. Please try again'
-            self.send_factory.send(message_type, bot, update, result, simple_message=True)
-            return
+            return self.send_factory.send(message_type, bot, update, result, simple_message=True)
 
         self._bot_instance.jira.check_authorization(
             auth_method='basic',
@@ -284,21 +284,5 @@ class BasicLoginCommand(AbstractCommand):
             result['text'] = 'Failed to save data to database, please try again later'
             self.send_factory.send(message_type, bot, update, result, simple_message=True)
 
-
-class BasicLoginCommandFactory(AbstractCommandFactory):
-
-    def command(self, bot, update, *args, **kwargs):
-        telegram_id = update.message.chat_id
-        user_exists = self._bot_instance.db.is_user_exists(telegram_id)
-
-        if not user_exists:
-            bot.send_message(
-                chat_id=telegram_id,
-                text='You are not in the database. Just call the /start command',
-            )
-            return
-
-        BasicLoginCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
-
     def command_callback(self):
-        return CommandHandler('connect', self.command, pass_args=True)
+        return CommandHandler('connect', self.handler, pass_args=True)
