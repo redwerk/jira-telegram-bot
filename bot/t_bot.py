@@ -28,8 +28,8 @@ class JiraBot:
     issues_per_page = 10
     commands_factories = [
         commands.ListUnresolvedIssuesCommand,
-        commands.FilterDispatcherFactory,
-        commands.FilterIssuesFactory,
+        commands.FilterDispatcherCommand,
+        commands.FilterIssuesCommand,
         commands.BasicLoginCommand,
         commands.OAuthLoginCommand,
         commands.DisconnectMenuCommand,
