@@ -30,8 +30,8 @@ class JiraBot:
         commands.ListUnresolvedIssuesCommand,
         commands.FilterDispatcherFactory,
         commands.FilterIssuesFactory,
-        commands.BasicLoginCommandFactory,
-        commands.OAuthLoginCommandFactory,
+        commands.BasicLoginCommand,
+        commands.OAuthLoginCommand,
         commands.DisconnectMenuCommand,
         commands.DisconnectCommand,
         commands.ContentPaginatorCommand,
@@ -114,18 +114,6 @@ class JiraBot:
             data=data
         )
 
-    @staticmethod
-    def get_issue_data(query_data: str) -> (str, int):
-        """
-        Gets key and page for cached issues
-        :param query_data: 'paginator:IHB#13'
-        :return: ('IHB', 13)
-        """
-        data = query_data.replace('paginator:', '')
-        key, page = data.split('#')
-
-        return key, int(page)
-
     def get_and_check_cred(self, telegram_id: int):
         """
         Gets the user data and tries to log in according to the specified authorization method.
@@ -169,39 +157,6 @@ class JiraBot:
             )
 
             return auth_data
-
-    def save_into_cache(self, data: list, key: str):
-        """
-        Creating a pagination list. Saving into a cache for further work with
-        it without redundant requests to JIRA.
-
-        If strings less than value per page just return a formatted string without buttons.
-        :param data: list of strings
-        :param key: key for stored it into cache collection
-        :return: formatted string with pagination buttons
-        """
-        buttons = None
-
-        if len(data) < self.issues_per_page + 1:
-            formatted_issues = '\n\n'.join(data)
-        else:
-            splitted_data = utils.split_by_pages(data, self.issues_per_page)
-            page_count = len(splitted_data)
-            status = self.db.create_cache(key, splitted_data, page_count)
-
-            if not status:
-                logging.exception('An attempt to write content to the cache failed: {}'.format(key))
-
-            # return the first page
-            formatted_issues = '\n\n'.join(splitted_data[0])
-            str_key = 'paginator:{}'.format(key)
-            buttons = utils.get_pagination_keyboard(
-                current=1,
-                max_page=page_count,
-                str_key=str_key + '#{}'
-            )
-
-        return formatted_issues, buttons
 
     def __help_command(self, bot, update):
         bot.send_message(

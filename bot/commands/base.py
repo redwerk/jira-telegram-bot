@@ -1,11 +1,11 @@
-from abc import ABCMeta, abstractmethod
 import logging
+from abc import ABCMeta, abstractmethod
+
 from telegram import ParseMode
 
 from common import utils
-from common.exceptions import SendMessageHandlerError
 from common.db import MongoBackend
-
+from common.exceptions import SendMessageHandlerError
 
 # TODO: remove logger after testing!
 logger = logging.getLogger()

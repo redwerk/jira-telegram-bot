@@ -8,7 +8,7 @@ from telegram.ext import CallbackQueryHandler, CommandHandler
 from common import utils
 from common.exceptions import BotAuthError
 
-from .base import AbstractCommand, AbstractCommandFactory
+from .base import AbstractCommand
 
 
 class DisconnectMenuCommand(AbstractCommand):
@@ -19,9 +19,6 @@ class DisconnectMenuCommand(AbstractCommand):
     negative_answer = 'No'
 
     def handler(self, bot, update, *args, **kwargs):
-        """
-        /disconnect
-        """
         message_type = self.get_message_type(update)
         result = dict()
 
@@ -68,12 +65,10 @@ class DisconnectCommand(AbstractCommand):
 
             if status:
                 result['text'] = 'Credentials were successfully reset.'
-                self.send_factory.send(message_type, bot, update, result, simple_message=True)
-                return
+                return self.send_factory.send(message_type, bot, update, result, simple_message=True)
             else:
                 result['text'] = 'Credentials were not removed from the database, please try again later.'
-                self.send_factory.send(message_type, bot, update, result, simple_message=True)
-                return
+                return self.send_factory.send(message_type, bot, update, result, simple_message=True)
 
         else:
             result['text'] = 'Resetting credentials was not confirmed'
@@ -87,6 +82,7 @@ class OAuthLoginCommand(AbstractCommand):
 
     def handler(self, bot, update, *args, **kwargs):
         """
+        /oauth <host> - Login into Jira via OAuth method
         If the host does not exist - generating data for creating an Application link in Jira, displaying the data
         to the user and displaying a link for authorization.
         If the host exists and is confirmed (successfully logged in) - return the link for authorization.
@@ -95,13 +91,16 @@ class OAuthLoginCommand(AbstractCommand):
         """
         chat_id = update.message.chat_id
         auth_options = kwargs.get('args')
-        result = dict()
         message_type = self.get_message_type(update)
+        result = dict()
+
+        if not self._bot_instance.db.is_user_exists(chat_id):
+            result['text'] = 'You are not in the database. Just call the /start command'
+            return self.send_factory.send(message_type, bot, update, result, simple_message=True)
 
         if not auth_options:
             result['text'] = 'Host is required option'
-            self.send_factory.send(message_type, bot, update, result, simple_message=True)
-            return
+            return self.send_factory.send(message_type, bot, update, result, simple_message=True)
 
         domain_name = auth_options[0]
         user_data = self._bot_instance.db.get_user_data(chat_id)
@@ -143,8 +142,8 @@ class OAuthLoginCommand(AbstractCommand):
             domain_name = self.check_hosturl(domain_name)
 
             if not domain_name:
-                bot.send_message(chat_id=chat_id, text="This is not a Jira application. Please try again")
-                return
+                result['text'] = 'This is not a Jira application. Please try again'
+                return self.send_factory.send(message_type, bot, update, result, simple_message=True)
 
             host_data = {
                 'url': domain_name,
@@ -195,25 +194,8 @@ class OAuthLoginCommand(AbstractCommand):
             else:
                 return False
 
-
-class OAuthLoginCommandFactory(AbstractCommandFactory):
-    """/oauth <host> - Login into Jira via OAuth method"""
-
-    def command(self, bot, update, *args, **kwargs):
-        telegram_id = update.message.chat_id
-        user_exists = self._bot_instance.db.is_user_exists(telegram_id)
-
-        if not user_exists:
-            bot.send_message(
-                chat_id=telegram_id,
-                text='You are not in the database. Just call the /start command',
-            )
-            return
-
-        OAuthLoginCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
-
     def command_callback(self):
-        return CommandHandler('oauth', self.command, pass_args=True)
+        return CommandHandler('oauth', self.handler, pass_args=True)
 
 
 class BasicLoginCommand(AbstractCommand):
