@@ -1,9 +1,8 @@
-from telegram import ParseMode
 from telegram.ext import CallbackQueryHandler, CommandHandler
 
 from common import utils
 
-from .base import AbstractCommand, AbstractCommandFactory
+from .base import AbstractCommand
 
 
 class ContentPaginatorCommand(AbstractCommand):
@@ -16,7 +15,7 @@ class ContentPaginatorCommand(AbstractCommand):
         the key with the page number was pressed)
         """
         scope = self._bot_instance.get_query_scope(update)
-        key, page = self._bot_instance.get_issue_data(scope['data'])
+        key, page = self.get_issue_data(scope['data'])
         user_data = self._bot_instance.db.get_cached_content(key=key)
         message_type = self.get_message_type(update)
         result = dict()
@@ -32,6 +31,17 @@ class ContentPaginatorCommand(AbstractCommand):
         result['key'] = key
         result['page_count'] = user_data['page_count']
         self.send_factory.send(message_type, bot, update, result, items=True)
+
+    def get_issue_data(self, query_data):
+        """
+        Gets key and page for cached issues
+        :param query_data: 'paginator:IHB#13'
+        :return: ('IHB', 13)
+        """
+        data = query_data.replace('paginator:', '')
+        key, page = data.split('#')
+
+        return key, int(page)
 
     def command_callback(self):
         return CallbackQueryHandler(self.handler, pattern=r'^paginator:')
@@ -83,10 +93,10 @@ class UserUnresolvedCommand(AbstractCommand):
     def handler(self, bot, update, *args, **kwargs):
         """Shows user's unresolved issues"""
         telegram_id = update.message.chat_id
-        message_type = self.get_message_type(update)
-        result = dict()
         auth_data = kwargs.get('auth_data')
         username = kwargs.get('username')
+        message_type = self.get_message_type(update)
+        result = dict()
 
         # check if the user exists on Jira host
         self._bot_instance.jira.is_user_on_host(host=auth_data.jira_host, username=username, auth_data=auth_data)
@@ -104,57 +114,13 @@ class ProjectUnresolvedCommand(AbstractCommand):
         telegram_id = update.message.chat_id
         auth_data = kwargs.get('auth_data')
         project = kwargs.get('project')
+        message_type = self.get_message_type(update)
+        result = dict()
 
         # check if the project exists on Jira host
         self._bot_instance.jira.is_project_exists(host=auth_data.jira_host, project=project, auth_data=auth_data)
 
-        # shows title
-        bot.send_message(
-            text='<b>Unresolved tasks of project {}:</b>'.format(project),
-            chat_id=telegram_id,
-            parse_mode=ParseMode.HTML
-        )
-
-        issues = self._bot_instance.jira.get_open_project_issues(project=project, auth_data=auth_data)
-        key = '{}:{}'.format(telegram_id, project)
-        formatted_issues, buttons = self._bot_instance.save_into_cache(data=issues, key=key)
-
-        # shows list of issues
-        bot.send_message(
-            text=formatted_issues,
-            chat_id=telegram_id,
-            reply_markup=buttons,
-            parse_mode=ParseMode.HTML
-        )
-
-
-class ProjectStatusIssuesCommand(AbstractCommand):
-
-    def handler(self, bot, update, *args, **kwargs):
-        """
-        Shows project issues with selected status
-        Will be used for `/liststatus` command
-        """
-        auth_data = kwargs.get('auth_data')
-        telegram_id = update.message.chat_id
-        project = kwargs.get('project')
-        status = kwargs.get('status')
-        project_key = '{}:{}:{}'.format(telegram_id, project, status)
-
-        # shows title
-        bot.send_message(
-            text='All tasks with <b>«{}»</b> status in <b>{}</b> project:'.format(status, project),
-            chat_id=telegram_id,
-            parse_mode=ParseMode.HTML
-        )
-
-        issues = self._bot_instance.jira.get_project_status_issues(project=project, status=status, auth_data=auth_data)
-        formatted_issues, buttons = self._bot_instance.save_into_cache(data=issues, key=project_key)
-
-        # shows list of issues
-        bot.send_message(
-            text=formatted_issues,
-            chat_id=telegram_id,
-            reply_markup=buttons,
-            parse_mode=ParseMode.HTML
-        )
+        result['title'] = 'Unresolved tasks of project {}:'.format(project)
+        result['items'] = self._bot_instance.jira.get_open_project_issues(project=project, auth_data=auth_data)
+        result['key'] = '{}:{}'.format(telegram_id, project)
+        self.send_factory.send(message_type, bot, update, result, items=True)
