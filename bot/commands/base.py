@@ -1,4 +1,3 @@
-import logging
 from abc import ABCMeta, abstractmethod
 
 from telegram import ParseMode
@@ -6,9 +5,6 @@ from telegram import ParseMode
 from common import utils
 from common.db import MongoBackend
 from common.exceptions import SendMessageHandlerError
-
-# TODO: remove logger after testing!
-logger = logging.getLogger()
 
 # Message types
 BASE = 'base'
@@ -22,6 +18,20 @@ class BaseSendMessage:
     callback_paginator_key = 'paginator:{}'
 
     def send(self, bot, update, result, *args, **kwargs):
+        """
+        Base method to send messages
+        result['title'] - Title of the message (the text is bold)
+        result['text'] - Simple text in message (withour editing)
+        result['buttons'] - any buttons to show in chat
+        result['items'] - list of strings with any data
+        result['key'] - key for cached data
+        result['page'] - number of page that user clicked (at inline keyboard)
+        result['page_count'] - total count of the pages (for generating a new inline keyboard)
+
+        Flags:
+        simple_message - Simple text message without editing (e.g errors messages)
+        items - Messages with a list of any data (issues or worklog)
+        """
         pass
 
     def message_format(self, title, items):
@@ -34,7 +44,6 @@ class BaseSendMessage:
 class ChatSendMessage(BaseSendMessage):
 
     def send(self, bot, update, result, *args, **kwargs):
-        logger.info('ChatSendMessage: {:.30}...'.format(result.get('text', 'Test')))
         chat_id = self.get_metadata(update)
 
         if kwargs.get('simple_message'):
@@ -50,6 +59,7 @@ class ChatSendMessage(BaseSendMessage):
             items = result.get('items')
 
             if len(items) > self.issues_per_page:
+                # if items count more than one page
                 text, buttons = self.processing_multiple_pages(title, items, result)
             else:
                 text, buttons = self.processing_single_page(title, items, result)
@@ -62,7 +72,7 @@ class ChatSendMessage(BaseSendMessage):
                 disable_web_page_preview=True
             )
         else:
-            logging.error('Formatting type not passed')
+            raise SendMessageHandlerError('Formatting type not passed')
 
     def message_format(self, title, items):
         f_title = '<b>{}</b>\n\n'.format(title)
@@ -77,9 +87,11 @@ class ChatSendMessage(BaseSendMessage):
         status = self.db.create_cache(key, title, splitted_data, page_count)
 
         if not status:
-            logging.exception('An attempt to write content to the cache failed: {}'.format(key))
+            raise SendMessageHandlerError('An attempt to write content to the cache failed: {}'.format(key))
 
     def processing_multiple_pages(self, title, items, result):
+        # if there are many values (the first query) - cache and
+        # give the first page of results with inline keyboard
         callback_key = self.callback_paginator_key.format(result.get('key'))
         splitted_data = utils.split_by_pages(items, self.issues_per_page)
         self.save_into_cache(title, splitted_data, result.get('key'))
@@ -94,6 +106,8 @@ class ChatSendMessage(BaseSendMessage):
         return text, buttons
 
     def processing_single_page(self, title, items, result):
+        # the number of elements is placed on one page - format and return
+        # with the inline keyboard
         buttons = None
         callback_key = self.callback_paginator_key.format(result.get('key'))
         text = self.message_format(title, items)
@@ -111,7 +125,6 @@ class ChatSendMessage(BaseSendMessage):
 class AfterActionSendMessage(ChatSendMessage):
 
     def send(self, bot, update, result, *args, **kwargs):
-        logger.info('AfterActionSendMessage: {:.30}...'.format(result.get('text', 'Test')))
         chat_id, message_id = self.get_metadata(update)
 
         if kwargs.get('simple_message'):
@@ -128,6 +141,7 @@ class AfterActionSendMessage(ChatSendMessage):
             items = result.get('items')
 
             if len(items) > self.issues_per_page:
+                # if items count more than one page
                 text, buttons = self.processing_multiple_pages(title, items, result)
             else:
                 text, buttons = self.processing_single_page(title, items, result)
@@ -141,7 +155,7 @@ class AfterActionSendMessage(ChatSendMessage):
                 disable_web_page_preview=True
             )
         else:
-            logging.error('Formatting type not passed')
+            raise SendMessageHandlerError('Formatting type not passed')
 
     def get_metadata(self, update):
         query = update.callback_query
@@ -153,7 +167,7 @@ class AfterActionSendMessage(ChatSendMessage):
 class InlineSendMessage(BaseSendMessage):
 
     def send(self, bot, update, result, *args, **kwargs):
-        logger.info('InlineSendMessage: {:.30}...'.format(result.get('text')))
+        # TODO: in progress
         print('send message from InlineSendMessage')
 
 
