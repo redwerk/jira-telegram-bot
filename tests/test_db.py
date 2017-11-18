@@ -58,6 +58,7 @@ class TestMongoBackend:
         cls.item_per_page = 10
         cls.test_cache_item = utils.split_by_pages(['test_cache{}'.format(i) for i in range(25)], cls.item_per_page)
         cls.test_cache_key = 'test_cache:{}'.format(cls.test_user.get('telegram_id'))
+        cls.test_cache_title = 'Test cached items'
 
     def teardown_class(cls):
         # drops a database after calling all test cases
@@ -121,7 +122,12 @@ class TestMongoBackend:
         assert existent_host.get('consumer_key') == self.update_test_host.get('consumer_key')
 
     def test_create_cache(self):
-        status = self.db.create_cache(self.test_cache_key, self.test_cache_item, self.item_per_page)
+        status = self.db.create_cache(
+            self.test_cache_key,
+            self.test_cache_title,
+            self.test_cache_item,
+            self.item_per_page
+        )
         assert status is True
 
     def test_get_cached_content(self):
@@ -130,6 +136,7 @@ class TestMongoBackend:
         assert fake_cache == dict()
         assert len(created_cashe.get('content')) == len(self.test_cache_item)
         assert created_cashe.get('page_count') == self.item_per_page
+        assert created_cashe.get('title') == self.test_cache_title
 
     def test_get_cached_content_after_expired(self):
         time.sleep(60)  # need time to build an index
