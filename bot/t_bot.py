@@ -9,8 +9,8 @@ from telegram.ext import CommandHandler, Updater
 import bot.commands as commands
 from bot.integration import JiraBackend
 from common import utils
-from common.exceptions import BotAuthError, BaseJTBException
 from common.db import MongoBackend
+from common.exceptions import BaseJTBException, BotAuthError
 
 
 class JiraBot:
