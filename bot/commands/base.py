@@ -1,4 +1,5 @@
 from abc import ABCMeta, abstractmethod
+import logging
 
 from telegram import ParseMode
 
@@ -6,10 +7,7 @@ from common import utils
 from common.db import MongoBackend
 from common.exceptions import SendMessageHandlerError
 
-# Message types
-BASE = 'base'
-AFTER_ACTION = 'after_action'
-INLINE = 'inline'
+logger = logging.getLogger()
 
 
 class BaseSendMessage:
@@ -17,54 +15,52 @@ class BaseSendMessage:
     issues_per_page = 10
     callback_paginator_key = 'paginator:{}'
 
-    def send(self, bot, update, result, *args, **kwargs):
+    def __init__(self, bot, update, **kwargs):
         """
-        Base method to send messages
-        result['title'] - Title of the message (the text is bold)
-        result['text'] - Simple text in message (withour editing)
-        result['buttons'] - any buttons to show in chat
-        result['items'] - list of strings with any data
-        result['key'] - key for cached data
-        result['page'] - number of page that user clicked (at inline keyboard)
-        result['page_count'] - total count of the pages (for generating a new inline keyboard)
-
-        Flags:
-        simple_message - Simple text message without editing (e.g errors messages)
-        items - Messages with a list of any data (issues or worklog)
+        kwargs['title'] - Title of the message (the text is bold)
+        kwargs['text'] - Simple text in message (withour editing)
+        kwargs['buttons'] - any buttons to show in chat
+        kwargs['items'] - list of strings with any data
+        kwargs['key'] - key for cached data
+        kwargs['page'] - number of page that user clicked (at inline keyboard)
+        kwargs['page_count'] - total count of the pages (for generating a new inline keyboard)
         """
-        pass
+        self.bot = bot
+        self.update = update
+        self.title = kwargs.get('title')
+        self.text = kwargs.get('text')
+        self.buttons = kwargs.get('buttons')
+        self.items = kwargs.get('items')
+        self.key = kwargs.get('key')
+        self.page = kwargs.get('page')
+        self.page_count = kwargs.get('page_count')
+        self.simple_message = kwargs.get('simple_message')
 
-    def message_format(self, title, items):
-        pass
-
-    def get_metadata(self, update):
+    def send(self):
         pass
 
 
 class ChatSendMessage(BaseSendMessage):
 
-    def send(self, bot, update, result, *args, **kwargs):
-        chat_id = self.get_metadata(update)
+    def send(self):
+        chat_id = self.get_metadata()
 
-        if kwargs.get('simple_message'):
-            bot.send_message(
+        if self.simple_message:
+            self.bot.send_message(
                 chat_id=chat_id,
-                text=result.get('text'),
-                reply_markup=result.get('buttons'),
+                text=self.text,
+                reply_markup=self.buttons,
                 parse_mode=ParseMode.HTML,
                 disable_web_page_preview=True
             )
-        elif kwargs.get('items'):
-            title = result.get('title')
-            items = result.get('items')
-
-            if len(items) > self.issues_per_page:
+        elif self.items:
+            if len(self.items) > self.issues_per_page:
                 # if items count more than one page
-                text, buttons = self.processing_multiple_pages(title, items, result)
+                text, buttons = self.processing_multiple_pages()
             else:
-                text, buttons = self.processing_single_page(title, items, result)
+                text, buttons = self.processing_single_page()
 
-            bot.send_message(
+            self.bot.send_message(
                 chat_id=chat_id,
                 text=text,
                 reply_markup=buttons,
@@ -74,29 +70,29 @@ class ChatSendMessage(BaseSendMessage):
         else:
             raise SendMessageHandlerError('Formatting type not passed')
 
-    def message_format(self, title, items):
-        f_title = '<b>{}</b>\n\n'.format(title)
+    def message_format(self, items):
+        f_title = '<b>{}</b>\n\n'.format(self.title)
         f_issues = '\n\n'.join(items)
         return f_title + f_issues
 
-    def get_metadata(self, update):
-        return update.message.chat_id
+    def get_metadata(self):
+        return self.update.message.chat_id
 
-    def save_into_cache(self, title, splitted_data, key):
+    def save_into_cache(self, splitted_data):
         page_count = len(splitted_data)
-        status = self.db.create_cache(key, title, splitted_data, page_count)
+        status = self.db.create_cache(self.key, self.title, splitted_data, page_count)
 
         if not status:
-            raise SendMessageHandlerError('An attempt to write content to the cache failed: {}'.format(key))
+            raise SendMessageHandlerError('An attempt to write content to the cache failed: {}'.format(self.key))
 
-    def processing_multiple_pages(self, title, items, result):
+    def processing_multiple_pages(self):
         # if there are many values (the first query) - cache and
         # give the first page of results with inline keyboard
-        callback_key = self.callback_paginator_key.format(result.get('key'))
-        splitted_data = utils.split_by_pages(items, self.issues_per_page)
-        self.save_into_cache(title, splitted_data, result.get('key'))
+        callback_key = self.callback_paginator_key.format(self.key)
+        splitted_data = utils.split_by_pages(self.items, self.issues_per_page)
+        self.save_into_cache(splitted_data)
 
-        text = self.message_format(title, splitted_data[0])  # return first page
+        text = self.message_format(splitted_data[0])  # return first page
         buttons = utils.get_pagination_keyboard(
             current=1,
             max_page=len(splitted_data),
@@ -105,17 +101,17 @@ class ChatSendMessage(BaseSendMessage):
 
         return text, buttons
 
-    def processing_single_page(self, title, items, result):
+    def processing_single_page(self):
         # the number of elements is placed on one page - format and return
         # with the inline keyboard
         buttons = None
-        callback_key = self.callback_paginator_key.format(result.get('key'))
-        text = self.message_format(title, items)
+        callback_key = self.callback_paginator_key.format(self.key)
+        text = self.message_format(self.items)
 
-        if result.get('page') and result.get('page_count'):
+        if self.page and self.page_count:
             buttons = utils.get_pagination_keyboard(
-                current=result.get('page'),
-                max_page=result.get('page_count'),
+                current=self.page,
+                max_page=self.page_count,
                 str_key=callback_key + '#{}'
             )
 
@@ -124,29 +120,26 @@ class ChatSendMessage(BaseSendMessage):
 
 class AfterActionSendMessage(ChatSendMessage):
 
-    def send(self, bot, update, result, *args, **kwargs):
-        chat_id, message_id = self.get_metadata(update)
+    def send(self):
+        chat_id, message_id = self.get_metadata()
 
-        if kwargs.get('simple_message'):
-            bot.edit_message_text(
+        if self.simple_message:
+            self.bot.edit_message_text(
                 chat_id=chat_id,
                 message_id=message_id,
-                text=result.get('text'),
-                reply_markup=result.get('buttons'),
+                text=self.text,
+                reply_markup=self.buttons,
                 parse_mode=ParseMode.HTML,
                 disable_web_page_preview=True
             )
-        elif kwargs.get('items'):
-            title = result.get('title')
-            items = result.get('items')
-
-            if len(items) > self.issues_per_page:
+        elif self.items:
+            if len(self.items) > self.issues_per_page:
                 # if items count more than one page
-                text, buttons = self.processing_multiple_pages(title, items, result)
+                text, buttons = self.processing_multiple_pages()
             else:
-                text, buttons = self.processing_single_page(title, items, result)
+                text, buttons = self.processing_single_page()
 
-            bot.edit_message_text(
+            self.bot.edit_message_text(
                 chat_id=chat_id,
                 message_id=message_id,
                 text=text,
@@ -157,8 +150,8 @@ class AfterActionSendMessage(ChatSendMessage):
         else:
             raise SendMessageHandlerError('Formatting type not passed')
 
-    def get_metadata(self, update):
-        query = update.callback_query
+    def get_metadata(self):
+        query = self.update.callback_query
         chat_id = query.message.chat_id
         message_id = query.message.message_id
         return chat_id, message_id
@@ -166,25 +159,44 @@ class AfterActionSendMessage(ChatSendMessage):
 
 class InlineSendMessage(BaseSendMessage):
 
-    def send(self, bot, update, result, *args, **kwargs):
+    def send(self):
         # TODO: in progress
-        print('send message from InlineSendMessage')
+        logger.info('Send message from InlineSendMessage')
 
 
 class SendMessageFactory:
-    message_handlers = {
-        BASE: ChatSendMessage(),
-        AFTER_ACTION: AfterActionSendMessage(),
-        INLINE: InlineSendMessage()
-    }
+    # Message types
+    BASE = 'base'
+    AFTER_ACTION = 'after_action'
+    INLINE = 'inline'
 
-    def send(self, message_type, bot, update, result, *args, **kwargs):
-        handler = self.message_handlers.get(message_type)
+    message_handlers = {
+        BASE: ChatSendMessage,
+        AFTER_ACTION: AfterActionSendMessage,
+        INLINE: InlineSendMessage
+    }
+    message_type = None
+
+    @classmethod
+    def send(cls, bot, update, *args, **kwargs):
+        message_type = cls.get_message_type(update)
+        handler = cls.message_handlers.get(message_type)
 
         if not handler:
             raise SendMessageHandlerError('Unable to get the handler')
 
-        handler.send(bot, update, result, *args, **kwargs)
+        handler(bot, update, **kwargs).send()
+
+    @classmethod
+    def get_message_type(cls, update):
+        # when user communicate with the bot from group chat
+        if getattr(update, 'inline_query'):
+            return cls.INLINE
+        # when user select some option (by pressing the button)
+        elif getattr(update, 'callback_query'):
+            return cls.AFTER_ACTION
+        # when user invoke some bot /command
+        return cls.BASE
 
 
 class AbstractCommand(metaclass=ABCMeta):
@@ -204,17 +216,6 @@ class AbstractCommand(metaclass=ABCMeta):
     def command_callback(self):
         # Must be implemented
         pass
-
-    def get_message_type(self, update):
-        # when user communicate with the bot from group chat
-        if getattr(update, 'inline_query'):
-            return INLINE
-        # when user select some option (by pressing the button)
-        elif getattr(update, 'callback_query'):
-            return AFTER_ACTION
-        # when user invoke some bot /command
-        else:
-            return BASE
 
 
 class AbstractCommandFactory(metaclass=ABCMeta):
