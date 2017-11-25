@@ -2,7 +2,7 @@ from telegram.ext import CallbackQueryHandler, CommandHandler
 
 from common import utils
 
-from .base import AbstractCommand
+from .base import AbstractCommand, SendMessageFactory
 
 
 class ContentPaginatorCommand(AbstractCommand):
@@ -17,20 +17,15 @@ class ContentPaginatorCommand(AbstractCommand):
         scope = self._bot_instance.get_query_scope(update)
         key, page = self.get_issue_data(scope['data'])
         user_data = self._bot_instance.db.get_cached_content(key=key)
-        message_type = self.get_message_type(update)
-        result = dict()
 
         if not user_data:
-            result['text'] = 'Cache for this content has expired. Repeat the request, please'
-            self.send_factory.send(message_type, bot, update, result, simple_message=True)
-            return
+            text = 'Cache for this content has expired. Repeat the request, please'
+            return SendMessageFactory.send(bot, update, text=text, simple_message=True)
 
-        result['title'] = user_data['title']
-        result['items'] = user_data['content'][page - 1]
-        result['page'] = page
-        result['key'] = key
-        result['page_count'] = user_data['page_count']
-        self.send_factory.send(message_type, bot, update, result, items=True)
+        title = user_data['title']
+        items = user_data['content'][page - 1]
+        page_count = user_data['page_count']
+        SendMessageFactory.send(bot, update, title=title, items=items, page=page, page_count=page_count, key=key)
 
     def get_issue_data(self, query_data):
         """
@@ -52,18 +47,15 @@ class ListUnresolvedIssuesCommand(AbstractCommand):
 
     @utils.login_required
     def handler(self, bot, update, *args, **kwargs):
-        message_type = self.get_message_type(update)
-        result = dict()
         auth_data = kwargs.get('auth_data')
         options = kwargs.get('args')
 
         if not options or options[0] not in self.targets:
-            result['text'] = "<b>Command description:</b>\n" \
-                             "/listunresolved my - returns a list of user's unresolved issues\n" \
-                             "/listunresolved user <i>username</i> - returns a list of selected user issues\n" \
-                             "/listunresolved project <i>KEY</i> - returns a list of projects issues\n"
-            self.send_factory.send(message_type, bot, update, result, simple_message=True)
-            return
+            text = "<b>Command description:</b>\n" \
+                   "/listunresolved my - returns a list of user's unresolved issues\n" \
+                   "/listunresolved user <i>username</i> - returns a list of selected user issues\n" \
+                   "/listunresolved project <i>KEY</i> - returns a list of projects issues\n"
+            return SendMessageFactory.send(bot, update, text=text, simple_message=True)
 
         target = options[0]
         try:
@@ -71,8 +63,8 @@ class ListUnresolvedIssuesCommand(AbstractCommand):
         except IndexError:
             if target != 'my':
                 # name option is required for `user` and `project` targets
-                result['text'] = 'Second argument is required for this type of command'
-                return self.send_factory.send(message_type, bot, update, result, simple_message=True)
+                text = 'Second argument is required for this type of command'
+                return SendMessageFactory.send(bot, update, text=text, simple_message=True)
             else:
                 # name option not needed for `my` target
                 return UserUnresolvedCommand(self._bot_instance).handler(
@@ -95,16 +87,14 @@ class UserUnresolvedCommand(AbstractCommand):
         telegram_id = update.message.chat_id
         auth_data = kwargs.get('auth_data')
         username = kwargs.get('username')
-        message_type = self.get_message_type(update)
-        result = dict()
 
         # check if the user exists on Jira host
         self._bot_instance.jira.is_user_on_host(host=auth_data.jira_host, username=username, auth_data=auth_data)
 
-        result['title'] = 'All unresolved tasks of {}:'.format(username)
-        result['items'] = self._bot_instance.jira.get_open_issues(username=username, auth_data=auth_data)
-        result['key'] = '{}:{}'.format(telegram_id, username)
-        self.send_factory.send(message_type, bot, update, result, items=True)
+        title = 'All unresolved tasks of {}:'.format(username)
+        items = self._bot_instance.jira.get_open_issues(username=username, auth_data=auth_data)
+        key = '{}:{}'.format(telegram_id, username)
+        SendMessageFactory.send(bot, update, title=title, items=items, key=key)
 
 
 class ProjectUnresolvedCommand(AbstractCommand):
@@ -114,13 +104,11 @@ class ProjectUnresolvedCommand(AbstractCommand):
         telegram_id = update.message.chat_id
         auth_data = kwargs.get('auth_data')
         project = kwargs.get('project')
-        message_type = self.get_message_type(update)
-        result = dict()
 
         # check if the project exists on Jira host
         self._bot_instance.jira.is_project_exists(host=auth_data.jira_host, project=project, auth_data=auth_data)
 
-        result['title'] = 'Unresolved tasks of project {}:'.format(project)
-        result['items'] = self._bot_instance.jira.get_open_project_issues(project=project, auth_data=auth_data)
-        result['key'] = '{}:{}'.format(telegram_id, project)
-        self.send_factory.send(message_type, bot, update, result, items=True)
+        title = 'Unresolved tasks of project {}:'.format(project)
+        items = self._bot_instance.jira.get_open_project_issues(project=project, auth_data=auth_data)
+        key = '{}:{}'.format(telegram_id, project)
+        SendMessageFactory.send(bot, update, title=title, items=items, key=key)
