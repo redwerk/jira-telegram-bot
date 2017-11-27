@@ -1,18 +1,17 @@
-from .issue import ListUnresolvedIssuesFactory, ContentPaginatorFactory
-from .auth import (OAuthLoginCommandFactory, DisconnectMenuCommandFactory,
-                   DisconnectCommandFactory, BasicLoginCommandFactory)
+from .issue import ContentPaginatorCommand, ListUnresolvedIssuesCommand
+from .auth import BasicLoginCommand, DisconnectMenuCommand, DisconnectCommand, OAuthLoginCommand
 from .feedback import FeedbackMessageCommandFactory
-from .filter import FilterDispatcherFactory, FilterIssuesFactory
+from .filter import FilterDispatcherCommand, FilterIssuesCommand
 
 
 __all__ = (
-    "ListUnresolvedIssuesFactory",
-    "ContentPaginatorFactory",
-    "OAuthLoginCommandFactory",
-    "BasicLoginCommandFactory",
-    "DisconnectMenuCommandFactory",
-    "DisconnectCommandFactory",
+    "ListUnresolvedIssuesCommand",
+    "ContentPaginatorCommand",
+    "OAuthLoginCommand",
+    "BasicLoginCommand",
+    "DisconnectMenuCommand",
+    "DisconnectCommand",
     "FeedbackMessageCommandFactory",
-    "FilterDispatcherFactory",
-    "FilterIssuesFactory",
+    "FilterDispatcherCommand",
+    "FilterIssuesCommand",
 )

@@ -47,3 +47,8 @@ class JiraEmptyData(BaseJTBException):
 class BotAuthError(BaseJTBException):
     """Errors in validating user credentials"""
     pass
+
+
+class SendMessageHandlerError(BaseJTBException):
+    """Error in logic according to sending messages"""
+    pass

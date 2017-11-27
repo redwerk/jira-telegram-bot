@@ -2,15 +2,15 @@ import logging
 from collections import namedtuple
 
 from decouple import config
-from telegram import ParseMode
 from telegram.error import NetworkError, TelegramError, TimedOut
 from telegram.ext import CommandHandler, Updater
 
 import bot.commands as commands
+from bot.commands.base import SendMessageFactory
 from bot.integration import JiraBackend
 from common import utils
-from common.exceptions import BotAuthError, BaseJTBException
 from common.db import MongoBackend
+from common.exceptions import BaseJTBException, BotAuthError
 
 
 class JiraBot:
@@ -27,14 +27,14 @@ class JiraBot:
     ]
     issues_per_page = 10
     commands_factories = [
-        commands.ListUnresolvedIssuesFactory,
-        commands.FilterDispatcherFactory,
-        commands.FilterIssuesFactory,
-        commands.BasicLoginCommandFactory,
-        commands.OAuthLoginCommandFactory,
-        commands.DisconnectMenuCommandFactory,
-        commands.DisconnectCommandFactory,
-        commands.ContentPaginatorFactory,
+        commands.ListUnresolvedIssuesCommand,
+        commands.FilterDispatcherCommand,
+        commands.FilterIssuesCommand,
+        commands.BasicLoginCommand,
+        commands.OAuthLoginCommand,
+        commands.DisconnectMenuCommand,
+        commands.DisconnectCommand,
+        commands.ContentPaginatorCommand,
     ]
 
     def __init__(self):
@@ -49,10 +49,10 @@ class JiraBot:
         )
 
         self.__updater.dispatcher.add_handler(
-            CommandHandler('help', self.__help_command)
+            CommandHandler('help', self.help_command)
         )
 
-        self.__updater.dispatcher.add_error_handler(self.__error_callback)
+        self.__updater.dispatcher.add_error_handler(self.error_callback)
 
         for command in self.commands_factories:
             cb = command(self).command_callback()
@@ -114,18 +114,6 @@ class JiraBot:
             data=data
         )
 
-    @staticmethod
-    def get_issue_data(query_data: str) -> (str, int):
-        """
-        Gets key and page for cached issues
-        :param query_data: 'paginator:IHB#13'
-        :return: ('IHB', 13)
-        """
-        data = query_data.replace('paginator:', '')
-        key, page = data.split('#')
-
-        return key, int(page)
-
     def get_and_check_cred(self, telegram_id: int):
         """
         Gets the user data and tries to log in according to the specified authorization method.
@@ -170,62 +158,16 @@ class JiraBot:
 
             return auth_data
 
-    def save_into_cache(self, data: list, key: str):
-        """
-        Creating a pagination list. Saving into a cache for further work with
-        it without redundant requests to JIRA.
-
-        If strings less than value per page just return a formatted string without buttons.
-        :param data: list of strings
-        :param key: key for stored it into cache collection
-        :return: formatted string with pagination buttons
-        """
-        buttons = None
-
-        if len(data) < self.issues_per_page + 1:
-            formatted_issues = '\n\n'.join(data)
-        else:
-            splitted_data = utils.split_by_pages(data, self.issues_per_page)
-            page_count = len(splitted_data)
-            status = self.db.create_cache(key, splitted_data, page_count)
-
-            if not status:
-                logging.exception('An attempt to write content to the cache failed: {}'.format(key))
-
-            # return the first page
-            formatted_issues = '\n\n'.join(splitted_data[0])
-            str_key = 'paginator:{}'.format(key)
-            buttons = utils.get_pagination_keyboard(
-                current=1,
-                max_page=page_count,
-                str_key=str_key + '#{}'
-            )
-
-        return formatted_issues, buttons
-
-    def __help_command(self, bot, update):
+    def help_command(self, bot, update):
         bot.send_message(
             chat_id=update.message.chat_id, text='\n'.join(self.bot_commands)
         )
 
-    def __error_callback(self, bot, update, error):
+    def error_callback(self, bot, update, error):
         try:
             raise error
         except BaseJTBException as e:
-            try:
-                scope = self.get_query_scope(update)
-            except AttributeError:
-                # must send a new message
-                bot.send_message(chat_id=update.message.chat_id, text=e.message, parse_mode=ParseMode.HTML)
-            else:
-                # if the command is executed after pressing the inline keyboard
-                # must update the last message
-                bot.edit_message_text(
-                    chat_id=scope['chat_id'],
-                    message_id=scope['message_id'],
-                    text=e.message,
-                    parse_mode=ParseMode.HTML
-                )
+            SendMessageFactory.send(bot, update, text=e.message, simple_message=True)
         except TimedOut:
             pass
         except (NetworkError, TelegramError) as e:
