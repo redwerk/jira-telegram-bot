@@ -2,11 +2,11 @@ import logging
 from collections import namedtuple
 
 from decouple import config
-from telegram import ParseMode
 from telegram.error import NetworkError, TelegramError, TimedOut
 from telegram.ext import CommandHandler, Updater
 
 import bot.commands as commands
+from bot.commands.base import SendMessageFactory
 from bot.integration import JiraBackend
 from common import utils
 from common.db import MongoBackend
@@ -49,10 +49,10 @@ class JiraBot:
         )
 
         self.__updater.dispatcher.add_handler(
-            CommandHandler('help', self.__help_command)
+            CommandHandler('help', self.help_command)
         )
 
-        self.__updater.dispatcher.add_error_handler(self.__error_callback)
+        self.__updater.dispatcher.add_error_handler(self.error_callback)
 
         for command in self.commands_factories:
             cb = command(self).command_callback()
@@ -158,29 +158,16 @@ class JiraBot:
 
             return auth_data
 
-    def __help_command(self, bot, update):
+    def help_command(self, bot, update):
         bot.send_message(
             chat_id=update.message.chat_id, text='\n'.join(self.bot_commands)
         )
 
-    def __error_callback(self, bot, update, error):
+    def error_callback(self, bot, update, error):
         try:
             raise error
         except BaseJTBException as e:
-            try:
-                scope = self.get_query_scope(update)
-            except AttributeError:
-                # must send a new message
-                bot.send_message(chat_id=update.message.chat_id, text=e.message, parse_mode=ParseMode.HTML)
-            else:
-                # if the command is executed after pressing the inline keyboard
-                # must update the last message
-                bot.edit_message_text(
-                    chat_id=scope['chat_id'],
-                    message_id=scope['message_id'],
-                    text=e.message,
-                    parse_mode=ParseMode.HTML
-                )
+            SendMessageFactory.send(bot, update, text=e.message, simple_message=True)
         except TimedOut:
             pass
         except (NetworkError, TelegramError) as e:
