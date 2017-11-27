@@ -151,7 +151,7 @@ class JiraBackend:
             if not issues:
                 raise JiraEmptyData('Woohoo! No unresolved tasks')
 
-            return self._issues_formatting(issues)
+            return issues
 
     @staticmethod
     def _issues_formatting(issues) -> list:
@@ -202,7 +202,7 @@ class JiraBackend:
             if not issues:
                 raise JiraEmptyData("Project <b>{}</b> doesn't have any unresolved tasks".format(project))
 
-            return self._issues_formatting(issues)
+            return issues
 
     @jira_connect
     def get_statuses(self, *args, **kwargs) -> list:
@@ -237,7 +237,7 @@ class JiraBackend:
             if not issues:
                 raise JiraEmptyData("No tasks with <b>«{}»</b> status in <b>{}</b> project ".format(status, project))
 
-            return self._issues_formatting(issues)
+            return issues
 
     @jira_connect
     def get_all_user_worklogs(self, start_date: str, end_date: str, *args, **kwargs) -> list:
@@ -467,4 +467,4 @@ class JiraBackend:
             if not issues:
                 raise JiraEmptyData('No tasks which filtered by <b>«{}»</b>'.format(filter_name))
 
-            return self._issues_formatting(issues)
+            return issues

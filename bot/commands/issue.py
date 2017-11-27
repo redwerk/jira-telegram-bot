@@ -92,9 +92,9 @@ class UserUnresolvedCommand(AbstractCommand):
         self._bot_instance.jira.is_user_on_host(host=auth_data.jira_host, username=username, auth_data=auth_data)
 
         title = 'All unresolved tasks of {}:'.format(username)
-        items = self._bot_instance.jira.get_open_issues(username=username, auth_data=auth_data)
+        raw_items = self._bot_instance.jira.get_open_issues(username=username, auth_data=auth_data)
         key = '{}:{}'.format(telegram_id, username)
-        SendMessageFactory.send(bot, update, title=title, items=items, key=key)
+        SendMessageFactory.send(bot, update, title=title, raw_items=raw_items, key=key)
 
 
 class ProjectUnresolvedCommand(AbstractCommand):
@@ -109,6 +109,6 @@ class ProjectUnresolvedCommand(AbstractCommand):
         self._bot_instance.jira.is_project_exists(host=auth_data.jira_host, project=project, auth_data=auth_data)
 
         title = 'Unresolved tasks of project {}:'.format(project)
-        items = self._bot_instance.jira.get_open_project_issues(project=project, auth_data=auth_data)
+        raw_items = self._bot_instance.jira.get_open_project_issues(project=project, auth_data=auth_data)
         key = '{}:{}'.format(telegram_id, project)
-        SendMessageFactory.send(bot, update, title=title, items=items, key=key)
+        SendMessageFactory.send(bot, update, title=title, raw_items=raw_items, key=key)

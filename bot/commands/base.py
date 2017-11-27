@@ -24,6 +24,7 @@ class BaseSendMessage:
         kwargs['key'] - key for cached data
         kwargs['page'] - number of page that user clicked (at inline keyboard)
         kwargs['page_count'] - total count of the pages (for generating a new inline keyboard)
+        kwargs['raw_items'] - raw JIRA issue objects, need to format before display
         """
         self.bot = bot
         self.update = update
@@ -35,6 +36,7 @@ class BaseSendMessage:
         self.page = kwargs.get('page')
         self.page_count = kwargs.get('page_count')
         self.simple_message = kwargs.get('simple_message')
+        self.raw_items = kwargs.get('raw_items')
 
     @abstractmethod
     def send(self):
@@ -54,7 +56,11 @@ class ChatSendMessage(BaseSendMessage):
                 parse_mode=ParseMode.HTML,
                 disable_web_page_preview=True
             )
-        elif self.items:
+        elif self.items or self.raw_items:
+            # formatting list of strings from JIRA issue objects
+            if self.raw_items:
+                self.items = self.issues_format()
+
             if len(self.items) > self.issues_per_page:
                 # if items count more than one page
                 text, buttons = self.processing_multiple_pages()
@@ -70,6 +76,23 @@ class ChatSendMessage(BaseSendMessage):
             )
         else:
             raise SendMessageHandlerError('Formatting type not passed')
+
+    def issues_format(self):
+        """
+        Formats issues into string by template: issue id, title and permalink
+        """
+        issues_list = list()
+
+        try:
+            for issue in self.raw_items:
+                issues_str = '<a href="{permalink}">{key}</a> {summary}'.format(
+                    key=issue.key, summary=issue.fields.summary, permalink=issue.permalink()
+                )
+                issues_list.append(issues_str)
+        except AttributeError as e:
+            logger.exception(e)
+
+        return issues_list
 
     def message_format(self, items):
         f_title = '<b>{}</b>\n\n'.format(self.title)
@@ -131,7 +154,11 @@ class AfterActionSendMessage(ChatSendMessage):
                 parse_mode=ParseMode.HTML,
                 disable_web_page_preview=True
             )
-        elif self.items:
+        elif self.items or self.raw_items:
+            # formatting list of strings from JIRA issue objects
+            if self.raw_items:
+                self.items = self.issues_format()
+
             if len(self.items) > self.issues_per_page:
                 # if items count more than one page
                 text, buttons = self.processing_multiple_pages()
