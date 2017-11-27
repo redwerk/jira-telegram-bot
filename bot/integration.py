@@ -153,6 +153,29 @@ class JiraBackend:
 
             return issues
 
+    @jira_connect
+    def get_user_status_issues(self, username, status, *args, **kwargs):
+        """
+        Getting issues assigned to the user with selected status
+        """
+        jira_conn = kwargs.get('jira_conn')
+
+        try:
+            issues = jira_conn.search_issues(
+                'assignee = "{username}" and status = "{status}" and resolution = Unresolved'.format(
+                    username=username, status=status
+                ),
+                maxResults=200
+            )
+        except jira.JIRAError as e:
+            logging.exception('Error while getting {} issues:\n{}'.format(username, e))
+            raise JiraReceivingDataError(e.text)
+        else:
+            if not issues:
+                raise JiraEmptyData('Woohoo! You do not have any issues')
+
+            return issues
+
     @staticmethod
     def _issues_formatting(issues) -> list:
         """

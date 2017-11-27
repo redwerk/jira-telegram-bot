@@ -1,3 +1,4 @@
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackQueryHandler, CommandHandler
 
 from common import utils
@@ -43,6 +44,9 @@ class ContentPaginatorCommand(AbstractCommand):
 
 
 class ListUnresolvedIssuesCommand(AbstractCommand):
+    """
+    /listunresolved <target> <option> - shows users or projects unresolved issues
+    """
     targets = ('my', 'user', 'project')
 
     @utils.login_required
@@ -112,3 +116,91 @@ class ProjectUnresolvedCommand(AbstractCommand):
         raw_items = self._bot_instance.jira.get_open_project_issues(project=project, auth_data=auth_data)
         key = '{}:{}'.format(telegram_id, project)
         SendMessageFactory.send(bot, update, title=title, raw_items=raw_items, key=key)
+
+
+class ListStatusIssuesCommand(AbstractCommand):
+    """
+    /liststatus <target> - shows users or projects issues by a selected status
+    """
+    targets = ('my', 'user', 'project')
+
+    @utils.login_required
+    def handler(self, bot, update, *args, **kwargs):
+        auth_data = kwargs.get('auth_data')
+        options = kwargs.get('args')
+
+        if not options or options[0] not in self.targets:
+            text = "<b>Command description:</b>\n" \
+                   "/liststatus my - returns a list of user's issues with a selected status\n" \
+                   "/liststatus user - returns a list of selected user issues and status\n" \
+                   "/liststatus project - returns a list of projects issues with selected status\n"
+            return SendMessageFactory.send(bot, update, text=text, simple_message=True)
+
+        target = options[0]
+        try:
+            name = options[1]
+        except IndexError:
+            if target != 'my':
+                # name option is required for `user` and `project` targets
+                text = 'Second argument is required for this type of command'
+                return SendMessageFactory.send(bot, update, text=text, simple_message=True)
+            else:
+                # name option not needed for `my` target
+                return UserStatusIssuesMenu(self._bot_instance).handler(
+                    bot, update, username=auth_data.username, *args, **kwargs
+                )
+        else:
+            if target == 'user' and name:
+                return UserStatusIssuesMenu(self._bot_instance).handler(bot, update, username=name, *args, **kwargs)
+            elif target == 'project' and name:
+                ProjectUnresolvedCommand(self._bot_instance).handler(bot, update, project=name, *args, **kwargs)
+
+    def command_callback(self):
+        return CommandHandler('liststatus', self.handler, pass_args=True)
+
+
+class UserStatusIssuesMenu(AbstractCommand):
+    """
+    Shows an inline keyboard with only those statuses that are in user's issues
+    """
+    def handler(self, bot, update, *args, **kwargs):
+        auth_data = kwargs.get('auth_data')
+        username = kwargs.get('username')
+        button_list = list()
+        text = 'Pick up one of the statuses:'
+        reply_markup = None
+
+        # check if the user exists on Jira host
+        self._bot_instance.jira.is_user_on_host(host=auth_data.jira_host, username=username, auth_data=auth_data)
+
+        # getting statuses from user's unresolved issues
+        raw_items = self._bot_instance.jira.get_open_issues(username=username, auth_data=auth_data)
+        statuses = {issue.fields.status.name for issue in raw_items}
+
+        # creating an inline keyboard for showing buttons
+        if statuses:
+            for status in sorted(statuses):
+                button_list.append(
+                    InlineKeyboardButton(status, callback_data='user_status:{}:{}'.format(username, status))
+                )
+            reply_markup = InlineKeyboardMarkup(utils.build_menu(button_list, n_cols=2))
+        else:
+            text = 'You do not have assigned issues'
+
+        SendMessageFactory.send(bot, update, text=text, buttons=reply_markup, simple_message=True)
+
+
+class UserStatusIssuesCommand(AbstractCommand):
+    @utils.login_required
+    def handler(self, bot, update, *args, **kwargs):
+        auth_data = kwargs.get('auth_data')
+        scope = self._bot_instance.get_query_scope(update)
+        username, status = scope['data'].replace('user_status:', '').split(':')
+
+        title = 'Issues of {} with the status of {}'.format(username, status)
+        raw_items = self._bot_instance.jira.get_user_status_issues(username, status, auth_data=auth_data)
+        key = 'user_status_issue:{}:{}:{}'.format(scope['telegram_id'], username, status)
+        SendMessageFactory.send(bot, update, title=title, raw_items=raw_items, key=key)
+
+    def command_callback(self):
+        return CallbackQueryHandler(self.handler, pattern=r'^user_status:')
