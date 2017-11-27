@@ -81,7 +81,6 @@ class ChatSendMessage(BaseSendMessage):
     def save_into_cache(self, splitted_data):
         page_count = len(splitted_data)
         status = self.db.create_cache(self.key, self.title, splitted_data, page_count)
-
         if not status:
             raise SendMessageHandlerError('An attempt to write content to the cache failed: {}'.format(self.key))
 
@@ -102,8 +101,7 @@ class ChatSendMessage(BaseSendMessage):
         return text, buttons
 
     def processing_single_page(self):
-        # the number of elements is placed on one page - format and return
-        # with the inline keyboard
+        # in general, displaying a selected page from cache with inline keyboard
         buttons = None
         callback_key = self.callback_paginator_key.format(self.key)
         text = self.message_format(self.items)
@@ -203,7 +201,6 @@ class AbstractCommand(metaclass=ABCMeta):
     """ Abstract base command class.
     In hendler method must be implemented main command logic.
     """
-    send_factory = SendMessageFactory()
 
     def __init__(self, bot_instance, *args, **kwargs):
         self._bot_instance = bot_instance
