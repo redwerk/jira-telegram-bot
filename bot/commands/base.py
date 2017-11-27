@@ -36,6 +36,7 @@ class BaseSendMessage:
         self.page_count = kwargs.get('page_count')
         self.simple_message = kwargs.get('simple_message')
 
+    @abstractmethod
     def send(self):
         pass
 
@@ -163,22 +164,10 @@ class InlineSendMessage(BaseSendMessage):
 
 
 class SendMessageFactory:
-    # Message types
-    BASE = 'base'
-    AFTER_ACTION = 'after_action'
-    INLINE = 'inline'
-
-    message_handlers = {
-        BASE: ChatSendMessage,
-        AFTER_ACTION: AfterActionSendMessage,
-        INLINE: InlineSendMessage
-    }
-    message_type = None
 
     @classmethod
     def send(cls, bot, update, *args, **kwargs):
-        message_type = cls.get_message_type(update)
-        handler = cls.message_handlers.get(message_type)
+        handler = cls.get_message_handler(update)
 
         if not handler:
             raise SendMessageHandlerError('Unable to get the handler')
@@ -186,15 +175,15 @@ class SendMessageFactory:
         handler(bot, update, **kwargs).send()
 
     @classmethod
-    def get_message_type(cls, update):
+    def get_message_handler(cls, update):
         # when user communicate with the bot from group chat
         if getattr(update, 'inline_query'):
-            return cls.INLINE
+            return InlineSendMessage
         # when user select some option (by pressing the button)
         elif getattr(update, 'callback_query'):
-            return cls.AFTER_ACTION
+            return AfterActionSendMessage
         # when user invoke some bot /command
-        return cls.BASE
+        return ChatSendMessage
 
 
 class AbstractCommand(metaclass=ABCMeta):
