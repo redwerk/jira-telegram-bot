@@ -176,23 +176,6 @@ class JiraBackend:
 
             return issues
 
-    @staticmethod
-    def _issues_formatting(issues) -> list:
-        """
-        Formats tasks by template: issue id, title and permalink
-        :param issues: jira issues object
-        :return: list of formatted issues
-        """
-        issues_list = list()
-
-        for issue in issues:
-            issues_str = '<a href="{permalink}">{key}</a> {summary}'.format(
-                key=issue.key, summary=issue.fields.summary, permalink=issue.permalink()
-            )
-            issues_list.append(issues_str)
-
-        return issues_list
-
     @jira_connect
     def get_projects(self, *args, **kwargs) -> list:
         """
@@ -228,18 +211,7 @@ class JiraBackend:
             return issues
 
     @jira_connect
-    def get_statuses(self, *args, **kwargs) -> list:
-        """
-        Return names of available statuses
-        :return: list of names
-        """
-        jira_conn = kwargs.get('jira_conn')
-
-        statuses = jira_conn.statuses()
-        return sorted([status.name for status in statuses])
-
-    @jira_connect
-    def get_project_status_issues(self, project: str, status: str, *args, **kwargs):
+    def get_project_status_issues(self, project, status, *args, **kwargs):
         """
         Gets issues by project with a selected status and status message
         """
@@ -448,20 +420,6 @@ class JiraBackend:
         jira_conn = kwargs.get('jira_conn')
 
         return jira_conn.my_permissions()['permissions']['ADMINISTER']['havePermission']
-
-    @jira_connect
-    def get_developers(self, *args, **kwargs) -> list:
-        """Returns a list of developer names"""
-        jira_conn = kwargs.get('jira_conn')
-
-        try:
-            developers = jira_conn.group_members('jira-developers')
-        except jira.JIRAError as e:
-            logging.exception('Failed to get developers:\n{}'.format(e))
-        else:
-            return [data['fullname'] for nick, data in developers.items()]
-
-        return list()
 
     @jira_connect
     def get_favourite_filters(self, *args, **kwargs):

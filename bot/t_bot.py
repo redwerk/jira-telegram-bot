@@ -19,6 +19,7 @@ class JiraBot:
     bot_commands = [
         '/start - Starts the bot',
         '/listunresolved - Shows different issues',
+        '/liststatus - Shows users and projects issues with a selected status'
         '/filter - shows issues by favourite filters',
         '/connect jira.yourcompany.com username password - Login into host using user/pass',
         '/oauth jira.yourcompany.com - Login into host using OAuth',
@@ -29,6 +30,8 @@ class JiraBot:
     commands_factories = [
         commands.ListUnresolvedIssuesCommand,
         commands.ListStatusIssuesCommand,
+        commands.UserStatusIssuesCommand,
+        commands.ProjectStatusIssuesCommand,
         commands.FilterDispatcherCommand,
         commands.FilterIssuesCommand,
         commands.BasicLoginCommand,
