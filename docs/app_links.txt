@@ -1,6 +1,6 @@
 The host is already added to the database, but it is not activated.
 To activate the host, add the following information to the
-<a href="http://telegra.ph/Nastrojka-avtorizacii-cherez-OAuth-dlya-JiraBot-10-04">Application links</a>.
+<a href="http://telegra.ph/Setting-up-authorization-via-OAuth-for-JiraBot-11-29">Application links</a>.
 <b>NOTE:</b> you must have administrator permissions
 
 <b>Application URL:</b> $application_url
