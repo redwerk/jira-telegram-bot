@@ -3,12 +3,11 @@ from collections import namedtuple
 from json.decoder import JSONDecodeError
 
 import jira
+import pendulum
 from jira.resilientsession import ConnectionError
 
 from common.exceptions import (JiraConnectionError, JiraEmptyData,
                                JiraLoginError, JiraReceivingDataError)
-from common.utils import (JIRA_DATE_FORMAT, USER_DATE_FORMAT, add_time,
-                          to_datetime)
 
 OK_STATUS = 200
 
@@ -237,7 +236,7 @@ class JiraBackend:
             return issues
 
     @jira_connect
-    def get_all_user_worklogs(self, start_date: str, end_date: str, *args, **kwargs) -> list:
+    def get_all_user_worklogs(self, start_date, end_date, *args, **kwargs) -> list:
         """
         Gets issues in which user logged time in selected time interval
         :return: list of worklogs
@@ -289,10 +288,10 @@ class JiraBackend:
         for worklog in received_worklogs:
             w_data = {
                 'issue_key': issues_worklog.get(worklog['issueId'])['issue_key'],
-                'issue_permalink': issues_worklog.get(worklog['issueId'])['issue_permalink'],
-                'author_displayName': worklog['author']['displayName'],
-                'author_name': worklog['author']['name'],
-                'created': to_datetime(worklog['created'], JIRA_DATE_FORMAT),
+                # 'issue_permalink': issues_worklog.get(worklog['issueId'])['issue_permalink'],
+                # 'author_displayName': worklog['author']['displayName'],
+                # 'author_name': worklog['author']['name'],
+                'created': pendulum.parse(worklog['created']),
                 'time_spent': worklog['timeSpent'],
                 'time_spent_seconds': worklog['timeSpentSeconds'],
             }
@@ -320,9 +319,6 @@ class JiraBackend:
         :return: dict of formatted worklog ids
         """
         worklogs = dict()
-        start_datetime = to_datetime(start_date, USER_DATE_FORMAT)
-        end_datetime = to_datetime(end_date, USER_DATE_FORMAT)
-        end_datetime = add_time(end_datetime, hours=23, minutes=59)
 
         try:
             for issue in issues:
@@ -333,8 +329,8 @@ class JiraBackend:
                 worklog_ids = []
 
                 for history in issue.changelog.histories:
-                    creted_date = to_datetime(history.created, JIRA_DATE_FORMAT)
-                    time_condition = (creted_date >= start_datetime) and (creted_date <= end_datetime)
+                    creted_date = pendulum.parse(history.created)
+                    time_condition = (creted_date >= start_date) and (creted_date <= end_date)
 
                     for item in history.items:
                         if item.field == 'WorklogId' and time_condition:
@@ -372,18 +368,20 @@ class JiraBackend:
         return [log for log in _worklogs if log.get(name_key) == username]
 
     @jira_connect
-    def get_project_worklogs(self, project: str, start_date: str, end_date: str, *args, **kwargs) -> list:
+    def get_project_worklogs(self, project, start_date, end_date, *args, **kwargs):
         """
         Gets issues by selected project in which someone logged time in selected time interval
         :return: list of worklogs
         """
         jira_conn = kwargs.get('jira_conn')
         p_issues = list()
+        jira_start_date = start_date.strftime('%Y-%m-%d')
+        jira_end_date = end_date.strftime('%Y-%m-%d')
 
         try:
             p_issues = jira_conn.search_issues(
                 'project = "{project}" and worklogDate >= {start_date} and worklogDate <= {end_date}'.format(
-                    project=project, start_date=start_date, end_date=end_date
+                    project=project, start_date=jira_start_date, end_date=jira_end_date
                 ),
                 expand='changelog',
                 maxResults=1000

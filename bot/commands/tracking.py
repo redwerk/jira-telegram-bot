@@ -31,8 +31,8 @@ class TimeTrackingDispatcher(AbstractCommand):
 
         if not params['start_date'] and not params['end_date']:
             # if has not date range - command execute for today
-            start_date = current_date._start_of_day()
-            end_date = current_date._end_of_day()
+            params['start_date'] = current_date._start_of_day()
+            params['end_date'] = current_date._end_of_day()
         elif params['start_date'] and not params['end_date']:
             # if the start date is specified - the command will be executed
             # inclusively from the start date to today's date
@@ -51,13 +51,13 @@ class TimeTrackingDispatcher(AbstractCommand):
 
         kwargs.update(params)
         if params['target'] == 'issue':
-            kwargs.update({'issue': params['target']})
+            kwargs.update({'issue': params['name']})
             return IssueTimeTrackerCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
         elif params['target'] == 'user':
-            kwargs.update({'username': params['target']})
+            kwargs.update({'username': params['name']})
             return UserTimeTrackerCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
         elif params['target'] == 'project':
-            kwargs.update({'project': params['target']})
+            kwargs.update({'project': params['name']})
             return ProjectTimeTrackerCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
 
     def command_callback(self):
@@ -66,14 +66,47 @@ class TimeTrackingDispatcher(AbstractCommand):
 
 class IssueTimeTrackerCommand(AbstractCommand):
     def handler(self, bot, update, *args, **kwargs):
+        auth_data = kwargs.get('auth_data')
+        issue = kwargs.get('issue')
+        start_date = kwargs.get('start_date')
+        end_date = kwargs.get('end_date')
+        utils.validate_date_range(start_date, end_date)
         return SendMessageFactory.send(bot, update, text='Hello from IssueTimeTrackerCommand', simple_message=True)
 
 
 class UserTimeTrackerCommand(AbstractCommand):
     def handler(self, bot, update, *args, **kwargs):
+        auth_data = kwargs.get('auth_data')
+        username = kwargs.get('username')
+        start_date = kwargs.get('start_date')
+        end_date = kwargs.get('end_date')
+        utils.validate_date_range(start_date, end_date)
         return SendMessageFactory.send(bot, update, text='Hello from UserTimeTrackerCommand', simple_message=True)
 
 
 class ProjectTimeTrackerCommand(AbstractCommand):
     def handler(self, bot, update, *args, **kwargs):
-        return SendMessageFactory.send(bot, update, text='Hello from ProjectTimeTrackerCommand', simple_message=True)
+        auth_data = kwargs.get('auth_data')
+        project = kwargs.get('project')
+        start_date = kwargs.get('start_date')
+        end_date = kwargs.get('end_date')
+
+        # check if the project exists on Jira host
+        self._bot_instance.jira.is_project_exists(host=auth_data.jira_host, project=project, auth_data=auth_data)
+        utils.validate_date_range(start_date, end_date)
+
+        all_worklogs = self._bot_instance.jira.get_project_worklogs(
+            project, start_date, end_date, auth_data=auth_data
+        )
+        seconds = 0
+        for log in sorted(all_worklogs, key=lambda x: x.get('created')):
+            seconds += log.get('time_spent_seconds')
+
+        if seconds:
+            spended_time = utils.calculate_tracking_time(seconds)
+        else:
+            spended_time = 0
+        template = f'Spended time on project <b>{project}</b> ' \
+                   f'from <b>{start_date.to_date_string()}</b> to <b>{end_date.to_date_string()}</b>: '
+        text = template + str(spended_time) + ' h'
+        return SendMessageFactory.send(bot, update, text=text, simple_message=True)

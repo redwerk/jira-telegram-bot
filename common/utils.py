@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 from typing import List
 
+from common.exceptions import DateTimeValidationError
 import pendulum
 import pytz
 from cryptography.fernet import Fernet
@@ -213,6 +214,23 @@ def create_calendar(date: pendulum.Pendulum, pattern_key: str, selected_day=None
             footer_buttons=f_buttons
         )
     )
+
+
+def validate_date_range(start_date, end_date):
+    if start_date > end_date:
+        raise DateTimeValidationError('End date cannot be less than the start date')
+
+
+def calculate_tracking_time(seconds):
+    hours = 0
+    hour_in_seconds = 3600
+
+    try:
+        hours = seconds / hour_in_seconds
+    except TypeError:
+        logging.exception('Seconds are not a numeric type: {} {}'.format(type(seconds), seconds))
+
+    return round(hours, 2)
 
 
 def to_datetime(_time: str, _format: str) -> (datetime or bool):
