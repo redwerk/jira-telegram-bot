@@ -5,8 +5,10 @@ from json.decoder import JSONDecodeError
 import jira
 from jira.resilientsession import ConnectionError
 
-from common.exceptions import JiraConnectionError, JiraEmptyData, JiraLoginError, JiraReceivingDataError
-from common.utils import JIRA_DATE_FORMAT, USER_DATE_FORMAT, add_time, to_datetime
+from common.exceptions import (JiraConnectionError, JiraEmptyData,
+                               JiraLoginError, JiraReceivingDataError)
+from common.utils import (JIRA_DATE_FORMAT, USER_DATE_FORMAT, add_time,
+                          to_datetime)
 
 OK_STATUS = 200
 

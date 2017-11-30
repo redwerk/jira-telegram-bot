@@ -3,12 +3,14 @@ from .feedback import FeedbackMessageCommandFactory
 from .filter import FilterDispatcherCommand, FilterIssuesCommand
 from .issue import (ContentPaginatorCommand, ListStatusIssuesCommand, ListUnresolvedIssuesCommand,
                     ProjectStatusIssuesCommand, UserStatusIssuesCommand)
+from .tracking import TimeTrackingDispatcher
 
 __all__ = (
     "ListUnresolvedIssuesCommand",
     "ListStatusIssuesCommand",
     "UserStatusIssuesCommand",
     "ProjectStatusIssuesCommand",
+    "TimeTrackingDispatcher",
     "ContentPaginatorCommand",
     "OAuthLoginCommand",
     "BasicLoginCommand",

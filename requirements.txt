@@ -29,7 +29,7 @@ oauthlib==2.0.2
 packaging==16.8
 paramiko==2.1.2
 pbr==3.0.1
-pendulum==1.2.4
+pendulum==1.3.2
 pexpect==4.2.1
 pickleshare==0.7.4
 prompt-toolkit==1.0.14
@@ -45,7 +45,7 @@ pyparsing==2.2.0
 pytest==3.2.3
 python-decouple==3.0
 python-telegram-bot==6.1.0
-pytz==2017.2
+pytz==2017.3
 requests==2.18.1
 requests-oauthlib==0.8.0
 requests-toolbelt==0.8.0
