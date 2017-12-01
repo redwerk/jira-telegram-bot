@@ -65,26 +65,75 @@ class TimeTrackingDispatcher(AbstractCommand):
 
 
 class IssueTimeTrackerCommand(AbstractCommand):
+    """
+    Shows spended time at the issue
+    """
     def handler(self, bot, update, *args, **kwargs):
         auth_data = kwargs.get('auth_data')
         issue = kwargs.get('issue')
         start_date = kwargs.get('start_date')
         end_date = kwargs.get('end_date')
+
         utils.validate_date_range(start_date, end_date)
-        return SendMessageFactory.send(bot, update, text='Hello from IssueTimeTrackerCommand', simple_message=True)
+        self._bot_instance.jira.is_issue_exists(host=auth_data.jira_host, issue=issue, auth_data=auth_data)
+        issue_worklog = self._bot_instance.jira.get_issue_worklogs(issue, start_date, end_date, auth_data=auth_data)
+
+        seconds = 0
+        for log in sorted(issue_worklog, key=lambda x: x.get('created')):
+            seconds += log.get('time_spent_seconds')
+
+        if seconds:
+            spended_time = utils.calculate_tracking_time(seconds)
+        else:
+            spended_time = 0
+
+        template = f'Time, spended on issue <b>{issue}</b> from from <b>{start_date.to_date_string()}</b> ' \
+                   f'to <b>{end_date.to_date_string()}</b>: '
+        text = template + str(spended_time) + ' h'
+        return SendMessageFactory.send(bot, update, text=text, simple_message=True)
 
 
 class UserTimeTrackerCommand(AbstractCommand):
+    """
+    Shows spended time of the user
+    """
+
     def handler(self, bot, update, *args, **kwargs):
         auth_data = kwargs.get('auth_data')
         username = kwargs.get('username')
         start_date = kwargs.get('start_date')
         end_date = kwargs.get('end_date')
+
+        # check if the user exists on Jira host
+        self._bot_instance.jira.is_user_on_host(host=auth_data.jira_host, username=username, auth_data=auth_data)
         utils.validate_date_range(start_date, end_date)
-        return SendMessageFactory.send(bot, update, text='Hello from UserTimeTrackerCommand', simple_message=True)
+
+        all_worklogs = self._bot_instance.jira.get_all_user_worklogs(
+            username, start_date, end_date, auth_data=auth_data
+        )
+        all_user_logs = self._bot_instance.jira.define_user_worklogs(
+            all_worklogs, username, name_key='author_name'
+        )
+        seconds = 0
+        for log in sorted(all_user_logs, key=lambda x: x.get('created')):
+            seconds += log.get('time_spent_seconds')
+
+        if seconds:
+            spended_time = utils.calculate_tracking_time(seconds)
+        else:
+            spended_time = 0
+
+        template = f'User <b>{username}</b> from from <b>{start_date.to_date_string()}</b> ' \
+                   f'to <b>{end_date.to_date_string()}</b> spent: '
+        text = template + str(spended_time) + ' h'
+        return SendMessageFactory.send(bot, update, text=text, simple_message=True)
 
 
 class ProjectTimeTrackerCommand(AbstractCommand):
+    """
+    Shows spended time at the project
+    """
+
     def handler(self, bot, update, *args, **kwargs):
         auth_data = kwargs.get('auth_data')
         project = kwargs.get('project')
