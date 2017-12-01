@@ -118,6 +118,15 @@ class JiraBackend:
         except jira.JIRAError as e:
             raise JiraReceivingDataError(e.text)
 
+    @jira_connect
+    def is_issue_exists(self, host, issue, *args, **kwargs):
+        jira_conn = kwargs.get('jira_conn')
+
+        try:
+            jira_conn._session.get('{0}/rest/api/2/issue/{1}'.format(host, issue))
+        except jira.JIRAError as e:
+            raise JiraReceivingDataError(e.text)
+
     @staticmethod
     def _getting_data(kwargs: dict) -> (jira.JIRA, str):
         """
@@ -236,18 +245,19 @@ class JiraBackend:
             return issues
 
     @jira_connect
-    def get_all_user_worklogs(self, start_date, end_date, *args, **kwargs) -> list:
+    def get_all_user_worklogs(self, username, start_date, end_date, *args, **kwargs):
         """
         Gets issues in which user logged time in selected time interval
-        :return: list of worklogs
         """
-        jira_conn, username = self._getting_data(kwargs)
+        jira_conn = kwargs.get('jira_conn')
         issues = list()
+        jira_start_date = start_date.strftime('%Y-%m-%d')
+        jira_end_date = end_date.strftime('%Y-%m-%d')
 
         try:
             issues = jira_conn.search_issues(
                 'worklogAuthor = "{username}" and worklogDate >= {start_date} and worklogDate <= {end_date}'.format(
-                    username=username, start_date=start_date, end_date=end_date
+                    username=username, start_date=jira_start_date, end_date=jira_end_date
                 ),
                 expand='changelog',
                 maxResults=1000
@@ -257,8 +267,70 @@ class JiraBackend:
                 'Failed to get assigned or '
                 'watched {} questions:\n{}'.format(username, e)
             )
+            if not issues:
+                raise JiraEmptyData(
+                    f'Has no worklogs for <b>{username}</b> from <b>{start_date.to_date_string()}</b> '
+                    f'to <b>{end_date.to_date_string()}</b>'
+                )
 
         return self.obtain_worklogs(issues, start_date, end_date, kwargs)
+
+    @jira_connect
+    def get_issue_worklogs(self, issue_name, start_date, end_date, *args, **kwargs):
+        """
+        Gets issue worklogs in selected time interval
+        """
+        jira_conn = kwargs.get('jira_conn')
+        issue = None
+        jira_start_date = start_date.strftime('%Y-%m-%d')
+        jira_end_date = end_date.strftime('%Y-%m-%d')
+
+        try:
+            issue = jira_conn.search_issues(
+                'issue = "{}" and worklogDate >= {} and worklogDate <= {}'.format(
+                    issue_name, jira_start_date, jira_end_date
+                ),
+                expand='changelog',
+                maxResults=1000
+            )
+        except jira.JIRAError as e:
+            logging.exception('Failed while getting {} issue worklog: {}'.format(issue_name, e))
+        else:
+            if not issue:
+                raise JiraEmptyData(
+                    f'Has no worklogs for <b>{issue_name}</b> issue from <b>{start_date.to_date_string()}</b> '
+                    f'to <b>{end_date.to_date_string()}</b>'
+                )
+
+        return self.obtain_worklogs(issue, start_date, end_date, kwargs)
+
+    @jira_connect
+    def get_project_worklogs(self, project, start_date, end_date, *args, **kwargs):
+        """
+        Gets issues by selected project in which someone logged time in selected time interval
+        """
+        jira_conn = kwargs.get('jira_conn')
+        p_issues = list()
+        jira_start_date = start_date.strftime('%Y-%m-%d')
+        jira_end_date = end_date.strftime('%Y-%m-%d')
+
+        try:
+            p_issues = jira_conn.search_issues(
+                'project = "{project}" and worklogDate >= {start_date} and worklogDate <= {end_date}'.format(
+                    project=project, start_date=jira_start_date, end_date=jira_end_date
+                ),
+                expand='changelog',
+                maxResults=1000
+            )
+        except jira.JIRAError as e:
+            logging.exception('Failed to get issues of {}:\n{}'.format(project, e))
+        if not p_issues:
+            raise JiraEmptyData(
+                f'Has no worklogs for <b>{project}</b> project from <b>{start_date.to_date_string()}</b> '
+                f'to <b>{end_date.to_date_string()}</b>'
+            )
+
+        return self.obtain_worklogs(p_issues, start_date, end_date, kwargs)
 
     def obtain_worklogs(self, issues, start_date, end_date, session_data):
         """
@@ -290,9 +362,9 @@ class JiraBackend:
                 'issue_key': issues_worklog.get(worklog['issueId'])['issue_key'],
                 # 'issue_permalink': issues_worklog.get(worklog['issueId'])['issue_permalink'],
                 # 'author_displayName': worklog['author']['displayName'],
-                # 'author_name': worklog['author']['name'],
+                'author_name': worklog['author']['name'],
                 'created': pendulum.parse(worklog['created']),
-                'time_spent': worklog['timeSpent'],
+                # 'time_spent': worklog['timeSpent'],
                 'time_spent_seconds': worklog['timeSpentSeconds'],
             }
             all_worklogs.append(w_data)
@@ -366,53 +438,6 @@ class JiraBackend:
     def define_user_worklogs(_worklogs: list, username: str, name_key: str) -> list:
         """Gets the only selected user worklogs"""
         return [log for log in _worklogs if log.get(name_key) == username]
-
-    @jira_connect
-    def get_project_worklogs(self, project, start_date, end_date, *args, **kwargs):
-        """
-        Gets issues by selected project in which someone logged time in selected time interval
-        :return: list of worklogs
-        """
-        jira_conn = kwargs.get('jira_conn')
-        p_issues = list()
-        jira_start_date = start_date.strftime('%Y-%m-%d')
-        jira_end_date = end_date.strftime('%Y-%m-%d')
-
-        try:
-            p_issues = jira_conn.search_issues(
-                'project = "{project}" and worklogDate >= {start_date} and worklogDate <= {end_date}'.format(
-                    project=project, start_date=jira_start_date, end_date=jira_end_date
-                ),
-                expand='changelog',
-                maxResults=1000
-            )
-        except jira.JIRAError as e:
-            logging.exception('Failed to get issues of {}:\n{}'.format(project, e))
-
-        return self.obtain_worklogs(p_issues, start_date, end_date, kwargs)
-
-    @jira_connect
-    def get_user_project_worklogs(self, user, project, start_date, end_date, *args, **kwargs) -> list:
-        """
-        Gets issues by selected project in which user logged time in selected time interval
-        :return: list of worklogs
-        """
-        jira_conn = kwargs.get('jira_conn')
-        p_issues = list()
-
-        try:
-            p_issues = jira_conn.search_issues(
-                'project = "{project}" and worklogAuthor = "{user}" and worklogDate >= {start_date} '
-                'and worklogDate <= {end_date}'.format(
-                    project=project, user=user, start_date=start_date, end_date=end_date
-                ),
-                expand='changelog',
-                maxResults=1000
-            )
-        except jira.JIRAError as e:
-            logging.exception('Failed to get issues of {} in {}:\n{}'.format(user, project, e))
-
-        return self.obtain_worklogs(p_issues, start_date, end_date, kwargs)
 
     @jira_connect
     def is_admin_permissions(self, *args, **kwargs) -> bool:
