@@ -1,3 +1,5 @@
+from itertools import zip_longest
+
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackQueryHandler, CommandHandler
 
@@ -45,7 +47,7 @@ class ContentPaginatorCommand(AbstractCommand):
 
 class ListUnresolvedIssuesCommand(AbstractCommand):
     """
-    /listunresolved <target> <option> - shows users or projects unresolved issues
+    /listunresolved <target> [name] - shows users or projects unresolved issues
     """
     targets = ('my', 'user', 'project')
 
@@ -53,32 +55,28 @@ class ListUnresolvedIssuesCommand(AbstractCommand):
     def handler(self, bot, update, *args, **kwargs):
         auth_data = kwargs.get('auth_data')
         options = kwargs.get('args')
+        parameters_names = ('target', 'name')
+        description = "<b>Command description:</b>\n" \
+                      "/listunresolved my - returns a list of user's unresolved issues\n" \
+                      "/listunresolved user <i>username</i> - returns a list of selected user issues\n" \
+                      "/listunresolved project <i>KEY</i> - returns a list of projects issues\n"
 
-        if not options or options[0] not in self.targets:
-            text = "<b>Command description:</b>\n" \
-                   "/listunresolved my - returns a list of user's unresolved issues\n" \
-                   "/listunresolved user <i>username</i> - returns a list of selected user issues\n" \
-                   "/listunresolved project <i>KEY</i> - returns a list of projects issues\n"
-            return SendMessageFactory.send(bot, update, text=text, simple_message=True)
+        params = dict(zip_longest(parameters_names, options))
+        optional_condition = params['target'] != 'my' and not params['name']
 
-        target = options[0]
-        try:
-            name = options[1]
-        except IndexError:
-            if target != 'my':
-                # name option is required for `user` and `project` targets
-                text = 'Second argument is required for this type of command'
-                return SendMessageFactory.send(bot, update, text=text, simple_message=True)
-            else:
-                # name option not needed for `my` target
-                return UserUnresolvedCommand(self._bot_instance).handler(
-                    bot, update, username=auth_data.username, *args, **kwargs
-                )
-        else:
-            if target == 'user' and name:
-                return UserUnresolvedCommand(self._bot_instance).handler(bot, update, username=name, *args, **kwargs)
-            elif target == 'project' and name:
-                ProjectUnresolvedCommand(self._bot_instance).handler(bot, update, project=name, *args, **kwargs)
+        if not params['target'] or params['target'] not in self.targets or optional_condition:
+            return SendMessageFactory.send(bot, update, text=description, simple_message=True)
+
+        if params['target'] == 'my':
+            return UserUnresolvedCommand(self._bot_instance).handler(
+                bot, update, username=auth_data.username, *args, **kwargs
+            )
+        elif params['target'] == 'user':
+            return UserUnresolvedCommand(self._bot_instance).handler(
+                bot, update, username=params['name'], *args, **kwargs
+            )
+        elif params['target'] == 'project':
+            ProjectUnresolvedCommand(self._bot_instance).handler(bot, update, project=params['name'], *args, **kwargs)
 
     def command_callback(self):
         return CommandHandler('listunresolved', self.handler, pass_args=True)
@@ -120,7 +118,7 @@ class ProjectUnresolvedCommand(AbstractCommand):
 
 class ListStatusIssuesCommand(AbstractCommand):
     """
-    /liststatus <target> - shows users or projects issues by a selected status
+    /liststatus <target> [name] - shows users or projects issues by a selected status
     """
     targets = ('my', 'user', 'project')
 
@@ -128,33 +126,28 @@ class ListStatusIssuesCommand(AbstractCommand):
     def handler(self, bot, update, *args, **kwargs):
         auth_data = kwargs.get('auth_data')
         options = kwargs.get('args')
+        parameters_names = ('target', 'name')
+        description = "<b>Command description:</b>\n" \
+                      "/liststatus my - returns a list of user's issues with a selected status\n" \
+                      "/liststatus user *username* - returns a list of selected user issues and status\n" \
+                      "/liststatus project *KEY* - returns a list of projects issues with selected status\n"
 
-        if not options or options[0] not in self.targets:
-            text = "<b>Command description:</b>\n" \
-                   "/liststatus my - returns a list of user's issues with a selected status\n" \
-                   "/liststatus user *username* - returns a list of selected user issues and status\n" \
-                   "/liststatus project *KEY* - returns a list of projects issues with selected status\n"
-            return SendMessageFactory.send(bot, update, text=text, simple_message=True)
+        params = dict(zip_longest(parameters_names, options))
+        optional_condition = params['target'] != 'my' and not params['name']
 
-        target = options[0]
-        try:
-            name = options[1]
-        except IndexError:
-            if target != 'my':
-                # name option is required for `user` and `project` targets
-                text = 'Second argument is required for this type of command'
-                return SendMessageFactory.send(bot, update, text=text, simple_message=True)
-            else:
-                # name option not needed for `my` target
-                return UserStatusIssuesMenu(self._bot_instance).handler(
-                    bot, update, username=auth_data.username, *args, **kwargs
-                )
-        else:
-            if target == 'user' and name:
-                return UserStatusIssuesMenu(self._bot_instance).handler(bot, update, username=name, *args, **kwargs)
-            elif target == 'project' and name:
-                kwargs.update({'project': name})
-                ProjectStatusIssuesMenu(self._bot_instance).handler(bot, update, *args, **kwargs)
+        if not params['target'] or params['target'] not in self.targets or optional_condition:
+            return SendMessageFactory.send(bot, update, text=description, simple_message=True)
+
+        if params['target'] == 'my':
+            return UserStatusIssuesMenu(self._bot_instance).handler(
+                bot, update, username=auth_data.username, *args, **kwargs
+            )
+        elif params['target'] == 'user':
+            return UserStatusIssuesMenu(self._bot_instance).handler(
+                bot, update, username=params['name'], *args, **kwargs
+            )
+        elif params['target'] == 'project':
+            ProjectStatusIssuesMenu(self._bot_instance).handler(bot, update, project=params['name'], *args, **kwargs)
 
     def command_callback(self):
         return CommandHandler('liststatus', self.handler, pass_args=True)
