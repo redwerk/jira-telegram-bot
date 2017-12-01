@@ -55,4 +55,5 @@ class SendMessageHandlerError(BaseJTBException):
 
 
 class DateTimeValidationError(BaseJTBException):
+    """Errors in date validation"""
     pass

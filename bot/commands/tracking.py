@@ -10,6 +10,9 @@ from .base import AbstractCommand, SendMessageFactory
 
 
 class TimeTrackingDispatcher(AbstractCommand):
+    """
+    /time <target> <name> [start_date] [end_date] - Shows spended time for users, issues and projects
+    """
     targets = ('user', 'issue', 'project')
 
     @utils.login_required

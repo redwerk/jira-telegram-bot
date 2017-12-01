@@ -1,4 +1,8 @@
+import pendulum
+import pytest
+
 from common import utils
+from common.exceptions import DateTimeValidationError
 
 
 def test_password_encryption_decryption():
@@ -34,3 +38,20 @@ def test_validates_hostname():
 
     for host, status in hosts:
         assert status == utils.validates_hostname(host)
+
+
+def test_validate_date_range():
+    start_date = pendulum.parse('22.11.2017')
+    end_date = pendulum.parse('25.11.2017')
+
+    answer = utils.validate_date_range(start_date, end_date)
+    assert answer is None
+
+    start_date = pendulum.now()
+    with pytest.raises(DateTimeValidationError, message='End date cannot be less than the start date'):
+        utils.validate_date_range(start_date, end_date)
+
+
+def test_calculate_tracking_time():
+    seconds = 17800
+    assert 4.94 == utils.calculate_tracking_time(seconds)

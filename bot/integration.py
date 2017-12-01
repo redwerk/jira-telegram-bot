@@ -34,7 +34,6 @@ def jira_connect(func):
                 'jira_host': auth_data.jira_host,
             }
         )
-        # TODO: redo all commands to return errors
         data = func(*args, **kwargs)
         jira_conn.kill_session()
 
@@ -120,24 +119,13 @@ class JiraBackend:
 
     @jira_connect
     def is_issue_exists(self, host, issue, *args, **kwargs):
+        """Checking the existence of the issue on the Jira host"""
         jira_conn = kwargs.get('jira_conn')
 
         try:
             jira_conn._session.get('{0}/rest/api/2/issue/{1}'.format(host, issue))
         except jira.JIRAError as e:
             raise JiraReceivingDataError(e.text)
-
-    @staticmethod
-    def _getting_data(kwargs: dict) -> (jira.JIRA, str):
-        """
-        Getting jira_conn and username from kwargs
-        :param kwargs: dict
-        :return: jira_conn and username
-        """
-        jira_conn = kwargs.get('jira_conn')
-        username = kwargs.get('username')
-
-        return jira_conn, username
 
     @jira_connect
     def get_open_issues(self, username, *args, **kwargs):
@@ -185,17 +173,6 @@ class JiraBackend:
                 raise JiraEmptyData('Woohoo! You do not have any issues')
 
             return issues
-
-    @jira_connect
-    def get_projects(self, *args, **kwargs) -> list:
-        """
-        Return abbreviation name of the projects
-        :return: list of names
-        """
-        jira_conn = kwargs.get('jira_conn')
-
-        projects = jira_conn.projects()
-        return sorted([project.key for project in projects])
 
     @jira_connect
     def get_open_project_issues(self, project, *args, **kwargs):
@@ -337,11 +314,8 @@ class JiraBackend:
         Returns list of worklogs in dict flat structure
 
         issue_key: str
-        issue_permalink: str
-        author_displayName: str
         author_name: str
-        created: datetime
-        time_spent: int
+        created: Pendulum datetime object
         time_spent_seconds: int
         """
         all_worklogs = list()
@@ -360,11 +334,8 @@ class JiraBackend:
         for worklog in received_worklogs:
             w_data = {
                 'issue_key': issues_worklog.get(worklog['issueId'])['issue_key'],
-                # 'issue_permalink': issues_worklog.get(worklog['issueId'])['issue_permalink'],
-                # 'author_displayName': worklog['author']['displayName'],
                 'author_name': worklog['author']['name'],
                 'created': pendulum.parse(worklog['created']),
-                # 'time_spent': worklog['timeSpent'],
                 'time_spent_seconds': worklog['timeSpentSeconds'],
             }
             all_worklogs.append(w_data)
@@ -438,13 +409,6 @@ class JiraBackend:
     def define_user_worklogs(_worklogs: list, username: str, name_key: str) -> list:
         """Gets the only selected user worklogs"""
         return [log for log in _worklogs if log.get(name_key) == username]
-
-    @jira_connect
-    def is_admin_permissions(self, *args, **kwargs) -> bool:
-        """Checks if the user has administrator rights (must be added to a specific group)"""
-        jira_conn = kwargs.get('jira_conn')
-
-        return jira_conn.my_permissions()['permissions']['ADMINISTER']['havePermission']
 
     @jira_connect
     def get_favourite_filters(self, *args, **kwargs):
