@@ -174,7 +174,5 @@ class JiraBot:
             raise error
         except BaseJTBException as e:
             SendMessageFactory.send(bot, update, text=e.message, simple_message=True)
-        except TimedOut:
+        except (NetworkError, TelegramError, TimedOut):
             pass
-        except (NetworkError, TelegramError) as e:
-            logging.exception('{}'.format(e))

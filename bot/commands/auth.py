@@ -163,7 +163,7 @@ class OAuthLoginCommand(AbstractCommand):
 
             if host_status:
                 # sends data for creating an Application link
-                SendMessageFactory.send(bot, update, text=self.get_app_links_data(jira_host), simple_message=True)
+                SendMessageFactory.send(bot, update, text=self.get_app_links_data(host_data), simple_message=True)
                 # sends a link for authorization via OAuth
                 text = 'Follow the <a href="{}">link</a> to confirm authorization'.format(
                     self.generate_auth_link(chat_id, host_data.get('url'))
