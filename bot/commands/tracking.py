@@ -81,9 +81,7 @@ class IssueTimeTrackerCommand(AbstractCommand):
         self._bot_instance.jira.is_issue_exists(host=auth_data.jira_host, issue=issue, auth_data=auth_data)
         issue_worklog = self._bot_instance.jira.get_issue_worklogs(issue, start_date, end_date, auth_data=auth_data)
 
-        seconds = 0
-        for log in sorted(issue_worklog, key=lambda x: x.get('created')):
-            seconds += log.get('time_spent_seconds')
+        seconds = sum(worklog.get('time_spent_seconds', 0) for worklog in issue_worklog)
 
         if seconds:
             spended_time = utils.calculate_tracking_time(seconds)
@@ -117,9 +115,7 @@ class UserTimeTrackerCommand(AbstractCommand):
         all_user_logs = self._bot_instance.jira.define_user_worklogs(
             all_worklogs, username, name_key='author_name'
         )
-        seconds = 0
-        for log in sorted(all_user_logs, key=lambda x: x.get('created')):
-            seconds += log.get('time_spent_seconds')
+        seconds = sum(worklog.get('time_spent_seconds', 0) for worklog in all_user_logs)
 
         if seconds:
             spended_time = utils.calculate_tracking_time(seconds)
@@ -150,9 +146,7 @@ class ProjectTimeTrackerCommand(AbstractCommand):
         all_worklogs = self._bot_instance.jira.get_project_worklogs(
             project, start_date, end_date, auth_data=auth_data
         )
-        seconds = 0
-        for log in sorted(all_worklogs, key=lambda x: x.get('created')):
-            seconds += log.get('time_spent_seconds')
+        seconds = sum(worklog.get('time_spent_seconds', 0) for worklog in all_worklogs)
 
         if seconds:
             spended_time = utils.calculate_tracking_time(seconds)
