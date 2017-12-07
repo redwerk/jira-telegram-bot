@@ -151,24 +151,30 @@ class JiraBackend:
             if not issues:
                 raise JiraEmptyData('Woohoo! No unresolved tasks')
 
-            return self._issues_formatting(issues)
+            return issues
 
-    @staticmethod
-    def _issues_formatting(issues) -> list:
+    @jira_connect
+    def get_user_status_issues(self, username, status, *args, **kwargs):
         """
-        Formats tasks by template: issue id, title and permalink
-        :param issues: jira issues object
-        :return: list of formatted issues
+        Getting issues assigned to the user with selected status
         """
-        issues_list = list()
+        jira_conn = kwargs.get('jira_conn')
 
-        for issue in issues:
-            issues_str = '<a href="{permalink}">{key}</a> {summary}'.format(
-                key=issue.key, summary=issue.fields.summary, permalink=issue.permalink()
+        try:
+            issues = jira_conn.search_issues(
+                'assignee = "{username}" and status = "{status}" and resolution = Unresolved'.format(
+                    username=username, status=status
+                ),
+                maxResults=200
             )
-            issues_list.append(issues_str)
+        except jira.JIRAError as e:
+            logging.exception('Error while getting {} issues:\n{}'.format(username, e))
+            raise JiraReceivingDataError(e.text)
+        else:
+            if not issues:
+                raise JiraEmptyData('Woohoo! You do not have any issues')
 
-        return issues_list
+            return issues
 
     @jira_connect
     def get_projects(self, *args, **kwargs) -> list:
@@ -202,21 +208,10 @@ class JiraBackend:
             if not issues:
                 raise JiraEmptyData("Project <b>{}</b> doesn't have any unresolved tasks".format(project))
 
-            return self._issues_formatting(issues)
+            return issues
 
     @jira_connect
-    def get_statuses(self, *args, **kwargs) -> list:
-        """
-        Return names of available statuses
-        :return: list of names
-        """
-        jira_conn = kwargs.get('jira_conn')
-
-        statuses = jira_conn.statuses()
-        return sorted([status.name for status in statuses])
-
-    @jira_connect
-    def get_project_status_issues(self, project: str, status: str, *args, **kwargs):
+    def get_project_status_issues(self, project, status, *args, **kwargs):
         """
         Gets issues by project with a selected status and status message
         """
@@ -237,7 +232,7 @@ class JiraBackend:
             if not issues:
                 raise JiraEmptyData("No tasks with <b>«{}»</b> status in <b>{}</b> project ".format(status, project))
 
-            return self._issues_formatting(issues)
+            return issues
 
     @jira_connect
     def get_all_user_worklogs(self, start_date: str, end_date: str, *args, **kwargs) -> list:
@@ -427,20 +422,6 @@ class JiraBackend:
         return jira_conn.my_permissions()['permissions']['ADMINISTER']['havePermission']
 
     @jira_connect
-    def get_developers(self, *args, **kwargs) -> list:
-        """Returns a list of developer names"""
-        jira_conn = kwargs.get('jira_conn')
-
-        try:
-            developers = jira_conn.group_members('jira-developers')
-        except jira.JIRAError as e:
-            logging.exception('Failed to get developers:\n{}'.format(e))
-        else:
-            return [data['fullname'] for nick, data in developers.items()]
-
-        return list()
-
-    @jira_connect
     def get_favourite_filters(self, *args, **kwargs):
         """Return list of favourite filters"""
         jira_conn = kwargs.get('jira_conn')
@@ -467,4 +448,4 @@ class JiraBackend:
             if not issues:
                 raise JiraEmptyData('No tasks which filtered by <b>«{}»</b>'.format(filter_name))
 
-            return self._issues_formatting(issues)
+            return issues

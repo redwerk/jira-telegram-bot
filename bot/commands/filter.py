@@ -64,11 +64,11 @@ class FilterIssuesCommand(AbstractCommand):
             filter_name, filter_id = scope['data'].replace('filter_p:', '').split(':')
 
         title = 'All tasks which filtered by «{}»:'.format(filter_name)
-        items = self._bot_instance.jira.get_filter_issues(
+        raw_items = self._bot_instance.jira.get_filter_issues(
             filter_id=filter_id, filter_name=filter_name, auth_data=auth_data
         )
         key = 'filter_p:{}:{}'.format(telegram_id, filter_id)
-        SendMessageFactory.send(bot, update, title=title, items=items, key=key)
+        SendMessageFactory.send(bot, update, title=title, raw_items=raw_items, key=key)
 
     def command_callback(self):
         return CallbackQueryHandler(self.handler, pattern=r'^filter_p:')
