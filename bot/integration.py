@@ -88,7 +88,7 @@ class JiraBackend:
                     max_retries=0
                 )
         except jira.JIRAError as e:
-            raise JiraLoginError(e.status_code)
+            raise JiraLoginError(e.status_code, jira_host, auth_method, credentials)
         except ConnectionError:
             raise JiraConnectionError(jira_host)
         else:

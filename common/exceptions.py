@@ -1,5 +1,7 @@
 from telegram.error import TelegramError
 
+from .db import MongoBackend
+
 
 class BaseJTBException(TelegramError):
     def __init__(self, message):
@@ -13,7 +15,9 @@ class BaseJTBException(TelegramError):
 class JiraLoginError(BaseJTBException):
     """Login error during login into Jira"""
     login_error = {
-        401: 'Invalid credentials or token was rejected.\nPlease try login again',
+        401: 'Invalid credentials or token was rejected.\nYou can try the following actions:\n'
+             '1. If you already login, please, try use /disconnect command and login again.\n'
+             '2. You can update the previously created Application link (/disconnect, /oauth)',
         403: 'Login is denied due to a CAPTCHA requirement, or any other '
              'reason. Please, login (relogin) into Jira via browser '
              'and try again.',
@@ -22,9 +26,21 @@ class JiraLoginError(BaseJTBException):
              'browser and verifying the email.'
     }
 
-    def __init__(self, status_code):
+    def __init__(self, status_code, host=None, auth_method=None, credentials=None):
         super(TelegramError, self).__init__()
+        self.db = MongoBackend()
         self.message = self.login_error.get(status_code, 'Some problems with login')
+        self.host = host
+        self.credentials = credentials
+
+        # If handled an error about rejected token and auth method is `oauth`
+        if status_code == 401 and auth_method == 'oauth':
+            self.host_not_verified()
+
+    def host_not_verified(self):
+        # Changing `is_confirmed` flag of the host to False
+        # will re-generate a data for the Application link
+        self.db.update_host(self.host, {'is_confirmed': False})
 
 
 class JiraConnectionError(BaseJTBException):
