@@ -68,3 +68,8 @@ class BotAuthError(BaseJTBException):
 class SendMessageHandlerError(BaseJTBException):
     """Error in logic according to sending messages"""
     pass
+
+
+class DateTimeValidationError(BaseJTBException):
+    """Errors in date validation"""
+    pass

@@ -20,7 +20,8 @@ class JiraBot:
         '/start - Starts the bot',
         '/listunresolved - Shows different issues',
         '/liststatus - Shows users and projects issues with a selected status'
-        '/filter - shows issues by favourite filters',
+        '/filter - Shows issues by favourite filters',
+        '/time - Shows spented time of issue, user or project',
         '/connect jira.yourcompany.com username password - Login into host using user/pass',
         '/oauth jira.yourcompany.com - Login into host using OAuth',
         '/disconnect - Deletes user credentials from DB',
@@ -32,6 +33,7 @@ class JiraBot:
         commands.ListStatusIssuesCommand,
         commands.UserStatusIssuesCommand,
         commands.ProjectStatusIssuesCommand,
+        commands.TimeTrackingDispatcher,
         commands.FilterDispatcherCommand,
         commands.FilterIssuesCommand,
         commands.BasicLoginCommand,

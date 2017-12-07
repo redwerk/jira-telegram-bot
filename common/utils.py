@@ -1,24 +1,19 @@
-import calendar
 import logging
 import re
 import smtplib
 import uuid
-from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 from typing import List
 
-import pendulum
-import pytz
 from cryptography.fernet import Fernet
 from decouple import config
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
+from common.exceptions import DateTimeValidationError
+
 hostname_re = re.compile(r'^http[s]?://([^:/\s]+)?$')
 http_ptotocol = re.compile(r'^http[s]?://')
 email_address = re.compile(r'([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)')
-
-JIRA_DATE_FORMAT = '%Y-%m-%dT%H:%M:%S.%f%z'
-USER_DATE_FORMAT = '%Y-%m-%d'
 
 
 def encrypt_password(password):
@@ -127,139 +122,23 @@ def get_pagination_keyboard(current: int,
     ))
 
 
-def create_calendar(date: pendulum.Pendulum, pattern_key: str, selected_day=None) -> InlineKeyboardMarkup:
-    buttons = list()
-
-    # for the month change buttons
-    last_month = date.subtract(months=1)
-    next_month = date.add(months=1)
-
-    previous_m = 'change_m:{}.{}'.format(last_month.month, last_month.year)
-    next_m = 'change_m:{}.{}'.format(next_month.month, next_month.year)
-
-    # to select a time interval with a single button
-    now_obj = pendulum.now()
-    today = '{0}:{0}'.format(now_obj.date())
-    current_month = '{}:{}'.format(
-        now_obj._start_of_month().date(),
-        now_obj._end_of_month().date()
-    )
-    displayed_month = '{}:{}'.format(
-        date._start_of_month().date(),
-        date._end_of_month().date()
-    )
-
-    week_days = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']
-    for week_day in week_days:
-        buttons.append(
-            InlineKeyboardButton(
-                week_day, callback_data='ignore'
-            )
-        )
-
-    h_buttons = [
-        InlineKeyboardButton(
-            calendar.month_name[date.month] + ' ' + str(date.year),
-            callback_data=pattern_key.format(displayed_month)
-        ),
-        InlineKeyboardButton(
-            'Today',
-            callback_data=pattern_key.format(today)
-        ),
-        InlineKeyboardButton(
-            'Current month',
-            callback_data=pattern_key.format(current_month)
-        ),
-    ]
-    f_buttons = [
-        InlineKeyboardButton(
-            '< ' + calendar.month_name[last_month.month],
-            callback_data=pattern_key.format(previous_m)
-        ),
-        InlineKeyboardButton(
-            '« Back', callback_data='tracking_menu'
-        ),
-        InlineKeyboardButton(
-            calendar.month_name[next_month.month] + ' >',
-            callback_data=pattern_key.format(next_m)
-        )
-    ]
-
-    current_month = calendar.monthcalendar(date.year, date.month)
-    for week in current_month:
-        for day in week:
-            if day:
-                _day = pendulum.create(date.year, date.month, day)
-                tmp_date = '{}-{}-{}'.format(_day.year, _day.month, _day.day)
-                title = str(day)
-
-                # visually mark the date
-                if selected_day and not _day.diff(selected_day).days:
-                    title = '·{}·'.format(title)
-
-                buttons.append(
-                    InlineKeyboardButton(title, callback_data=pattern_key.format(tmp_date))
-                )
-            else:
-                buttons.append(
-                    InlineKeyboardButton(' ', callback_data='ignore')
-                )
-
-    return InlineKeyboardMarkup(
-        build_menu(
-            buttons,
-            n_cols=7,
-            header_buttons=h_buttons,
-            footer_buttons=f_buttons
-        )
-    )
+def validate_date_range(start_date, end_date):
+    """Check that the start date is not older than the end date"""
+    if start_date > end_date:
+        raise DateTimeValidationError('End date cannot be less than the start date')
 
 
-def to_datetime(_time: str, _format: str) -> (datetime or bool):
-    """
-    Converts dates to a datetime object. If necessary, add an attribute tzinfo
-    :param _time: '2017-05-25'
-    :param _format: '%Y-%m-%d'
-    :return: datetime object or False
-    """
-    try:
-        dt = datetime.strptime(_time, _format)
-    except (TypeError, ValueError) as e:
-        logging.exception(
-            'Date conversion error: {}'.format(e)
-        )
-    else:
-        if not getattr(dt, 'tzinfo'):
-            return dt.replace(tzinfo=pytz.UTC)
-        return dt
-
-    return False
-
-
-def add_time(date: datetime, hours=0, minutes=0) -> datetime:
-    """Adds time (hours and minutes) to datetime object"""
-    additional_time = timedelta(hours=hours, minutes=minutes)
+def calculate_tracking_time(seconds):
+    """Converts time from seconds into hours"""
+    hours = 0
+    hour_in_seconds = 3600
 
     try:
-        date += additional_time
-    except TypeError as e:
-        logging.exception(e)
+        hours = seconds / hour_in_seconds
+    except TypeError:
+        logging.exception('Seconds are not a numeric type: {} {}'.format(type(seconds), seconds))
 
-    return date
-
-
-def to_human_date(_time: datetime) -> str:
-    """
-    Represent date in human readable format
-    :param _time: datetime object
-    :return: 2017-06-06 16:45
-    """
-    try:
-        return _time.strftime('%Y-%m-%d %H:%M')
-    except AttributeError as e:
-        logging.exception("Can't parse entered date: {}, {}".format(_time, e))
-
-    return 'No date'
+    return round(hours, 2)
 
 
 def read_rsa_key(path):
