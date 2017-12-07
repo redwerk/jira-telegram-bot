@@ -55,3 +55,4 @@ def test_validate_date_range():
 def test_calculate_tracking_time():
     seconds = 17800
     assert 4.94 == utils.calculate_tracking_time(seconds)
+    assert 0.0 == utils.calculate_tracking_time(0)

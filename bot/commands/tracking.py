@@ -82,11 +82,7 @@ class IssueTimeTrackerCommand(AbstractCommand):
         issue_worklog = self._bot_instance.jira.get_issue_worklogs(issue, start_date, end_date, auth_data=auth_data)
 
         seconds = sum(worklog.get('time_spent_seconds', 0) for worklog in issue_worklog)
-
-        if seconds:
-            spended_time = utils.calculate_tracking_time(seconds)
-        else:
-            spended_time = 0
+        spended_time = utils.calculate_tracking_time(seconds)
 
         template = f'Time, spended on issue <b>{issue}</b> from from <b>{start_date.to_date_string()}</b> ' \
                    f'to <b>{end_date.to_date_string()}</b>: '
@@ -116,11 +112,7 @@ class UserTimeTrackerCommand(AbstractCommand):
             all_worklogs, username, name_key='author_name'
         )
         seconds = sum(worklog.get('time_spent_seconds', 0) for worklog in all_user_logs)
-
-        if seconds:
-            spended_time = utils.calculate_tracking_time(seconds)
-        else:
-            spended_time = 0
+        spended_time = utils.calculate_tracking_time(seconds)
 
         template = f'User <b>{username}</b> from from <b>{start_date.to_date_string()}</b> ' \
                    f'to <b>{end_date.to_date_string()}</b> spent: '
@@ -146,12 +138,10 @@ class ProjectTimeTrackerCommand(AbstractCommand):
         all_worklogs = self._bot_instance.jira.get_project_worklogs(
             project, start_date, end_date, auth_data=auth_data
         )
-        seconds = sum(worklog.get('time_spent_seconds', 0) for worklog in all_worklogs)
 
-        if seconds:
-            spended_time = utils.calculate_tracking_time(seconds)
-        else:
-            spended_time = 0
+        seconds = sum(worklog.get('time_spent_seconds', 0) for worklog in all_worklogs)
+        spended_time = utils.calculate_tracking_time(seconds)
+
         template = f'Spended time on project <b>{project}</b> ' \
                    f'from <b>{start_date.to_date_string()}</b> to <b>{end_date.to_date_string()}</b>: '
         text = template + str(spended_time) + ' h'
