@@ -1,3 +1,4 @@
+import sys
 import logging
 from datetime import datetime
 
@@ -15,32 +16,39 @@ class MongoBackend:
     }
 
     def __init__(self, user=None, password=None, host=None, port=None, db_name=None):
-        self.uri = 'mongodb://{user}:{password}@{host}:{port}'.format(
-            user=user or config('DB_USER'),
-            password=password or config('DB_PASS'),
-            host=host or config('DB_HOST'),
-            port=port or config('DB_PORT'),
-        )
-        self.db_name = db_name or config('DB_NAME')
+        user = user or config('DB_USER')
+        password = password or config('DB_PASS')
+        host = host or config('DB_HOST')
+        port = port or config('DB_PORT')
 
-    def _get_connect(self):
+        if user and password:
+            uri = f'mongodb://{user}:{password}@{host}:{port}'
+        else:
+            uri = f'mongodb://{host}:{port}'
+
+        self._conn = self._get_connect(uri, db_name or config('DB_NAME'))
+
+    @property
+    def conn(self):
+        return self._conn
+
+    def _get_connect(self, uri, name):
         """
         Creates and checks connect to MongoDB
         :return MongoClient object to db_name
         """
-        client = MongoClient(self.uri, serverSelectionTimeoutMS=1)
-
+        client = MongoClient(uri, serverSelectionTimeoutMS=1)
         try:
             client.server_info()  # checking a connection to DB
-        except (ServerSelectionTimeoutError, OperationFailure) as error:
-            logging.exception("Can't connect to DB: {}".format(error))
-        else:
-            return client[self.db_name]
+        except (ServerSelectionTimeoutError, OperationFailure) as err:
+            logging.exception("Can't connect to DB: {}".format(err))
+            sys.exit(1)
+
+        return client[name]
 
     def _get_collection(self, name: str) -> MongoClient:
         """Returns MongoClient object which links to selected collection"""
-        db = self._get_connect()
-        return db[self.collection_mapping.get(name)]
+        return self._conn[self.collection_mapping.get(name)]
 
     def create_user(self, user_data: dict) -> bool:
         collection = self._get_collection('user')

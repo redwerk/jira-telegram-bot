@@ -12,6 +12,8 @@ from common import utils
 from common.db import MongoBackend
 from common.exceptions import BaseJTBException, BotAuthError
 
+from .schedules import Scheduler
+
 
 class JiraBot:
     """Bot to integrate with the JIRA service"""
@@ -28,7 +30,7 @@ class JiraBot:
         '/help - Returns commands and its descriptions'
     ]
     issues_per_page = 10
-    commands_factories = [
+    __commands = [
         commands.ListUnresolvedIssuesCommand,
         commands.ListStatusIssuesCommand,
         commands.UserStatusIssuesCommand,
@@ -41,10 +43,14 @@ class JiraBot:
         commands.DisconnectMenuCommand,
         commands.DisconnectCommand,
         commands.ContentPaginatorCommand,
+        commands.ScheduleCommand
     ]
 
     def __init__(self):
-        self.__updater = Updater(config('BOT_TOKEN'), workers=config('WORKERS', cast=int, default=3))
+        self.__updater = Updater(
+            config('BOT_TOKEN'),
+            workers=config('WORKERS', cast=int, default=3)
+        )
 
         self.db = MongoBackend()
         self.jira = JiraBackend()
@@ -60,19 +66,29 @@ class JiraBot:
 
         self.__updater.dispatcher.add_error_handler(self.error_callback)
 
-        for command in self.commands_factories:
+        for command in self.__commands:
             cb = command(self).command_callback()
             self.__updater.dispatcher.add_handler(cb)
 
+    def run_scheduler(self):
+        queue = self.__updater.job_queue
+        bot = self.__updater.bot
+        scheduler = Scheduler(self, bot, queue)
+        self.__updater._init_thread(scheduler.run, "scheduler")
+
     def start(self):
         self.__updater.start_polling()
+        self.run_scheduler()
+        logging.debug("Jira bot started successfully!")
         self.__updater.idle()
 
     def start_command(self, bot, update):
         first_name = update.message.from_user.first_name
-        message = 'Hi, {}! Please, enter Jira host by typing \n' \
-                  '/connect jira.yourcompany.com username password OR\n' \
-                  '/oauth jira.yourcompany.com'.format(first_name)
+        message = (
+            'Hi, {}! Please, enter Jira host by typing \n'
+            '/connect jira.yourcompany.com username password OR\n'
+            '/oauth jira.yourcompany.com'.format(first_name)
+        )
 
         telegram_id = update.message.from_user.id
         user_exists = self.db.is_user_exists(telegram_id)
@@ -107,12 +123,10 @@ class JiraBot:
         Gets scope data for current message
         """
         telegram_id = update.callback_query.from_user.id
-
         query = update.callback_query
         chat_id = query.message.chat_id
         message_id = query.message.message_id
         data = query.data
-
         return dict(
             telegram_id=telegram_id,
             chat_id=chat_id,
@@ -131,8 +145,9 @@ class JiraBot:
         auth_method = user_data.get('auth_method')
 
         if not auth_method:
-            raise BotAuthError('You are not authorized by any of the methods (user/pass or OAuth)')
-
+            raise BotAuthError(
+                'You are not authorized by any of the methods (user/pass or OAuth)'
+            )
         else:
             if auth_method == 'basic':
                 credentials = (
@@ -141,12 +156,10 @@ class JiraBot:
                 )
             else:
                 host_data = self.db.get_host_data(user_data.get('host_url'))
-
                 if not host_data:
                     raise BotAuthError(
                         'In database there are no data on the {} host'.format(user_data.get('host_url'))
                     )
-
                 credentials = {
                     'access_token': user_data.get('auth')['oauth']['access_token'],
                     'access_token_secret': user_data.get('auth')['oauth']['access_token_secret'],
@@ -154,7 +167,12 @@ class JiraBot:
                     'key_cert': utils.read_rsa_key(config('PRIVATE_KEY_PATH'))
                 }
 
-            auth_data = self.AuthData(auth_method, user_data.get('host_url'), user_data.get('username'), credentials)
+            auth_data = self.AuthData(
+                auth_method,
+                user_data.get('host_url'),
+                user_data.get('username'),
+                credentials
+            )
             self.jira.check_authorization(
                 auth_data.auth_method,
                 auth_data.jira_host,

@@ -4,6 +4,7 @@ from .filter import FilterDispatcherCommand, FilterIssuesCommand
 from .issue import (ContentPaginatorCommand, ListStatusIssuesCommand, ListUnresolvedIssuesCommand,
                     ProjectStatusIssuesCommand, UserStatusIssuesCommand)
 from .tracking import TimeTrackingDispatcher
+from .schedule import ScheduleCommand
 
 __all__ = (
     "ListUnresolvedIssuesCommand",
@@ -19,4 +20,5 @@ __all__ = (
     "FeedbackMessageCommandFactory",
     "FilterDispatcherCommand",
     "FilterIssuesCommand",
+    "ScheduleCommand",
 )

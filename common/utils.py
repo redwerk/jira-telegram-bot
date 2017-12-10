@@ -11,9 +11,9 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 from common.exceptions import DateTimeValidationError
 
-hostname_re = re.compile(r'^http[s]?://([^:/\s]+)?$')
-http_ptotocol = re.compile(r'^http[s]?://')
-email_address = re.compile(r'([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)')
+HOSTNAME_RE = re.compile(r'^http[s]?://([^:/\s]+)?$')
+HTTP_PTOTOCOL = re.compile(r'^http[s]?://')
+EMAIL_ADDRESS = re.compile(r'([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)')
 
 
 def encrypt_password(password):
@@ -156,7 +156,7 @@ def read_rsa_key(path):
 
 def validates_hostname(url: str) -> bool:
     """Validates hostname"""
-    return True if hostname_re.match(url) else False
+    return True if HOSTNAME_RE.match(url) else False
 
 
 def generate_consumer_key() -> str:
@@ -166,13 +166,13 @@ def generate_consumer_key() -> str:
 
 def get_email_address(text):
     """Gets email from the message"""
-    email = email_address.findall(text)
+    email = EMAIL_ADDRESS.findall(text)
     return email[0] if email else False
 
 
 def get_text_without_email(text):
     """Delete email address from the message"""
-    text = email_address.sub('', text)
+    text = EMAIL_ADDRESS.sub('', text)
     return text.strip()
 
 
@@ -209,7 +209,7 @@ def login_required(func):
     """
     def wrapper(*args, **kwargs):
         try:
-            instance, bot, update = args
+            instance, bot, update, *_ = args
         except IndexError as e:
             logging.exception('login_required decorator: {}'.format(e))
             return
@@ -221,9 +221,7 @@ def login_required(func):
             # update came from CallbackQueryHandler (after press button on inline keyboard)
             telegram_id = update.callback_query.from_user.id
 
-        user_exists = instance._bot_instance.db.is_user_exists(telegram_id)
-
-        if not user_exists:
+        if not instance._bot_instance.db.is_user_exists(telegram_id):
             bot.send_message(
                 chat_id=telegram_id,
                 text='You are not in the database. Just call the /start command',
