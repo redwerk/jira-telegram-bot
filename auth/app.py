@@ -1,8 +1,9 @@
 import logging
+import json
 from logging.config import fileConfig
 
 from flask import Flask, redirect, request, session, url_for
-from flask.views import View
+from flask.views import View, MethodView
 from flask_oauthlib.client import OAuth, OAuthException
 
 import jira
@@ -225,5 +226,36 @@ class OAuthAuthorizedView(SendToChatMixin, OAuthJiraBaseView):
         }
 
 
+class WebhookView(MethodView):
+    def __init__(self):
+        self.db = MongoBackend()
+
+    def post(self, **kwargs):
+        if not request.content_length or 'Atlassian HttpClient' not in request.headers.get('User-Agent'):
+            return 'Endpoint is processing only updates from jira webhook', 403
+
+        webhook = self.db.get_webhook(kwargs.get('webhook_id'))
+        if not webhook:
+            return 'Unregistered webhook', 403
+
+        subs = self.db.get_webhook_subscriptions(webhook.get('_id'))
+        if not subs:
+            logger.info('Webhook have not any subscribers: {} {}'.format(
+                webhook.get('webhook_id'), webhook.get('host_url'))
+            )
+            return 'ok', 200
+
+        data = json.loads(request.data)
+        from pprint import pprint
+        pprint(data)
+        return 'OK', 200
+
+
+
+    def get(self, webhook_id, project_key=None, issue_key=None):
+        return 'Test', 200
+
+
 app.add_url_rule('/authorize/<int:telegram_id>/', view_func=AuthorizeView.as_view('authorize'))
 app.add_url_rule('/oauth_authorized', view_func=OAuthAuthorizedView.as_view('oauth_authorized'))
+app.add_url_rule('/webhook/<webhook_id>/<project_key>/<issue_key>', view_func=WebhookView.as_view('webhook'))
