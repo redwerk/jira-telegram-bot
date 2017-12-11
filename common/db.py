@@ -12,6 +12,8 @@ class MongoBackend:
         'user': config('DB_USER_COLLECTION'),
         'host': config('DB_HOST_COLLECTION'),
         'cache': config('DB_CACHE_COLLECTION'),
+        'webhook': config('DB_WEBHOOK_COLLECTION'),
+        'subscriptions': config('DB_SUBSCRIPTIONS_COLLECTION'),
     }
 
     def __init__(self, user=None, password=None, host=None, port=None, db_name=None):
@@ -131,3 +133,54 @@ class MongoBackend:
             }
 
         return dict()
+
+    def create_webhook(self, key, host):
+        collection = self._get_collection('webhook')
+        status = collection.insert_one(
+            {
+                'webhook_id': key,
+                'host_url': host,
+            }
+        )
+
+        return True if status else False
+
+    def update_webhook(self, host, data):
+        collection = self._get_collection('webhook')
+        status = collection.update({'host_url': host}, {'$set': data})
+
+        return True if status else False
+
+    def get_webhook(self, key):
+        collection = self._get_collection('webhook')
+        webhook = collection.find_one({'webhook_id': key})
+
+        return webhook if webhook else False
+
+    def create_subscription(self, data):
+        collection = self._get_collection('subscriptions')
+        status = collection.insert_one(data)
+
+        return True if status else False
+
+    def get_subscription(self, sub_id):
+        collection = self._get_collection('subscriptions')
+        subscription = collection.find_one({'sub_id': sub_id})
+
+        return subscription if subscription else False
+
+    def get_webhook_subscriptions(self, webhook_id):
+        collection = self._get_collection('subscriptions')
+        subs = collection.find({'webhook_id': webhook_id})
+        return list(subs) if subs else list()
+
+    def get_user_subscriptions(self, user_id):
+        collection = self._get_collection('subscriptions')
+        subs = collection.find({'user_id': user_id})
+        return list(subs) if subs else list()
+
+    def delete_subscription(self, sub_id):
+        collection = self._get_collection('subscriptions')
+        status = collection.delete_one({'sub_id': sub_id})
+
+        return True if status else False
