@@ -1,4 +1,4 @@
-version: '2'
+version: '3'
 services:
   telegram-bot:
     build: .
@@ -8,5 +8,6 @@ services:
     - mongo
   mongo:
     image: "mongo:latest"
-    volumes:
-    - /home/$USER/data:/data/db
+    environment:
+        - MONGO_INITDB_ROOT_USERNAME=telegramJiraAdmin
+        - MONGO_INITDB_ROOT_PASSWORD=admin2321
