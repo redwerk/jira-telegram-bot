@@ -157,6 +157,12 @@ class MongoBackend:
 
         return webhook if webhook else False
 
+    def search_webhook(self, host):
+        collection = self._get_collection('webhook')
+        webhook = collection.find_one({'host_url': host})
+
+        return webhook if webhook else False
+
     def create_subscription(self, data):
         collection = self._get_collection('subscriptions')
         status = collection.insert_one(data)

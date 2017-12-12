@@ -22,6 +22,7 @@ class JiraBot:
         '/liststatus - Shows users and projects issues with a selected status'
         '/filter - Shows issues by favourite filters',
         '/time - Shows spented time of issue, user or project',
+        '/watch - Allows you to subscribe to notifications about updates',
         '/connect jira.yourcompany.com username password - Login into host using user/pass',
         '/oauth jira.yourcompany.com - Login into host using OAuth',
         '/disconnect - Deletes user credentials from DB',
@@ -34,6 +35,8 @@ class JiraBot:
         commands.UserStatusIssuesCommand,
         commands.ProjectStatusIssuesCommand,
         commands.TimeTrackingDispatcher,
+        commands.WatchDispatcherCommand,
+        commands.CreateWebhookCommand,
         commands.FilterDispatcherCommand,
         commands.FilterIssuesCommand,
         commands.BasicLoginCommand,
