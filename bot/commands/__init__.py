@@ -4,7 +4,7 @@ from .filter import FilterDispatcherCommand, FilterIssuesCommand
 from .issue import (ContentPaginatorCommand, ListStatusIssuesCommand, ListUnresolvedIssuesCommand,
                     ProjectStatusIssuesCommand, UserStatusIssuesCommand)
 from .tracking import TimeTrackingDispatcher
-from .watch import WatchDispatcherCommand, CreateWebhookCommand
+from .watch import WatchDispatcherCommand, CreateWebhookCommand, UnwatchDispatcherCommand, UnsubscribeAllUpdatesCommand
 
 __all__ = (
     "ListUnresolvedIssuesCommand",
@@ -14,6 +14,8 @@ __all__ = (
     "TimeTrackingDispatcher",
     "WatchDispatcherCommand",
     "CreateWebhookCommand",
+    "UnwatchDispatcherCommand",
+    "UnsubscribeAllUpdatesCommand",
     "ContentPaginatorCommand",
     "OAuthLoginCommand",
     "BasicLoginCommand",

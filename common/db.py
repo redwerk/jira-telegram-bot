@@ -187,6 +187,12 @@ class MongoBackend:
 
     def delete_subscription(self, sub_id):
         collection = self._get_collection('subscriptions')
-        status = collection.delete_one({'sub_id': sub_id})
+        status = collection.remove({'sub_id': sub_id})
+
+        return True if status else False
+
+    def delete_all_subscription(self, user_id):
+        collection = self._get_collection('subscriptions')
+        status = collection.remove({'user_id': user_id})
 
         return True if status else False
