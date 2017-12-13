@@ -1,4 +1,4 @@
-from .t_bot import JiraBot
+from .app import JTBApp
 
 
-__all__ = ("JiraBot",)
+__all__ = ("JTBApp",)

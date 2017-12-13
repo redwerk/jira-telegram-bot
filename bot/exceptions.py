@@ -1,6 +1,6 @@
 from telegram.error import TelegramError
 
-from .db import MongoBackend
+from lib.db import MongoBackend
 
 
 class BaseJTBException(TelegramError):
@@ -72,4 +72,14 @@ class SendMessageHandlerError(BaseJTBException):
 
 class DateTimeValidationError(BaseJTBException):
     """Errors in date validation"""
+    pass
+
+
+class ScheduleValidationError(BaseJTBException):
+    """Schedule value validation error"""
+    pass
+
+
+class ContextValidationError(BaseJTBException):
+    """Command context validation error"""
     pass

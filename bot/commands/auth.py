@@ -5,10 +5,11 @@ from decouple import config
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackQueryHandler, CommandHandler
 
-from common import utils
-from common.exceptions import BotAuthError
+from lib import utils
 
-from .base import AbstractCommand, SendMessageFactory
+from bot.exceptions import BotAuthError
+from bot.inlinemenu import build_menu
+from .base import AbstractCommand
 
 
 class DisconnectMenuCommand(AbstractCommand):
@@ -28,16 +29,12 @@ class DisconnectMenuCommand(AbstractCommand):
             ),
         ]
 
-        reply_markup = InlineKeyboardMarkup(utils.build_menu(
-            button_list, n_cols=2
-        ))
-
-        SendMessageFactory.send(
+        reply_markup = InlineKeyboardMarkup(build_menu(button_list, n_cols=2))
+        self.app.send(
             bot,
             update,
             text='Are you sure you want to log out? All credentials associated with this user will be lost.',
-            buttons=reply_markup,
-            simple_message=True
+            buttons=reply_markup
         )
 
     def command_callback(self):
@@ -48,7 +45,7 @@ class DisconnectCommand(AbstractCommand):
 
     def handler(self, bot, update, *args, **kwargs):
         """Deletes user credentials from DB"""
-        scope = self._bot_instance.get_query_scope(update)
+        scope = self.app.get_query_scope(update)
         answer = scope['data'].replace('disconnect:', '')
 
         if answer == DisconnectMenuCommand.positive_answer:
@@ -60,24 +57,22 @@ class DisconnectCommand(AbstractCommand):
                 'auth.oauth.access_token_secret': None,
                 'auth.basic.password': None,
             }
-            status = self._bot_instance.db.update_user(scope['telegram_id'], reset_dict)
+            status = self.app.db.update_user(scope['telegram_id'], reset_dict)
 
             if status:
-                return SendMessageFactory.send(
+                return self.app.send(
                     bot,
-                    update, text='Credentials were successfully reset.',
-                    simple_message=True
+                    update, text='Credentials were successfully reset.'
                 )
             else:
-                return SendMessageFactory.send(
+                return self.app.send(
                     bot,
                     update,
-                    text='Credentials were not removed from the database, please try again later.',
-                    simple_message=True
+                    text='Credentials were not removed from the database, please try again later.'
                 )
 
         else:
-            SendMessageFactory.send(bot, update, text='Resetting credentials was not confirmed', simple_message=True)
+            self.app.send(bot, update, text='Resetting credentials was not confirmed')
 
     def command_callback(self):
         return CallbackQueryHandler(self.handler, pattern=r'^disconnect:')
@@ -97,21 +92,20 @@ class OAuthLoginCommand(AbstractCommand):
         chat_id = update.message.chat_id
         auth_options = kwargs.get('args')
 
-        if not self._bot_instance.db.is_user_exists(chat_id):
-            return SendMessageFactory.send(
+        if not self.app.db.is_user_exists(chat_id):
+            return self.app.send(
                 bot,
                 update,
-                text='You are not in the database. Just call the /start command',
-                simple_message=True
+                text='You are not in the database. Just call the /start command'
             )
 
         if not auth_options:
-            return SendMessageFactory.send(bot, update, text='Host is required option', simple_message=True)
+            return self.app.send(bot, update, text='Host is required option')
 
         domain_name = auth_options[0]
-        user_data = self._bot_instance.db.get_user_data(chat_id)
+        user_data = self.app.db.get_user_data(chat_id)
         try:
-            auth = self._bot_instance.get_and_check_cred(chat_id)
+            auth = self.app.get_and_check_cred(chat_id)
         except BotAuthError:
             # ignore authorization check
             pass
@@ -120,12 +114,12 @@ class OAuthLoginCommand(AbstractCommand):
                 text = 'You are already connected to {}. ' \
                        'Please use /disconnect before connecting ' \
                        'to another JIRA instance.'.format(user_data.get('host_url'))
-                return SendMessageFactory.send(bot, update, text=text, simple_message=True)
+                return self.app.send(bot, update, text=text)
 
         if not utils.validates_hostname(domain_name):
-            jira_host = self._bot_instance.db.search_host(domain_name)
+            jira_host = self.app.db.search_host(domain_name)
         else:
-            jira_host = self._bot_instance.db.get_host_data(domain_name)
+            jira_host = self.app.db.get_host_data(domain_name)
 
         if jira_host and jira_host.get('is_confirmed'):
             text = 'Follow the <a href="{}">link</a> to confirm authorization'.format(
@@ -133,11 +127,11 @@ class OAuthLoginCommand(AbstractCommand):
             )
         elif jira_host and not jira_host.get('is_confirmed'):
             jira_host.update({'consumer_key': utils.generate_consumer_key()})
-            host_updated = self._bot_instance.db.update_host(host_url=jira_host.get('url'), host_data=jira_host)
+            host_updated = self.app.db.update_host(host_url=jira_host.get('url'), host_data=jira_host)
 
             if host_updated:
                 # sends data for creating an Application link
-                SendMessageFactory.send(bot, update, text=self.get_app_links_data(jira_host), simple_message=True)
+                self.app.send(bot, update, text=self.get_app_links_data(jira_host))
                 # sends a link for authorization via OAuth
                 text = 'Follow the <a href="{}">link</a> to confirm authorization'.format(
                     self.generate_auth_link(chat_id, jira_host.get('url'))
@@ -146,11 +140,10 @@ class OAuthLoginCommand(AbstractCommand):
             domain_name = self.check_hosturl(domain_name)
 
             if not domain_name:
-                return SendMessageFactory.send(
+                return self.app.send(
                     bot,
                     update,
-                    text='This is not a Jira application. Please try again',
-                    simple_message=True
+                    text='This is not a Jira application. Please try again'
                 )
 
             host_data = {
@@ -159,17 +152,17 @@ class OAuthLoginCommand(AbstractCommand):
                 'consumer_key': utils.generate_consumer_key(),
             }
 
-            host_status = self._bot_instance.db.create_host(host_data)
+            host_status = self.app.db.create_host(host_data)
 
             if host_status:
                 # sends data for creating an Application link
-                SendMessageFactory.send(bot, update, text=self.get_app_links_data(host_data), simple_message=True)
+                self.app.send(bot, update, text=self.get_app_links_data(host_data))
                 # sends a link for authorization via OAuth
                 text = 'Follow the <a href="{}">link</a> to confirm authorization'.format(
                     self.generate_auth_link(chat_id, host_data.get('url'))
                 )
 
-        SendMessageFactory.send(bot, update, text=text, simple_message=True)
+        self.app.send(bot, update, text=text)
 
     def generate_auth_link(self, telegram_id, host_url):
         return '{}/authorize/{}/?host={}'.format(config('OAUTH_SERVICE_URL'), telegram_id, host_url)
@@ -190,13 +183,13 @@ class OAuthLoginCommand(AbstractCommand):
     def check_hosturl(self, host_url):
         valid = utils.validates_hostname(host_url)
 
-        if valid and self._bot_instance.jira.is_jira_app(host_url):
+        if valid and self.app.jira.is_jira_app(host_url):
             return host_url
         elif not valid:
             for protocol in ('https://', 'http://'):
                 test_host_url = '{}{}'.format(protocol, host_url)
 
-                if self._bot_instance.jira.is_jira_app(test_host_url):
+                if self.app.jira.is_jira_app(test_host_url):
                     return test_host_url
             else:
                 return False
@@ -212,26 +205,24 @@ class BasicLoginCommand(AbstractCommand):
         chat_id = update.message.chat_id
         auth_options = kwargs.get('args')
 
-        if not self._bot_instance.db.is_user_exists(chat_id):
-            return SendMessageFactory.send(
+        if not self.app.db.is_user_exists(chat_id):
+            return self.app.send(
                 bot,
                 update,
-                text='You are not in the database. Just call the /start command',
-                simple_message=True
+                text='You are not in the database. Just call the /start command'
             )
 
         if not auth_options:
             # if no parameters are passed
-            return SendMessageFactory.send(
+            return self.app.send(
                 bot,
                 update,
-                text='You did not specify parameters for authorization',
-                simple_message=True
+                text='You did not specify parameters for authorization'
             )
 
-        user_data = self._bot_instance.db.get_user_data(chat_id)
+        user_data = self.app.db.get_user_data(chat_id)
         try:
-            auth = self._bot_instance.get_and_check_cred(chat_id)
+            auth = self.app.get_and_check_cred(chat_id)
         except BotAuthError:
             # ignore authorization check
             pass
@@ -240,7 +231,7 @@ class BasicLoginCommand(AbstractCommand):
                 text = 'You are already connected to {}. ' \
                        'Please use /disconnect before connecting ' \
                        'to another JIRA instance.'.format(user_data.get('host_url'))
-                return SendMessageFactory.send(bot, update, text=text, simple_message=True)
+                return self.app.send(bot, update, text=text)
 
         try:
             host, username, password = auth_options
@@ -249,15 +240,15 @@ class BasicLoginCommand(AbstractCommand):
             text = 'You have not specified all the parameters for authorization. ' \
                    'Try again using the following instructions:\n' \
                    '/connect *host* *username* *password*'
-            return SendMessageFactory.send(bot, update, text=text, simple_message=True)
+            return self.app.send(bot, update, text=text)
 
         # getting the URL to the Jira app
-        host_url = OAuthLoginCommand(self._bot_instance).check_hosturl(host)
+        host_url = OAuthLoginCommand(self.app).check_hosturl(host)
         if not host_url:
             text = 'This is not a Jira application. Please try again'
-            return SendMessageFactory.send(bot, update, text=text, simple_message=True)
+            return self.app.send(bot, update, text=text)
 
-        self._bot_instance.jira.check_authorization(
+        self.app.jira.check_authorization(
             auth_method='basic',
             jira_host=host_url,
             credentials=(username, password),
@@ -271,13 +262,13 @@ class BasicLoginCommand(AbstractCommand):
             'auth.basic.password': utils.encrypt_password(password)
         }
 
-        status = self._bot_instance.db.update_user(chat_id, basic_auth)
+        status = self.app.db.update_user(chat_id, basic_auth)
         if status:
             text = 'You were successfully authorized in {}'.format(host_url)
-            return SendMessageFactory.send(bot, update, text=text, simple_message=True)
+            return self.app.send(bot, update, text=text)
         else:
             text = 'Failed to save data to database, please try again later'
-            return SendMessageFactory.send(bot, update, text=text, simple_message=True)
+            return self.app.send(bot, update, text=text)
 
     def command_callback(self):
         return CommandHandler('connect', self.handler, pass_args=True)

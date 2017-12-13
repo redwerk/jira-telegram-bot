@@ -3,8 +3,9 @@ import time
 from decouple import config
 from pymongo import MongoClient
 
-from common import utils
-from common.db import MongoBackend
+from bot.paginations import split_by_pages
+from lib import utils
+from lib.db import MongoBackend
 
 
 class TestMongoBackend:
@@ -56,7 +57,7 @@ class TestMongoBackend:
 
         # cache data
         cls.item_per_page = 10
-        cls.test_cache_item = utils.split_by_pages(['test_cache{}'.format(i) for i in range(25)], cls.item_per_page)
+        cls.test_cache_item = split_by_pages(['test_cache{}'.format(i) for i in range(25)], cls.item_per_page)
         cls.test_cache_key = 'test_cache:{}'.format(cls.test_user.get('telegram_id'))
         cls.test_cache_title = 'Test cached items'
 

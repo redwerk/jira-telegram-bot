@@ -10,9 +10,9 @@ import requests
 from decouple import config
 from oauthlib.oauth1 import SIGNATURE_RSA
 
-from common.utils import read_rsa_key
-from common.db import MongoBackend
-from run import SMTPHandlerNumb
+from lib.utils import read_rsa_key
+from lib.db import MongoBackend
+from run import SMTPHandlerNumb  # WTF
 
 # common settings
 fileConfig('./logging_config.ini')

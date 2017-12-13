@@ -1,36 +1,27 @@
-import logging
 from collections import namedtuple
+import logging
+import sys
+import traceback
 
 from decouple import config
 from telegram.error import NetworkError, TelegramError, TimedOut
-from telegram.ext import CommandHandler, Updater
+from telegram.ext import Updater
 
+from lib import utils
+from lib.db import MongoBackend
 import bot.commands as commands
-from bot.commands.base import SendMessageFactory
-from bot.integration import JiraBackend
-from common import utils
-from common.db import MongoBackend
-from common.exceptions import BaseJTBException, BotAuthError
 
+from .backends import JiraBackend
+from .messages import MessageFactory
 from .schedules import Scheduler
+from .exceptions import BaseJTBException, BotAuthError, SendMessageHandlerError
 
 
-class JiraBot:
+class JTBApp:
     """Bot to integrate with the JIRA service"""
-
-    bot_commands = [
-        '/start - Starts the bot',
-        '/listunresolved - Shows different issues',
-        '/liststatus - Shows users and projects issues with a selected status'
-        '/filter - Shows issues by favourite filters',
-        '/time - Shows spented time of issue, user or project',
-        '/connect jira.yourcompany.com username password - Login into host using user/pass',
-        '/oauth jira.yourcompany.com - Login into host using OAuth',
-        '/disconnect - Deletes user credentials from DB',
-        '/help - Returns commands and its descriptions'
-    ]
-    issues_per_page = 10
     __commands = [
+        commands.HelpCommand,
+        commands.StartCommand,
         commands.ListUnresolvedIssuesCommand,
         commands.ListStatusIssuesCommand,
         commands.UserStatusIssuesCommand,
@@ -43,11 +34,13 @@ class JiraBot:
         commands.DisconnectMenuCommand,
         commands.DisconnectCommand,
         commands.ContentPaginatorCommand,
-        commands.ScheduleCommand
+        commands.ScheduleCommand,
+        commands.ScheduleCommandList,
+        commands.ScheduleCommandDelete
     ]
 
     def __init__(self):
-        self.__updater = Updater(
+        self.updater = Updater(
             config('BOT_TOKEN'),
             workers=config('WORKERS', cast=int, default=3)
         )
@@ -56,71 +49,39 @@ class JiraBot:
         self.jira = JiraBackend()
         self.AuthData = namedtuple('AuthData', 'auth_method jira_host username credentials')
 
-        self.__updater.dispatcher.add_handler(
-            CommandHandler('start', self.start_command)
-        )
-
-        self.__updater.dispatcher.add_handler(
-            CommandHandler('help', self.help_command)
-        )
-
-        self.__updater.dispatcher.add_error_handler(self.error_callback)
-
-        for command in self.__commands:
+        for command in self.commands:
             cb = command(self).command_callback()
-            self.__updater.dispatcher.add_handler(cb)
+            self.updater.dispatcher.add_handler(cb)
+
+        self.updater.dispatcher.add_error_handler(self.error_callback)
+
+    def send(self, bot, update, *args, **kwargs):
+        message_handler = MessageFactory.get_message_handler(update)
+        if not message_handler:
+            raise SendMessageHandlerError('Unable to get the handler')
+        message_handler(bot, update, **kwargs).send()
 
     def run_scheduler(self):
-        queue = self.__updater.job_queue
-        bot = self.__updater.bot
+        queue = self.updater.job_queue
+        bot = self.updater.bot
         scheduler = Scheduler(self, bot, queue)
-        self.__updater._init_thread(scheduler.run, "scheduler")
+        self.updater._init_thread(scheduler.run, "scheduler")
 
     def start(self):
-        self.__updater.start_polling()
+        self.updater.start_polling()
         self.run_scheduler()
         logging.debug("Jira bot started successfully!")
-        self.__updater.idle()
+        self.updater.idle()
 
-    def start_command(self, bot, update):
-        first_name = update.message.from_user.first_name
-        message = (
-            'Hi, {}! Please, enter Jira host by typing \n'
-            '/connect jira.yourcompany.com username password OR\n'
-            '/oauth jira.yourcompany.com'.format(first_name)
-        )
-
-        telegram_id = update.message.from_user.id
-        user_exists = self.db.is_user_exists(telegram_id)
-
-        if not user_exists:
-            data = {
-                'telegram_id': telegram_id,
-                'host_url': None,
-                'username': None,
-                'auth_method': None,
-                'auth': {
-                    'oauth': dict(access_token=None, access_token_secret=None),
-                    'basic': dict(password=None),
-                },
-            }
-            transaction_status = self.db.create_user(data)
-
-            if not transaction_status:
-                logging.exception(
-                    'Error while creating a new user via '
-                    '/start command, username: {}'.format(update.message.from_user.username)
-                )
-
-        bot.send_message(
-            chat_id=update.message.chat_id,
-            text=message
-        )
+    @property
+    def commands(self):
+        return self.__commands
 
     @staticmethod
-    def get_query_scope(update) -> dict:
+    def get_query_scope(update):
         """
         Gets scope data for current message
+        TODO: make refactoring in the future
         """
         telegram_id = update.callback_query.from_user.id
         query = update.callback_query
@@ -134,12 +95,13 @@ class JiraBot:
             data=data
         )
 
-    def get_and_check_cred(self, telegram_id: int):
+    def get_and_check_cred(self, telegram_id):
         """
         Gets the user data and tries to log in according to the specified authorization method.
         Output of messages according to missing information
         :param telegram_id: user id telegram
         :return: returns a namedtuple for further authorization or bool and messages
+        TODO: make refactoring in the future
         """
         user_data = self.db.get_user_data(telegram_id)
         auth_method = user_data.get('auth_method')
@@ -182,15 +144,13 @@ class JiraBot:
 
             return auth_data
 
-    def help_command(self, bot, update):
-        bot.send_message(
-            chat_id=update.message.chat_id, text='\n'.join(self.bot_commands)
-        )
-
     def error_callback(self, bot, update, error):
+        if config("DEBUG", False):
+            traceback.print_exc(file=sys.stdout)
+
         try:
             raise error
         except BaseJTBException as e:
-            SendMessageFactory.send(bot, update, text=e.message, simple_message=True)
+            self.send(bot, update, text=e.message)
         except (NetworkError, TelegramError, TimedOut):
             pass
