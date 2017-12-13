@@ -251,11 +251,6 @@ class WebhookView(MethodView):
         return 'OK', 200
 
 
-
-    def get(self, webhook_id, project_key=None, issue_key=None):
-        return 'Test', 200
-
-
 app.add_url_rule('/authorize/<int:telegram_id>/', view_func=AuthorizeView.as_view('authorize'))
 app.add_url_rule('/oauth_authorized', view_func=OAuthAuthorizedView.as_view('oauth_authorized'))
 app.add_url_rule('/webhook/<webhook_id>/<project_key>/<issue_key>', view_func=WebhookView.as_view('webhook'))

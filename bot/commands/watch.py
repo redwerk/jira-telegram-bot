@@ -130,6 +130,7 @@ class UnwatchDispatcherCommand(AbstractCommand):
 
     @utils.login_required
     def handler(self, bot, update, *args, **kwargs):
+        auth_data = kwargs.get('auth_data')
         options = kwargs.get('args')
         parameters_names = ('target', 'name')
         description = ("<b>Command description:</b>\n",
@@ -156,6 +157,18 @@ class UnwatchDispatcherCommand(AbstractCommand):
 
         if params['target'] not in self.targets or not params['name']:
             return SendMessageFactory.send(bot, update, text=''.join(description), simple_message=True)
+
+        if params['target'] == 'project':
+            self._bot_instance.jira.is_project_exists(
+                host=auth_data.jira_host, project=params['name'], auth_data=auth_data
+            )
+        elif params['target'] == 'issue':
+            self._bot_instance.jira.is_issue_exists(
+                host=auth_data.jira_host, issue=params['name'], auth_data=auth_data
+            )
+
+        kwargs.update({'topic': params['target'], 'name': params['name']})
+        UnsubscribeOneItemCommand(self._bot_instance).handler(bot, update, **kwargs)
 
     def command_callback(self):
         return CommandHandler('unwatch', self.handler, pass_args=True)
@@ -187,6 +200,21 @@ class UnsubscribeAllUpdatesCommand(AbstractCommand):
 
 
 class UnsubscribeOneItemCommand(AbstractCommand):
+    """Allows user to unsubscribe from issue or project updates"""
 
     def handler(self, bot, update, *args, **kwargs):
-        pass
+        topic = kwargs.get('topic')
+        name = kwargs.get('name')
+        telegram_id = update.message.chat_id
+
+        if not self._bot_instance.db.get_subscription('{}:{}'.format(telegram_id, name.lower())):
+            text = 'You were not subscribed to {} {} updates'.format(name.upper(), topic.lower())
+            return SendMessageFactory.send(bot, update, text=text, simple_message=True)
+
+        status = self._bot_instance.db.delete_subscription('{}:{}'.format(telegram_id, name.lower()))
+        if status:
+            text = 'You were unsubscribed from {} {} updates'.format(name.upper(), topic.lower())
+            return SendMessageFactory.send(bot, update, text=text, simple_message=True)
+
+        text = "Can't unsubscribe you from {} {} updates, , please try again later".format(name.upper(), topic.lower())
+        return SendMessageFactory.send(bot, update, text=text, simple_message=True)
