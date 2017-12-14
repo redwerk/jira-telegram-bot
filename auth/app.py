@@ -1,5 +1,5 @@
-import logging
 import json
+import logging
 from logging.config import fileConfig
 
 from flask import Flask, redirect, request, session, url_for
@@ -11,9 +11,11 @@ import requests
 from decouple import config
 from oauthlib.oauth1 import SIGNATURE_RSA
 
-from common.utils import read_rsa_key
 from common.db import MongoBackend
+from common.utils import read_rsa_key
 from run import SMTPHandlerNumb
+
+from .webhook_parser import WebhookUpdateFactory
 
 # common settings
 fileConfig('./logging_config.ini')
@@ -231,6 +233,7 @@ class WebhookView(MethodView):
         self.db = MongoBackend()
 
     def post(self, **kwargs):
+        logger.debug('Got webhook')
         if not request.content_length or 'Atlassian HttpClient' not in request.headers.get('User-Agent'):
             return 'Endpoint is processing only updates from jira webhook', 403
 
@@ -245,10 +248,29 @@ class WebhookView(MethodView):
             )
             return 'ok', 200
 
-        data = json.loads(request.data)
-        from pprint import pprint
-        pprint(data)
+        jira_update = json.loads(request.data)
+        chat_ids = self.filters_subscribers(kwargs.get('project_key'), kwargs.get('issue_key'), subs)
+        WebhookUpdateFactory.notify(jira_update, chat_ids)
+
         return 'OK', 200
+
+    def get(self, **kwargs):
+        return 'OK', 200
+
+    def filters_subscribers(self, project, issue, subscribers):
+        filtered_participants = list()
+
+        for sub in subscribers:
+            sub_topic = sub.get('topic')
+            sub_name = sub.get('name')
+            sub_chat_id = sub.get('sub_id').split(':')[0]
+
+            if sub_topic == 'project' and project.lower() == sub_name:
+                filtered_participants.append(sub_chat_id)
+            elif sub_topic == 'issue' and issue.lower() == sub_name:
+                filtered_participants.append(sub_chat_id)
+
+        return filtered_participants
 
 
 app.add_url_rule('/authorize/<int:telegram_id>/', view_func=AuthorizeView.as_view('authorize'))

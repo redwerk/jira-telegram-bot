@@ -6,8 +6,17 @@ services:
      - .:/code
     depends_on:
     - mongo
+    command: bash -c "python run.py && python auth_run.py"
+    ports:
+      - "5000:5000"
+    container_name: telegram-bot
+    restart: on-failure:5 
+
   mongo:
     image: "mongo:latest"
     environment:
         - MONGO_INITDB_ROOT_USERNAME=telegramJiraAdmin
         - MONGO_INITDB_ROOT_PASSWORD=admin2321
+    # ports:
+    #   - "27017:27017"
+    container_name: mongo
