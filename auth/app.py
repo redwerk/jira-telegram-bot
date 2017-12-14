@@ -250,7 +250,7 @@ class WebhookView(MethodView):
 
         jira_update = json.loads(request.data)
         chat_ids = self.filters_subscribers(kwargs.get('project_key'), kwargs.get('issue_key'), subs)
-        WebhookUpdateFactory.notify(jira_update, chat_ids)
+        WebhookUpdateFactory.notify(jira_update, chat_ids, webhook.get('host_url'), **kwargs)
 
         return 'OK', 200
 
