@@ -13,10 +13,9 @@ class BaseNotify:
     def __init__(self, update, chat_ids, host, **kwargs):
         self.update = update
         self.chat_ids = chat_ids
+        self.host = host
         self.project = kwargs.get('project_key')
         self.issue = kwargs.get('issue_key')
-        self.issue_url = '{}/browse/'.format(host) + self.issue.upper()
-        self.project_url = '{}/projects/'.format(host) + '{}/issues'.format(self.project.upper())
 
     @abstractmethod
     def notify(self):
@@ -29,30 +28,51 @@ class BaseNotify:
 
 
 class WorklogNotify(BaseNotify):
-    message_template = 'User {username} {action} comment in <a href="{link}">{link_name}</a>'
+    message_template = 'User {username} {action} worklog in <a href="{link}">{link_name}</a>'
 
     def notify(self):
         print(self.update)
 
 
 class CommentNotify(BaseNotify):
+    """
+    Processing updates for Jira comments
+    Actions: a comment may be created, updated and deleted
+    """
     message_template = 'User {username} {action} comment in <a href="{link}">{link_name}</a>'
 
     def notify(self):
-        username = self.update['comment']['author']['displayName']
-        action = self.update.get('webhookEvent').replace('comment_', '')
-        msg = self.message_template.format(
-            username=username, action=action, link=self.issue_url, link_name=self.issue.upper()
-        )
+        data = {
+            'username': self.update['comment']['author']['displayName'],
+            'action': self.update.get('webhookEvent').replace('comment_', ''),
+            'link': '{}/browse/'.format(self.host) + self.issue.upper(),
+            'link_name': self.issue.upper(),
+        }
+        msg = self.message_template.format(**data)
         self.send_to_chat(msg)
 
 
 class IssueNotify(BaseNotify):
-    pass
+
+    def notify(self):
+        print(self.update)
 
 
 class ProjectNotify(BaseNotify):
-    pass
+    """
+    Processing updates for Jira projects
+    Actions: a project may be created, updated and deleted
+    """
+    message_template = 'Project <a href="{link}">{link_name}</a> was {action}'
+
+    def notify(self):
+        data = {
+            'action': self.update.get('webhookEvent').replace('project_', ''),
+            'link': '{}/browse/{}'.format(self.host, self.update['project']['key']),
+            'link_name': self.update['project']['key'].upper(),
+        }
+        msg = self.message_template.format(**data)
+        self.send_to_chat(msg)
 
 
 class WebhookUpdateFactory:

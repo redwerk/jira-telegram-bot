@@ -228,12 +228,31 @@ class OAuthAuthorizedView(SendToChatMixin, OAuthJiraBaseView):
         }
 
 
-class WebhookView(MethodView):
+class BaseWebhookView(MethodView):
     def __init__(self):
         self.db = MongoBackend()
 
+    def filters_subscribers(self, subscribers, project=None, issue=None):
+        filtered_participants = list()
+
+        for sub in subscribers:
+            sub_topic = sub.get('topic')
+            sub_name = sub.get('name')
+            sub_chat_id = sub.get('sub_id').split(':')[0]
+
+            if project:
+                if sub_topic == 'project' and project.lower() == sub_name:
+                    filtered_participants.append(sub_chat_id)
+            elif issue:
+                if sub_topic == 'issue' and issue.lower() == sub_name:
+                    filtered_participants.append(sub_chat_id)
+
+        return filtered_participants
+
+
+class IssueWebhookView(BaseWebhookView):
+    """Processing updates from Jira issues"""
     def post(self, **kwargs):
-        logger.debug('Got webhook')
         if not request.content_length or 'Atlassian HttpClient' not in request.headers.get('User-Agent'):
             return 'Endpoint is processing only updates from jira webhook', 403
 
@@ -243,36 +262,39 @@ class WebhookView(MethodView):
 
         subs = self.db.get_webhook_subscriptions(webhook.get('_id'))
         if not subs:
-            logger.info('Webhook have not any subscribers: {} {}'.format(
-                webhook.get('webhook_id'), webhook.get('host_url'))
-            )
-            return 'ok', 200
+            return 'No subscribers', 200
 
         jira_update = json.loads(request.data)
-        chat_ids = self.filters_subscribers(kwargs.get('project_key'), kwargs.get('issue_key'), subs)
+        chat_ids = self.filters_subscribers(subs, kwargs.get('project_key'))
         WebhookUpdateFactory.notify(jira_update, chat_ids, webhook.get('host_url'), **kwargs)
 
         return 'OK', 200
 
-    def get(self, **kwargs):
+
+class ProjectWebhookView(BaseWebhookView):
+    """Processing updates from Jira projects"""
+    def post(self, **kwargs):
+        if not request.content_length or 'Atlassian HttpClient' not in request.headers.get('User-Agent'):
+            return 'Endpoint is processing only updates from jira webhook', 403
+
+        webhook = self.db.get_webhook(kwargs.get('webhook_id'))
+        if not webhook:
+            return 'Unregistered webhook', 403
+
+        subs = self.db.get_webhook_subscriptions(webhook.get('_id'))
+        if not subs:
+            return 'No subscribers', 200
+
+        jira_update = json.loads(request.data)
+        chat_ids = self.filters_subscribers(subs, kwargs.get('project_key'), kwargs.get('issue_key'))
+        WebhookUpdateFactory.notify(jira_update, chat_ids, webhook.get('host_url'), **kwargs)
+
         return 'OK', 200
-
-    def filters_subscribers(self, project, issue, subscribers):
-        filtered_participants = list()
-
-        for sub in subscribers:
-            sub_topic = sub.get('topic')
-            sub_name = sub.get('name')
-            sub_chat_id = sub.get('sub_id').split(':')[0]
-
-            if sub_topic == 'project' and project.lower() == sub_name:
-                filtered_participants.append(sub_chat_id)
-            elif sub_topic == 'issue' and issue.lower() == sub_name:
-                filtered_participants.append(sub_chat_id)
-
-        return filtered_participants
 
 
 app.add_url_rule('/authorize/<int:telegram_id>/', view_func=AuthorizeView.as_view('authorize'))
 app.add_url_rule('/oauth_authorized', view_func=OAuthAuthorizedView.as_view('oauth_authorized'))
-app.add_url_rule('/webhook/<webhook_id>/<project_key>/<issue_key>', view_func=WebhookView.as_view('webhook'))
+app.add_url_rule('/webhook/<webhook_id>/<project_key>/', view_func=ProjectWebhookView.as_view('project-webhook'))
+app.add_url_rule(
+    '/webhook/<webhook_id>/<project_key>/<issue_key>/', view_func=IssueWebhookView.as_view('issue-webhook')
+)
