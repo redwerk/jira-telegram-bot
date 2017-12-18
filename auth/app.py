@@ -253,6 +253,7 @@ class BaseWebhookView(MethodView):
 
 class IssueWebhookView(BaseWebhookView):
     """Processing updates from Jira issues"""
+
     def post(self, **kwargs):
         if not request.content_length or 'Atlassian HttpClient' not in request.headers.get('User-Agent'):
             return 'Endpoint is processing only updates from jira webhook', 403
@@ -274,6 +275,7 @@ class IssueWebhookView(BaseWebhookView):
 
 class ProjectWebhookView(BaseWebhookView):
     """Processing updates from Jira projects"""
+
     def post(self, **kwargs):
         if not request.content_length or 'Atlassian HttpClient' not in request.headers.get('User-Agent'):
             return 'Endpoint is processing only updates from jira webhook', 403

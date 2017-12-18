@@ -51,7 +51,7 @@ class WorklogNotify(BaseNotify):
             end_time = int(self.update['changelog']['items'][-1]['to'])
             additional_data = {
                 'action': 'logged',
-                'time': round(calculate_tracking_time(end_time - start_time), 2),
+                'time': round(calculate_tracking_time(abs(end_time - start_time)), 2),
             }
             data.update(additional_data)
 
@@ -65,8 +65,8 @@ class WorklogNotify(BaseNotify):
             data.update(additional_data)
 
         elif self.update['issue_event_type_name'] == 'issue_worklog_deleted':
-            start_time = int(self.update['changelog']['items'][-3]['from'])
-            end_time = int(self.update['changelog']['items'][-3]['to'])
+            start_time = int(self.update['changelog']['items'][-1]['from'])
+            end_time = int(self.update['changelog']['items'][-1]['to'])
             additional_data = {
                 'action': 'deleted',
                 'time': round(calculate_tracking_time(end_time - start_time), 2),
@@ -100,9 +100,37 @@ class CommentNotify(BaseNotify):
 
 
 class IssueNotify(BaseNotify):
+    message_template = {
+        'assignee': 'A new user was assigned at <a href="{link}">{link_name}</a>: from {from} to {to}',
+        'status': 'User {username} updated status from {old_status} to {new_status} at <a href="{link}">{link_name}</a>'
+    }
 
     def notify(self):
-        print(self.update)
+        data = {
+            'username': self.update['user']['displayName'],
+            'link': '{}/browse/'.format(self.host) + self.issue.upper(),
+            'link_name': self.issue.upper(),
+        }
+
+        if self.update['issue_event_type_name'] == 'issue_assigned':
+            additional_data = {
+                'from': self.update['changelog']['items'][0]['fromString'],
+                'to': self.update['changelog']['items'][0]['toString'],
+            }
+            data.update(additional_data)
+        elif self.update['issue_event_type_name'] == 'issue_generic':
+            additional_data = {
+                'old_status': self.update['changelog']['items'][0]['fromString'],
+                'new_status': self.update['changelog']['items'][0]['toString'],
+            }
+            data.update(additional_data)
+
+        try:
+            msg = self.message_template[self.update['changelog']['items'][0]['field']].format(**data)
+        except KeyError as e:
+            logger.error("Issue parser can't send a message: {}".format(e))
+        else:
+            self.send_to_chat(msg)
 
 
 class ProjectNotify(BaseNotify):
@@ -125,6 +153,7 @@ class ProjectNotify(BaseNotify):
 class WebhookUpdateFactory:
     webhook_event = {
         'jira:worklog_updated': WorklogNotify,
+        'jira:issue_updated': IssueNotify,
 
         'comment_created': CommentNotify,
         'comment_updated': CommentNotify,
