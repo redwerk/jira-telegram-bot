@@ -1,7 +1,12 @@
+import logging
 from abc import abstractmethod
 
 import requests
 from decouple import config
+
+from common.utils import calculate_tracking_time
+
+logger = logging.getLogger()
 
 
 class BaseNotify:
@@ -28,10 +33,52 @@ class BaseNotify:
 
 
 class WorklogNotify(BaseNotify):
-    message_template = 'User {username} {action} worklog in <a href="{link}">{link_name}</a>'
+    """
+    Processing updates for Jira worklogs
+    Actions: a worklog may be created, updated and deleted
+    """
+    message_template = 'User {username} {action} spent time {time}h in <a href="{link}">{link_name}</a>'
 
     def notify(self):
-        print(self.update)
+        data = {
+            'username': self.update['user']['displayName'],
+            'link': '{}/browse/'.format(self.host) + self.issue.upper(),
+            'link_name': self.issue.upper(),
+        }
+
+        if self.update['issue_event_type_name'] == 'issue_work_logged':
+            start_time = int(self.update['changelog']['items'][-1]['from'])
+            end_time = int(self.update['changelog']['items'][-1]['to'])
+            additional_data = {
+                'action': 'logged',
+                'time': round(calculate_tracking_time(end_time - start_time), 2),
+            }
+            data.update(additional_data)
+
+        elif self.update['issue_event_type_name'] == 'issue_worklog_updated':
+            start_time = int(self.update['changelog']['items'][-2]['from'])
+            end_time = int(self.update['changelog']['items'][-2]['to'])
+            additional_data = {
+                'action': 'updated',
+                'time': round(calculate_tracking_time(end_time - start_time), 2),
+            }
+            data.update(additional_data)
+
+        elif self.update['issue_event_type_name'] == 'issue_worklog_deleted':
+            start_time = int(self.update['changelog']['items'][-3]['from'])
+            end_time = int(self.update['changelog']['items'][-3]['to'])
+            additional_data = {
+                'action': 'deleted',
+                'time': round(calculate_tracking_time(end_time - start_time), 2),
+            }
+            data.update(additional_data)
+
+        try:
+            msg = self.message_template.format(**data)
+        except KeyError as e:
+            logger.error("Worklog parser can't send a message: {}".format(e))
+        else:
+            self.send_to_chat(msg)
 
 
 class CommentNotify(BaseNotify):
@@ -77,9 +124,7 @@ class ProjectNotify(BaseNotify):
 
 class WebhookUpdateFactory:
     webhook_event = {
-        'worklog_created': WorklogNotify,
-        'worklog_updated': WorklogNotify,
-        'worklog_deleted': WorklogNotify,
+        'jira:worklog_updated': WorklogNotify,
 
         'comment_created': CommentNotify,
         'comment_updated': CommentNotify,

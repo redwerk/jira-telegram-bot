@@ -232,22 +232,23 @@ class BaseWebhookView(MethodView):
     def __init__(self):
         self.db = MongoBackend()
 
-    def filters_subscribers(self, subscribers, project=None, issue=None):
+    def filters_subscribers(self, subscribers, project, issue=None):
         filtered_participants = list()
 
         for sub in subscribers:
             sub_topic = sub.get('topic')
             sub_name = sub.get('name')
             sub_chat_id = sub.get('sub_id').split(':')[0]
+            project_cond = sub_topic == 'project' and project.lower() == sub_name
 
             if project:
                 if sub_topic == 'project' and project.lower() == sub_name:
                     filtered_participants.append(sub_chat_id)
-            elif issue:
-                if sub_topic == 'issue' and issue.lower() == sub_name:
+            if issue:
+                if sub_topic == 'issue' and issue.lower() == sub_name or project_cond:
                     filtered_participants.append(sub_chat_id)
 
-        return filtered_participants
+        return set(filtered_participants)
 
 
 class IssueWebhookView(BaseWebhookView):
@@ -265,7 +266,7 @@ class IssueWebhookView(BaseWebhookView):
             return 'No subscribers', 200
 
         jira_update = json.loads(request.data)
-        chat_ids = self.filters_subscribers(subs, kwargs.get('project_key'))
+        chat_ids = self.filters_subscribers(subs, kwargs.get('project_key'), kwargs.get('issue_key'))
         WebhookUpdateFactory.notify(jira_update, chat_ids, webhook.get('host_url'), **kwargs)
 
         return 'OK', 200
@@ -286,7 +287,7 @@ class ProjectWebhookView(BaseWebhookView):
             return 'No subscribers', 200
 
         jira_update = json.loads(request.data)
-        chat_ids = self.filters_subscribers(subs, kwargs.get('project_key'), kwargs.get('issue_key'))
+        chat_ids = self.filters_subscribers(subs, kwargs.get('project_key'))
         WebhookUpdateFactory.notify(jira_update, chat_ids, webhook.get('host_url'), **kwargs)
 
         return 'OK', 200
