@@ -233,6 +233,13 @@ class BaseWebhookView(MethodView):
         self.db = MongoBackend()
 
     def filters_subscribers(self, subscribers, project, issue=None):
+        """
+        Filtering subscribers through its topics: project or issue
+        :param subscribers: list of user subscribers info in dictionary type
+        :param project: project key e.g. JTB
+        :param issue: issue key e.g. JTB-99
+        :return: set of strings chat_ids
+        """
         filtered_participants = list()
 
         for sub in subscribers:

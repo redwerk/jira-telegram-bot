@@ -16,6 +16,12 @@ class BaseNotify:
     )
 
     def __init__(self, update, chat_ids, host, **kwargs):
+        """
+        :param update: full update in dictionary format
+        :param chat_ids: set of string chat ids for delivering notifications
+        :param host: host from what the update was delivered
+        :param kwargs: project_key and issue_key
+        """
         self.update = update
         self.chat_ids = chat_ids
         self.host = host
@@ -100,12 +106,24 @@ class CommentNotify(BaseNotify):
 
 
 class IssueNotify(BaseNotify):
+    """
+    Processing updates for Jira issues
+    Actions:
+        changing assigne and status
+        attaching or deleting files
+    """
     message_template = {
-        'assignee': 'A new user was assigned at <a href="{link}">{link_name}</a>: from {from} to {to}',
-        'status': 'User {username} updated status from {old_status} to {new_status} at <a href="{link}">{link_name}</a>'
+        'assignee': 'Issue <a href="{link}">{link_name}</a> was assigned to <b>{user}</b>',
+        'status': (
+            'User {username} updated status from <b>{old_status}</b> to <b>{new_status}</b> '
+            'at <a href="{link}">{link_name}</a>'
+        ),
+        'Attachment': 'A file <b>{filename}</b> was {action} by {username} in <a href="{link}">{link_name}</a>'
     }
 
     def notify(self):
+        action = self.update['changelog']['items'][0]['field']
+        additional_data = dict()
         data = {
             'username': self.update['user']['displayName'],
             'link': '{}/browse/'.format(self.host) + self.issue.upper(),
@@ -114,19 +132,37 @@ class IssueNotify(BaseNotify):
 
         if self.update['issue_event_type_name'] == 'issue_assigned':
             additional_data = {
-                'from': self.update['changelog']['items'][0]['fromString'],
-                'to': self.update['changelog']['items'][0]['toString'],
+                'user': self.update['changelog']['items'][0]['toString'],
             }
-            data.update(additional_data)
+
         elif self.update['issue_event_type_name'] == 'issue_generic':
             additional_data = {
                 'old_status': self.update['changelog']['items'][0]['fromString'],
                 'new_status': self.update['changelog']['items'][0]['toString'],
             }
-            data.update(additional_data)
 
+        elif self.update['issue_event_type_name'] == 'issue_updated' and action == 'Attachment':
+            filename = self.update['changelog']['items'][0]['toString']
+            if filename:
+                additional_data = {
+                    'filename': filename,
+                    'action': 'attached',
+                }
+            else:
+                additional_data = {
+                    'filename': self.update['changelog']['items'][0]['fromString'],
+                    'action': 'deleted',
+                }
+
+        elif self.update['issue_event_type_name'] == 'issue_updated' and action == 'assignee':
+            username = self.update['changelog']['items'][0]['toString']
+            additional_data = {
+                'user': username if username else 'Unassigned',
+            }
+
+        data.update(additional_data)
         try:
-            msg = self.message_template[self.update['changelog']['items'][0]['field']].format(**data)
+            msg = self.message_template[action].format(**data)
         except KeyError as e:
             logger.error("Issue parser can't send a message: {}".format(e))
         else:
