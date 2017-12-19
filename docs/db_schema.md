@@ -110,3 +110,32 @@
   "page_count": 2
 }
 ```
+
+### webhooks collection
+```json
+{
+  "_id": ObjectId("5a326c6ea47e652df39e378a"),
+  "webhook_id": "886c5e1b-f5a1-4a39-887f-98fe156a8f46",
+  "host_url": "https://jira.test.redwerk.com"
+}
+```
+
+### subscriptions collection
+```json
+{
+  "_id": ObjectId("5a37b589a47e65231ebd1ec6"),
+  "sub_id": "208810129:web",
+  "user_id": ObjectId("5a29375ca47e655a9c9aa1f5"),
+  "webhook_id": ObjectId("5a326c6ea47e652df39e378a"),
+  "topic": "project",
+  "name": "web"
+},
+{
+  "_id": ObjectId("5a3936cfa47e654eb2e6e094"),
+  "sub_id": "208810129:jtb-99",
+  "user_id": ObjectId("5a29375ca47e655a9c9aa1f5"),
+  "webhook_id": ObjectId("5a326c6ea47e652df39e378a"),
+  "topic": "issue",
+  "name": "jtb-99"
+}
+```

@@ -109,19 +109,25 @@ class IssueNotify(BaseNotify):
     """
     Processing updates for Jira issues
     Actions:
-        changing assigne and status
+        changing assigne, status, description and summary
         attaching or deleting files
     """
+    supported_actions = ('issue_assigned', 'issue_generic', 'issue_updated',)
     message_template = {
         'assignee': 'Issue <a href="{link}">{link_name}</a> was assigned to <b>{user}</b>',
         'status': (
             'User {username} updated status from <b>{old_status}</b> to <b>{new_status}</b> '
             'at <a href="{link}">{link_name}</a>'
         ),
-        'Attachment': 'A file <b>{filename}</b> was {action} by {username} in <a href="{link}">{link_name}</a>'
+        'Attachment': 'A file <b>{filename}</b> was {action} by {username} in <a href="{link}">{link_name}</a>',
+        'description': 'Description was updated by <b>{username}</b> at <a href="{link}">{link_name}</a>',
+        'summary': 'Summary was updated by <b>{username}</b> at <a href="{link}">{link_name}</a>',
     }
 
     def notify(self):
+        if self.update['issue_event_type_name'] not in self.supported_actions:
+            return
+
         action = self.update['changelog']['items'][0]['field']
         additional_data = dict()
         data = {
