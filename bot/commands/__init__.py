@@ -1,11 +1,29 @@
-from .auth import BasicLoginCommand, DisconnectCommand, DisconnectMenuCommand, OAuthLoginCommand
+from .auth import (
+    BasicLoginCommand,
+    DisconnectCommand,
+    DisconnectMenuCommand,
+    OAuthLoginCommand)
+
+from .info import HelpCommand, StartCommand
+
 from .feedback import FeedbackMessageCommandFactory
+
 from .filter import FilterDispatcherCommand, FilterIssuesCommand
-from .issue import (ContentPaginatorCommand, ListStatusIssuesCommand, ListUnresolvedIssuesCommand,
-                    ProjectStatusIssuesCommand, UserStatusIssuesCommand)
+
+from .issue import (
+    ContentPaginatorCommand,
+    ListStatusIssuesCommand,
+    ListUnresolvedIssuesCommand,
+    ProjectStatusIssuesCommand,
+    UserStatusIssuesCommand)
+
 from .tracking import TimeTrackingDispatcher
 
+from .schedule import ScheduleCommand, ScheduleCommandList, ScheduleCommandDelete
+
 __all__ = (
+    "HelpCommand",
+    "StartCommand",
     "ListUnresolvedIssuesCommand",
     "ListStatusIssuesCommand",
     "UserStatusIssuesCommand",
@@ -19,4 +37,7 @@ __all__ = (
     "FeedbackMessageCommandFactory",
     "FilterDispatcherCommand",
     "FilterIssuesCommand",
+    "ScheduleCommand",
+    "ScheduleCommandList",
+    "ScheduleCommandDelete"
 )

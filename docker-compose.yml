@@ -3,10 +3,11 @@ services:
   telegram-bot:
     build: .
     volumes:
-     - .:/code
+        - .:/code
     depends_on:
-    - mongo
+        - mongo
   mongo:
     image: "mongo:latest"
+    command: mongod
     volumes:
-    - /home/$USER/data:/data/db
+        - './tmp/data:/data/mongo'

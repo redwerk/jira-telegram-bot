@@ -1,8 +1,9 @@
 import pendulum
 import pytest
 
-from common import utils
-from common.exceptions import DateTimeValidationError
+from bot.paginations import split_by_pages
+from bot.exceptions import DateTimeValidationError
+from lib import utils
 
 
 def test_password_encryption_decryption():
@@ -19,7 +20,7 @@ def test_split_by_pages():
         (20, 10, [i for i in range(200)])  # 200 items on 20 pages, 10 items at last page
     )
     for pages, n_items_at_last_page, _items in items:
-        splitted_issue = utils.split_by_pages(_items, 10)
+        splitted_issue = split_by_pages(_items, 10)
         assert len(splitted_issue) == pages
         assert len(splitted_issue[-1]) == n_items_at_last_page
 
