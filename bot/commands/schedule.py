@@ -26,7 +26,6 @@ class ScheduleCommand(AbstractCommand):
 
     @login_required
     def handler(self, bot, update, *args, **kwargs):
-        import pdb; pdb.set_trace()
         ScheduleCommand.validate_context(kwargs["args"])
 
         cmd_name = " ".join(kwargs["args"])
