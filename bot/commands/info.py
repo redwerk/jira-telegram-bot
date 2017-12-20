@@ -14,6 +14,7 @@ class HelpCommand(AbstractCommand):
         '/filter - Shows issues by favourite filters',
         '/time - Shows spented time of issue, user or project',
         '/schedule - create new schedule command',
+        '/unschedule - remove command from schedule list',
         '/connect jira.yourcompany.com username password - Login into host using user/pass',
         '/oauth jira.yourcompany.com - Login into host using OAuth',
         '/disconnect - Deletes user credentials from DB',
