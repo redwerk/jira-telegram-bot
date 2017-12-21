@@ -169,12 +169,14 @@ class ListStatusIssuesCommand(AbstractCommand):
 
         # because `options` comes as a split string in a list
         # it is necessary to combine the status in a single line
-        target, name, *splited_status = options
+        try:
+            target, name, *splited_status = options
+        except ValueError:
+            return self.app.send(bot, update, text=self.description)
         options = [target, name, ' '.join(splited_status)]
-
         params = dict(zip_longest(parameters_names, options))
 
-        if not params['target'] or params['target'] not in self.targets:
+        if params.get('target') not in self.targets:
             return self.app.send(bot, update, text=self.description)
 
         if params['status']:
