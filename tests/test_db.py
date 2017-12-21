@@ -23,7 +23,7 @@ class TestMongoBackend:
         cls.db = MongoBackend(db_name=cls.test_db_name)
 
         # creates a collection and index (TTL with expire after 5 seconds)
-        test_client = cls.db._get_connect()
+        test_client = cls.db.conn
         cache_name = config('DB_CACHE_COLLECTION')
         test_client.create_collection(cache_name)
         test_client[cache_name].create_index('createdAt', expireAfterSeconds=5, background=True)

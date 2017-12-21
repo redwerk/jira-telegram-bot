@@ -5,6 +5,7 @@ from decouple import config
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackQueryHandler, CommandHandler
 
+from bot.helpers import get_query_scope
 from lib import utils
 
 from bot.exceptions import BotAuthError
@@ -45,7 +46,7 @@ class DisconnectCommand(AbstractCommand):
 
     def handler(self, bot, update, *args, **kwargs):
         """Deletes user credentials from DB"""
-        scope = self.app.get_query_scope(update)
+        scope = get_query_scope(update)
         answer = scope['data'].replace('disconnect:', '')
 
         if answer == DisconnectMenuCommand.positive_answer:
@@ -105,7 +106,7 @@ class OAuthLoginCommand(AbstractCommand):
         domain_name = auth_options[0]
         user_data = self.app.db.get_user_data(chat_id)
         try:
-            auth = self.app.get_and_check_cred(chat_id)
+            auth = self.app.authorization(chat_id)
         except BotAuthError:
             # ignore authorization check
             pass
@@ -222,7 +223,7 @@ class BasicLoginCommand(AbstractCommand):
 
         user_data = self.app.db.get_user_data(chat_id)
         try:
-            auth = self.app.get_and_check_cred(chat_id)
+            auth = self.app.authorization(chat_id)
         except BotAuthError:
             # ignore authorization check
             pass

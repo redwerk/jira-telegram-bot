@@ -44,7 +44,7 @@ class StartCommand(AbstractCommand):
         message = self.message.format(first_name)
 
         telegram_id = update.message.from_user.id
-        user_exists = self.db.is_user_exists(telegram_id)
+        user_exists = self.app.db.is_user_exists(telegram_id)
 
         if not user_exists:
             data = {
@@ -58,7 +58,7 @@ class StartCommand(AbstractCommand):
                 },
             }
 
-            transaction_status = self.db.create_user(data)
+            transaction_status = self.app.db.create_user(data)
             if not transaction_status:
                 logging.exception(
                     'Error while creating a new user via '

@@ -29,8 +29,26 @@ def login_required(func):
             )
             return
 
-        auth = instance.app.get_and_check_cred(telegram_id)
+        auth = instance.app.authorization(telegram_id)
         kwargs.update({'auth_data': auth})
         func(*args, **kwargs)
 
     return wrapper
+
+
+def get_query_scope(update):
+    """
+    Gets scope data for current message
+    TODO: make refactoring in the future
+    """
+    telegram_id = update.callback_query.from_user.id
+    query = update.callback_query
+    chat_id = query.message.chat_id
+    message_id = query.message.message_id
+    data = query.data
+    return dict(
+        telegram_id=telegram_id,
+        chat_id=chat_id,
+        message_id=message_id,
+        data=data
+    )
