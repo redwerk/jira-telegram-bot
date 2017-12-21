@@ -109,7 +109,7 @@ class JiraBackend:
         """Checking the existence of the user on the Jira host"""
         jira_conn = kwargs.get('jira_conn')
         try:
-            jira_conn._session.get('{0}/rest/api/2/user?username={1}'.format(host, username))
+            jira_conn._session.get(f'{host}/rest/api/2/user?username={username}')
         except jira.JIRAError as e:
             raise JiraReceivingDataError(e.text)
 
@@ -119,7 +119,7 @@ class JiraBackend:
         jira_conn = kwargs.get('jira_conn')
 
         try:
-            jira_conn._session.get('{0}/rest/api/2/project/{1}'.format(host, project.upper()))
+            jira_conn._session.get(f'{host}/rest/api/2/project/{project.upper()}')
         except jira.JIRAError as e:
             raise JiraReceivingDataError(e.text)
 
@@ -129,7 +129,17 @@ class JiraBackend:
         jira_conn = kwargs.get('jira_conn')
 
         try:
-            jira_conn._session.get('{0}/rest/api/2/issue/{1}'.format(host, issue))
+            jira_conn._session.get(f'{host}/rest/api/2/issue/{issue}')
+        except jira.JIRAError as e:
+            raise JiraReceivingDataError(e.text)
+
+    @jira_connect
+    def is_status_exists(self, host, status, *args, **kwargs):
+        """Checking the existence of the status on the Jira host"""
+        jira_conn = kwargs.get('jira_conn')
+
+        try:
+            jira_conn._session.get(f'{host}/rest/api/2/status/{status}')
         except jira.JIRAError as e:
             raise JiraReceivingDataError(e.text)
 
