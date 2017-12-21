@@ -1,7 +1,7 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackQueryHandler, CommandHandler
 
-from bot.decorators import login_required
+from bot.helpers import login_required, get_query_scope
 from bot.exceptions import ContextValidationError
 from bot.inlinemenu import build_menu
 
@@ -54,7 +54,7 @@ class FilterIssuesCommand(AbstractCommand):
         auth_data = kwargs.get('auth_data')
 
         try:
-            scope = self.app.get_query_scope(update)
+            scope = get_query_scope(update)
         except AttributeError:
             telegram_id = update.message.chat_id
             filter_name = kwargs.get('filter_name')

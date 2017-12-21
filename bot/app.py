@@ -77,25 +77,7 @@ class JTBApp:
     def commands(self):
         return self.__commands
 
-    @staticmethod
-    def get_query_scope(update):
-        """
-        Gets scope data for current message
-        TODO: make refactoring in the future
-        """
-        telegram_id = update.callback_query.from_user.id
-        query = update.callback_query
-        chat_id = query.message.chat_id
-        message_id = query.message.message_id
-        data = query.data
-        return dict(
-            telegram_id=telegram_id,
-            chat_id=chat_id,
-            message_id=message_id,
-            data=data
-        )
-
-    def get_and_check_cred(self, telegram_id):
+    def authorization(self, telegram_id):
         """
         Gets the user data and tries to log in according to the specified authorization method.
         Output of messages according to missing information

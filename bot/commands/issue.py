@@ -3,7 +3,7 @@ from itertools import zip_longest
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackQueryHandler, CommandHandler
 
-from bot.decorators import login_required
+from bot.helpers import login_required, get_query_scope
 from bot.exceptions import ContextValidationError
 from bot.inlinemenu import build_menu
 
@@ -19,7 +19,7 @@ class ContentPaginatorCommand(AbstractCommand):
         a new keyboard and modifies the last message (the one under which
         the key with the page number was pressed)
         """
-        scope = self.app.get_query_scope(update)
+        scope = get_query_scope(update)
         key, page = self.get_issue_data(scope['data'])
         user_data = self.app.db.get_cached_content(key=key)
 
@@ -164,15 +164,17 @@ class ListStatusIssuesCommand(AbstractCommand):
         parameters_names = ('target', 'name', 'status')
         options = kwargs.get('args')
 
+        if not options:
+            return self.app.send(bot, update, text=self.description)
+
         # because `options` comes as a split string in a list
         # it is necessary to combine the status in a single line
         target, name, *splited_status = options
         options = [target, name, ' '.join(splited_status)]
 
         params = dict(zip_longest(parameters_names, options))
-        optional_condition = params['target'] != 'my' and not params['name']
 
-        if not params['target'] or params['target'] not in self.targets or optional_condition:
+        if not params['target'] or params['target'] not in self.targets:
             return self.app.send(bot, update, text=self.description)
 
         if params['status']:
@@ -288,7 +290,7 @@ class UserStatusIssuesCommand(AbstractCommand):
         auth_data = kwargs.get('auth_data')
 
         try:
-            scope = self.app.get_query_scope(update)
+            scope = get_query_scope(update)
         except AttributeError:
             telegram_id = update.message.chat_id
             username = kwargs.get('username')
@@ -315,7 +317,7 @@ class ProjectStatusIssuesCommand(AbstractCommand):
         auth_data = kwargs.get('auth_data')
 
         try:
-            scope = self.app.get_query_scope(update)
+            scope = get_query_scope(update)
         except AttributeError:
             telegram_id = update.message.chat_id
             project = kwargs.get('project')
