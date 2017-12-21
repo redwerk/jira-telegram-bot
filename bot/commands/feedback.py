@@ -3,8 +3,7 @@ from telegram import ParseMode
 from telegram.ext import CommandHandler
 
 from bot.commands.base import AbstractCommand, AbstractCommandFactory
-from common.utils import (generate_email_message, get_email_address,
-                          get_text_without_email, send_email)
+from lib.utils import generate_email_message, get_email_address, get_text_without_email, send_email
 
 
 class FeedbackMessageCommand(AbstractCommand):
@@ -42,7 +41,7 @@ class FeedbackMessageCommand(AbstractCommand):
 class FeedbackMessageCommandFactory(AbstractCommandFactory):
 
     def command(self, bot, update, *args, **kwargs):
-        FeedbackMessageCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
+        FeedbackMessageCommand(self.app).handler(bot, update, *args, **kwargs)
 
     def command_callback(self):
         return CommandHandler('feedback', self.command, pass_args=True)

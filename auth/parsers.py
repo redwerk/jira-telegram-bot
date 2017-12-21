@@ -4,7 +4,7 @@ from abc import abstractmethod
 import requests
 from decouple import config
 
-from common.utils import calculate_tracking_time
+from lib.utils import calculate_tracking_time
 
 logger = logging.getLogger()
 

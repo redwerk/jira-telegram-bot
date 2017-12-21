@@ -4,33 +4,37 @@ import pendulum
 from pendulum.parsing.exceptions import ParserError
 from telegram.ext import CommandHandler
 
-from common import utils
+from bot.decorators import login_required
+from bot.exceptions import ContextValidationError
+from lib import utils
 
-from .base import AbstractCommand, SendMessageFactory
+from .base import AbstractCommand
 
 
 class TimeTrackingDispatcher(AbstractCommand):
     """
     /time <target> <name> [start_date] [end_date] - Shows spended time for users, issues and projects
     """
+    command_name = "/time"
     targets = ('user', 'issue', 'project')
+    description = (
+        "<b>Command description:</b>\n"
+        "/time issue <i>issue-key</i> - returns a report of spend time of issue\n"
+        "/time user <i>username</i> - returns a report of spend time of user\n"
+        "/time project <i>KEY</i> - returns a report of spend time of project\n\n"
+        "<i>If the date range is not specified, the command is executed for today</i>\n"
+        "<i>If the start date is specified - the command will be executed inclusively from the "
+        "start date to today's date</i>"
+    )
 
-    @utils.login_required
+    @login_required
     def handler(self, bot, update, *args, **kwargs):
         options = kwargs.get('args')
         parameters_names = ('target', 'name', 'start_date', 'end_date')
         current_date = pendulum.now()
-        description = "<b>Command description:</b>\n" \
-                      "/time issue <i>issue-key</i> - returns a report of spend time of issue\n" \
-                      "/time user <i>username</i> - returns a report of spend time of user\n" \
-                      "/time project <i>KEY</i> - returns a report of spend time of project\n\n" \
-                      "<i>If the date range is not specified, the command is executed for today</i>\n" \
-                      "<i>If the start date is specified - the command will be executed inclusively from the " \
-                      "start date to today's date</i>"
-
         params = dict(zip_longest(parameters_names, options))
         if params['target'] not in self.targets or not params['name']:
-                return SendMessageFactory.send(bot, update, text=description, simple_message=True)
+                return self.app.send(bot, update, text=self.description)
 
         if not params['start_date'] and not params['end_date']:
             # if has not date range - command execute for today
@@ -42,7 +46,7 @@ class TimeTrackingDispatcher(AbstractCommand):
             try:
                 params['start_date'] = pendulum.parse(params['start_date'])
             except ParserError:
-                return SendMessageFactory.send(bot, update, text='Invalid date format', simple_message=True)
+                return self.app.send(bot, update, text='Invalid date format')
             else:
                 params['end_date'] = current_date._end_of_day()
         elif params['start_date'] and params['end_date']:
@@ -50,21 +54,45 @@ class TimeTrackingDispatcher(AbstractCommand):
                 params['start_date'] = pendulum.parse(params['start_date'])
                 params['end_date'] = pendulum.parse(params['end_date'])
             except ParserError:
-                return SendMessageFactory.send(bot, update, text='Invalid date format', simple_message=True)
+                return self.app.send(bot, update, text='Invalid date format')
 
         kwargs.update(params)
         if params['target'] == 'issue':
             kwargs.update({'issue': params['name']})
-            return IssueTimeTrackerCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
+            return IssueTimeTrackerCommand(self.app).handler(bot, update, *args, **kwargs)
         elif params['target'] == 'user':
             kwargs.update({'username': params['name']})
-            return UserTimeTrackerCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
+            return UserTimeTrackerCommand(self.app).handler(bot, update, *args, **kwargs)
         elif params['target'] == 'project':
             kwargs.update({'project': params['name']})
-            return ProjectTimeTrackerCommand(self._bot_instance).handler(bot, update, *args, **kwargs)
+            return ProjectTimeTrackerCommand(self.app).handler(bot, update, *args, **kwargs)
 
     def command_callback(self):
         return CommandHandler('time', self.handler, pass_args=True)
+
+    @classmethod
+    def check_command(cls, command_name):
+        # validate command name
+        return command_name == cls.command_name
+
+    @classmethod
+    def validate_context(cls, context):
+        if len(context) < 1:
+            raise ContextValidationError(cls.description)
+
+        target = context.pop(0)
+        # validate command options
+        if target == 'issue':
+            if len(context) < 1:
+                raise ContextValidationError("<i>ISSUE KEY</i> is a required argument.")
+        elif target == 'user':
+            if len(context) < 1:
+                raise ContextValidationError("<i>USERNAME</i> is a required argument.")
+        elif target == 'project':
+            if len(context) < 1:
+                raise ContextValidationError("<i>KEY</i> is a required argument.")
+        else:
+            raise ContextValidationError(f"Argument {target} not allowed.")
 
 
 class IssueTimeTrackerCommand(AbstractCommand):
@@ -78,8 +106,8 @@ class IssueTimeTrackerCommand(AbstractCommand):
         end_date = kwargs.get('end_date')
 
         utils.validate_date_range(start_date, end_date)
-        self._bot_instance.jira.is_issue_exists(host=auth_data.jira_host, issue=issue, auth_data=auth_data)
-        issue_worklog = self._bot_instance.jira.get_issue_worklogs(issue, start_date, end_date, auth_data=auth_data)
+        self.app.jira.is_issue_exists(host=auth_data.jira_host, issue=issue, auth_data=auth_data)
+        issue_worklog = self.app.jira.get_issue_worklogs(issue, start_date, end_date, auth_data=auth_data)
 
         seconds = sum(worklog.get('time_spent_seconds', 0) for worklog in issue_worklog)
         spended_time = utils.calculate_tracking_time(seconds)
@@ -87,7 +115,7 @@ class IssueTimeTrackerCommand(AbstractCommand):
         template = f'Time, spended on issue <b>{issue}</b> from from <b>{start_date.to_date_string()}</b> ' \
                    f'to <b>{end_date.to_date_string()}</b>: '
         text = template + str(spended_time) + ' h'
-        return SendMessageFactory.send(bot, update, text=text, simple_message=True)
+        return self.app.send(bot, update, text=text)
 
 
 class UserTimeTrackerCommand(AbstractCommand):
@@ -102,13 +130,13 @@ class UserTimeTrackerCommand(AbstractCommand):
         end_date = kwargs.get('end_date')
 
         # check if the user exists on Jira host
-        self._bot_instance.jira.is_user_on_host(host=auth_data.jira_host, username=username, auth_data=auth_data)
+        self.app.jira.is_user_on_host(host=auth_data.jira_host, username=username, auth_data=auth_data)
         utils.validate_date_range(start_date, end_date)
 
-        all_worklogs = self._bot_instance.jira.get_all_user_worklogs(
+        all_worklogs = self.app.jira.get_all_user_worklogs(
             username, start_date, end_date, auth_data=auth_data
         )
-        all_user_logs = self._bot_instance.jira.define_user_worklogs(
+        all_user_logs = self.app.jira.define_user_worklogs(
             all_worklogs, username, name_key='author_name'
         )
         seconds = sum(worklog.get('time_spent_seconds', 0) for worklog in all_user_logs)
@@ -117,7 +145,7 @@ class UserTimeTrackerCommand(AbstractCommand):
         template = f'User <b>{username}</b> from from <b>{start_date.to_date_string()}</b> ' \
                    f'to <b>{end_date.to_date_string()}</b> spent: '
         text = template + str(spended_time) + ' h'
-        return SendMessageFactory.send(bot, update, text=text, simple_message=True)
+        return self.app.send(bot, update, text=text)
 
 
 class ProjectTimeTrackerCommand(AbstractCommand):
@@ -132,10 +160,10 @@ class ProjectTimeTrackerCommand(AbstractCommand):
         end_date = kwargs.get('end_date')
 
         # check if the project exists on Jira host
-        self._bot_instance.jira.is_project_exists(host=auth_data.jira_host, project=project, auth_data=auth_data)
+        self.app.jira.is_project_exists(host=auth_data.jira_host, project=project, auth_data=auth_data)
         utils.validate_date_range(start_date, end_date)
 
-        all_worklogs = self._bot_instance.jira.get_project_worklogs(
+        all_worklogs = self.app.jira.get_project_worklogs(
             project, start_date, end_date, auth_data=auth_data
         )
 
@@ -145,4 +173,4 @@ class ProjectTimeTrackerCommand(AbstractCommand):
         template = f'Spended time on project <b>{project}</b> ' \
                    f'from <b>{start_date.to_date_string()}</b> to <b>{end_date.to_date_string()}</b>: '
         text = template + str(spended_time) + ' h'
-        return SendMessageFactory.send(bot, update, text=text, simple_message=True)
+        return self.app.send(bot, update, text=text)

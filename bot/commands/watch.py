@@ -4,9 +4,11 @@ from uuid import uuid4
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackQueryHandler, CommandHandler
 
-from common import utils
+from lib import utils
+from bot.decorators import login_required
 
-from .base import AbstractCommand, SendMessageFactory
+from .base import AbstractCommand
+from bot.inlinemenu import build_menu
 
 
 class WatchDispatcherCommand(AbstractCommand):
@@ -19,7 +21,7 @@ class WatchDispatcherCommand(AbstractCommand):
     positive_answer = 'Yes'
     negative_answer = 'No'
 
-    @utils.login_required
+    @login_required
     def handler(self, bot, update, *args, **kwargs):
         auth_data = kwargs.get('auth_data')
         options = kwargs.get('args')
@@ -31,31 +33,31 @@ class WatchDispatcherCommand(AbstractCommand):
         params = dict(zip_longest(parameters_names, options))
 
         if params['target'] not in self.targets or not params['name']:
-            return SendMessageFactory.send(bot, update, text=description, simple_message=True)
+            return self.app.send(bot, update, text=description)
 
         if params['target'] == 'project':
-            self._bot_instance.jira.is_project_exists(
+            self.app.jira.is_project_exists(
                 host=auth_data.jira_host, project=params['name'], auth_data=auth_data
             )
         elif params['target'] == 'issue':
-            self._bot_instance.jira.is_issue_exists(
+            self.app.jira.is_issue_exists(
                 host=auth_data.jira_host, issue=params['name'], auth_data=auth_data
             )
 
-        host_webhook = self._bot_instance.db.search_webhook(auth_data.jira_host)
+        host_webhook = self.app.db.search_webhook(auth_data.jira_host)
         if not host_webhook:
             confirmation_buttons = [
                 InlineKeyboardButton(text='No', callback_data='create_webhook:{}'.format(self.negative_answer)),
                 InlineKeyboardButton(text='Yes', callback_data='create_webhook:{}'.format(self.positive_answer)),
             ]
             buttons = InlineKeyboardMarkup(
-                utils.build_menu(confirmation_buttons, n_cols=2)
+                build_menu(confirmation_buttons, n_cols=2)
             )
             text = 'Have no existing webhook for {}. Do you want to create one?\n' \
                    '<b>NOTE:</b> You must have an Administrator permissions for your Jira'.format(auth_data.jira_host)
-            return SendMessageFactory.send(bot, update, text=text, buttons=buttons, simple_message=True)
+            return self.app.send(bot, update, text=text, buttons=buttons, simple_message=True)
 
-        CreateSubscribeCommand(self._bot_instance).handler(
+        CreateSubscribeCommand(self.app).handler(
             bot, update, topic=params['target'], name=params['name'], webhook=host_webhook
         )
 
@@ -66,22 +68,22 @@ class WatchDispatcherCommand(AbstractCommand):
 class CreateWebhookCommand(AbstractCommand):
     """Creates a webhook for JIRA host"""
 
-    @utils.login_required
+    @login_required
     def handler(self, bot, update, *args, **kwargs):
         auth_data = kwargs.get('auth_data')
         answer = update.callback_query.data.replace('create_webhook:', '')
 
         if answer == WatchDispatcherCommand.negative_answer:
-            return SendMessageFactory.send(
+            return self.app.send(
                 bot, update, text='Creating a new webhook was declined', simple_message=True
             )
 
         webhook_id = str(uuid4())
-        status = self._bot_instance.db.create_webhook(webhook_id, auth_data.jira_host)
+        status = self.app.db.create_webhook(webhook_id, auth_data.jira_host)
 
         if status:
             text = utils.generate_webhook_url(webhook_id)
-            return SendMessageFactory.send(bot, update, text=text, simple_message=True)
+            return self.app.send(bot, update, text=text, simple_message=True)
 
     def command_callback(self):
         return CallbackQueryHandler(self.handler, pattern=r'^create_webhook:')
@@ -96,11 +98,11 @@ class CreateSubscribeCommand(AbstractCommand):
         name = kwargs.get('name').lower()
         telegram_id = update.message.chat_id
 
-        if self._bot_instance.db.get_subscription('{}:{}'.format(telegram_id, name)):
+        if self.app.db.get_subscription('{}:{}'.format(telegram_id, name)):
             text = 'You already subscribed on this updates'
-            return SendMessageFactory.send(bot, update, text=text, simple_message=True)
+            return self.app.send(bot, update, text=text, simple_message=True)
 
-        user = self._bot_instance.db.get_user_data(update.message.chat_id)
+        user = self.app.db.get_user_data(update.message.chat_id)
 
         data = {
             'sub_id': '{}:{}'.format(telegram_id, name),
@@ -110,13 +112,13 @@ class CreateSubscribeCommand(AbstractCommand):
             'name': name,
         }
 
-        status = self._bot_instance.db.create_subscription(data)
+        status = self.app.db.create_subscription(data)
         if status:
             text = 'Now you will be notified about updates from {}'.format(name.upper())
-            return SendMessageFactory.send(bot, update, text=text, simple_message=True)
+            return self.app.send(bot, update, text=text, simple_message=True)
 
         text = "We can't subscribe you on updates at this moment"
-        SendMessageFactory.send(bot, update, text=text, simple_message=True)
+        self.app.send(bot, update, text=text, simple_message=True)
 
 
 class UnwatchDispatcherCommand(AbstractCommand):
@@ -128,7 +130,7 @@ class UnwatchDispatcherCommand(AbstractCommand):
     """
     targets = ('project', 'issue')
 
-    @utils.login_required
+    @login_required
     def handler(self, bot, update, *args, **kwargs):
         auth_data = kwargs.get('auth_data')
         options = kwargs.get('args')
@@ -150,25 +152,25 @@ class UnwatchDispatcherCommand(AbstractCommand):
                 ),
             ]
             buttons = InlineKeyboardMarkup(
-                utils.build_menu(confirmation_buttons, n_cols=2)
+                build_menu(confirmation_buttons, n_cols=2)
             )
             text = 'Do you want to unsubscribe from all updates?'
-            return SendMessageFactory.send(bot, update, text=text, buttons=buttons, simple_message=True)
+            return self.app.send(bot, update, text=text, buttons=buttons, simple_message=True)
 
         if params['target'] not in self.targets or not params['name']:
-            return SendMessageFactory.send(bot, update, text=''.join(description), simple_message=True)
+            return self.app.send(bot, update, text=''.join(description), simple_message=True)
 
         if params['target'] == 'project':
-            self._bot_instance.jira.is_project_exists(
+            self.app.jira.is_project_exists(
                 host=auth_data.jira_host, project=params['name'], auth_data=auth_data
             )
         elif params['target'] == 'issue':
-            self._bot_instance.jira.is_issue_exists(
+            self.app.jira.is_issue_exists(
                 host=auth_data.jira_host, issue=params['name'], auth_data=auth_data
             )
 
         kwargs.update({'topic': params['target'], 'name': params['name']})
-        UnsubscribeOneItemCommand(self._bot_instance).handler(bot, update, **kwargs)
+        UnsubscribeOneItemCommand(self.app).handler(bot, update, **kwargs)
 
     def command_callback(self):
         return CommandHandler('unwatch', self.handler, pass_args=True)
@@ -181,19 +183,19 @@ class UnsubscribeAllUpdatesCommand(AbstractCommand):
         answer = update.callback_query.data.replace('unsubscribe_all:', '')
 
         if answer == WatchDispatcherCommand.negative_answer:
-            return SendMessageFactory.send(
+            return self.app.send(
                 bot, update, text='Unsubscribing from all updates was declined', simple_message=True
             )
 
-        user = self._bot_instance.db.get_user_data(update.callback_query.message.chat_id)
-        status = self._bot_instance.db.delete_all_subscription(user.get('_id'))
+        user = self.app.db.get_user_data(update.callback_query.message.chat_id)
+        status = self.app.db.delete_all_subscription(user.get('_id'))
 
         if status:
             text = 'You were unsubscribed from all updates'
-            return SendMessageFactory.send(bot, update, text=text, simple_message=True)
+            return self.app.send(bot, update, text=text, simple_message=True)
 
         text = "Can't unsubscribe you from all updates at this moment, please try again later"
-        return SendMessageFactory.send(bot, update, text=text, simple_message=True)
+        return self.app.send(bot, update, text=text, simple_message=True)
 
     def command_callback(self):
         return CallbackQueryHandler(self.handler, pattern=r'^unsubscribe_all:')
@@ -207,14 +209,14 @@ class UnsubscribeOneItemCommand(AbstractCommand):
         name = kwargs.get('name')
         telegram_id = update.message.chat_id
 
-        if not self._bot_instance.db.get_subscription('{}:{}'.format(telegram_id, name.lower())):
+        if not self.app.db.get_subscription('{}:{}'.format(telegram_id, name.lower())):
             text = 'You were not subscribed to {} {} updates'.format(name.upper(), topic.lower())
-            return SendMessageFactory.send(bot, update, text=text, simple_message=True)
+            return self.app.send(bot, update, text=text, simple_message=True)
 
-        status = self._bot_instance.db.delete_subscription('{}:{}'.format(telegram_id, name.lower()))
+        status = self.app.db.delete_subscription('{}:{}'.format(telegram_id, name.lower()))
         if status:
             text = 'You were unsubscribed from {} {} updates'.format(name.upper(), topic.lower())
-            return SendMessageFactory.send(bot, update, text=text, simple_message=True)
+            return self.app.send(bot, update, text=text, simple_message=True)
 
         text = "Can't unsubscribe you from {} {} updates, , please try again later".format(name.upper(), topic.lower())
-        return SendMessageFactory.send(bot, update, text=text, simple_message=True)
+        return self.app.send(bot, update, text=text, simple_message=True)

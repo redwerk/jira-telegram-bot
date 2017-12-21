@@ -11,11 +11,11 @@ import requests
 from decouple import config
 from oauthlib.oauth1 import SIGNATURE_RSA
 
-from common.db import MongoBackend
-from common.utils import read_rsa_key
-from run import SMTPHandlerNumb
+from lib.utils import read_rsa_key
+from lib.db import MongoBackend
+from run import SMTPHandlerNumb  # WTF
 
-from .webhook_parser import WebhookUpdateFactory
+from .parsers import WebhookUpdateFactory
 
 # common settings
 fileConfig('./logging_config.ini')
@@ -185,7 +185,7 @@ class OAuthAuthorizedView(SendToChatMixin, OAuthJiraBaseView):
         except jira.JIRAError as e:
             logging.exception('Status: {}, message: {}'.format(e.status_code, e.text))
         else:
-            username = authed_jira.myself().get('key')
+            username = authed_jira.myself().get('name')
             data = self.get_auth_data(
                 session['host'],
                 username,

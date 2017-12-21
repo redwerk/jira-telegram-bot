@@ -4,10 +4,11 @@ from json.decoder import JSONDecodeError
 
 import jira
 import pendulum
+import pytz
 from jira.resilientsession import ConnectionError
 
-from common.exceptions import (JiraConnectionError, JiraEmptyData,
-                               JiraLoginError, JiraReceivingDataError)
+from bot.exceptions import (JiraConnectionError, JiraEmptyData,
+                            JiraLoginError, JiraReceivingDataError)
 
 OK_STATUS = 200
 
@@ -27,17 +28,11 @@ def jira_connect(func):
             jira_host=auth_data.jira_host,
             credentials=auth_data.credentials,
         )
-
-        kwargs.update(
-            {
-                'jira_conn': jira_conn,
-                'jira_host': auth_data.jira_host,
-            }
-        )
-        data = func(*args, **kwargs)
+        kwargs["jira_conn"] = jira_conn
+        kwargs["jira_host"] = auth_data.jira_host
+        result = func(*args, **kwargs)
         jira_conn.kill_session()
-
-        return data
+        return result
 
     return wrapper
 
@@ -98,10 +93,21 @@ class JiraBackend:
                 return jira_conn
 
     @jira_connect
+    def get_jira_tz(self, *args, **kwargs):
+        """Return user timezone or UTC"""
+        jira_conn = kwargs.get('jira_conn')
+        try:
+            tz = jira_conn.myself().get("timeZone")
+        except Exception as err:
+            logging.exception(str(err))
+            tz = pytz.utc.zone
+
+        return tz
+
+    @jira_connect
     def is_user_on_host(self, host, username, *args, **kwargs):
         """Checking the existence of the user on the Jira host"""
         jira_conn = kwargs.get('jira_conn')
-
         try:
             jira_conn._session.get('{0}/rest/api/2/user?username={1}'.format(host, username))
         except jira.JIRAError as e:

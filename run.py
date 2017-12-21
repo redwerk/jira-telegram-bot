@@ -3,7 +3,7 @@ from logging.config import fileConfig
 
 from decouple import config
 
-import bot
+from bot.app import JTBApp
 
 StreamHandlerNumb = 0
 SMTPHandlerNumb = 1
@@ -14,5 +14,5 @@ logger.handlers[SMTPHandlerNumb].fromaddr = config('LOGGER_EMAIL')
 logger.handlers[SMTPHandlerNumb].toaddrs = [email.strip() for email in config('DEV_EMAILS').split(',')]
 
 if __name__ == '__main__':
-    bot_obj = bot.JiraBot()
-    bot_obj.start()
+    app = JTBApp()
+    app.start()

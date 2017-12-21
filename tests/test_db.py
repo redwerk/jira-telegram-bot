@@ -4,8 +4,9 @@ from uuid import uuid4
 from decouple import config
 from pymongo import MongoClient
 
-from common import utils
-from common.db import MongoBackend
+from bot.paginations import split_by_pages
+from lib import utils
+from lib.db import MongoBackend
 
 
 class TestMongoBackend:
@@ -23,7 +24,7 @@ class TestMongoBackend:
         cls.db = MongoBackend(db_name=cls.test_db_name)
 
         # creates a collection and index (TTL with expire after 5 seconds)
-        test_client = cls.db._get_connect()
+        test_client = cls.db.conn
         cache_name = config('DB_CACHE_COLLECTION')
         test_client.create_collection(cache_name)
         test_client[cache_name].create_index('createdAt', expireAfterSeconds=5, background=True)
@@ -57,7 +58,7 @@ class TestMongoBackend:
 
         # cache data
         cls.item_per_page = 10
-        cls.test_cache_item = utils.split_by_pages(['test_cache{}'.format(i) for i in range(25)], cls.item_per_page)
+        cls.test_cache_item = split_by_pages(['test_cache{}'.format(i) for i in range(25)], cls.item_per_page)
         cls.test_cache_key = 'test_cache:{}'.format(cls.test_user.get('telegram_id'))
         cls.test_cache_title = 'Test cached items'
 
