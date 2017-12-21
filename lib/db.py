@@ -72,7 +72,7 @@ class MongoBackend:
     def conn(self):
         return self._conn
 
-    def _get_collection(self, name: str) -> MongoClient:
+    def _get_collection(self, name):
         """Returns MongoClient object which links to selected collection"""
         return self._conn[self.collection_mapping.get(name)]
 
@@ -217,6 +217,7 @@ class MongoBackend:
         status = collection.remove({'user_id': user_id})
 
         return True if status else False
+
     def get_schedule_commands(self, user_id):
         """Return list of schedules entries.
 

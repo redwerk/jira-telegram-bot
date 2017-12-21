@@ -44,7 +44,7 @@ class JiraBackend:
     issue_data = namedtuple('IssueData', 'key permalink')
 
     @staticmethod
-    def is_jira_app(host: str) -> bool:
+    def is_jira_app(host):
         """Determines the ownership on the Jira"""
         try:
             jira_conn = jira.JIRA(
@@ -412,7 +412,7 @@ class JiraBackend:
         return worklogs
 
     @staticmethod
-    def define_user_worklogs(_worklogs: list, username: str, name_key: str) -> list:
+    def define_user_worklogs(_worklogs, username, name_key):
         """Gets the only selected user worklogs"""
         return [log for log in _worklogs if log.get(name_key) == username]
 
