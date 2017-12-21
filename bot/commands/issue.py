@@ -149,9 +149,11 @@ class ListStatusIssuesCommand(AbstractCommand):
     /liststatus <target> [name] [status] - shows users or projects issues by a selected status
     """
     command_name = "/liststatus"
-    targets = ('user', 'project')
+    targets = ('my', 'user', 'project')
     description = (
         "<b>Command description:</b>\n"
+        "/liststatus my <i>status</i> - returns a list of current "
+        "user's issues and status (status is optional)\n"
         "/liststatus user <i>username</i> <i>status</i> - returns a list of selected "
         "user issues and status (status is optional)\n"
         "/liststatus project <i>key</i> <i>status</i> - returns a list of projects "
@@ -163,33 +165,49 @@ class ListStatusIssuesCommand(AbstractCommand):
         auth_data = kwargs.get('auth_data')
         parameters_names = ('target', 'name', 'status')
         options = kwargs.get('args')
+        params = dict()
 
-        if not options:
+        if not options or options[0] not in self.targets:
             return self.app.send(bot, update, text=self.description)
 
         # because `options` comes as a split string in a list
         # it is necessary to combine the status in a single line
-        try:
-            target, name, *splited_status = options
-        except ValueError:
+        if options[0] == 'my' and len(options) <= 1:
+            params['target'] = options[0]
+        elif options[0] == 'my' and len(options) > 1:
+            target, *status = options
+            params.update({'target': target, 'status': ' '.join(status)})
+        elif options[0] in ('user', 'project') and len(options) == 2:
+            params.update({'target': options[0], 'name': options[1]})
+        elif options[0] in ('user', 'project') and len(options) > 2:
+            try:
+                target, name, *splited_status = options
+            except ValueError:
+                return self.app.send(bot, update, text=self.description)
+            else:
+                options = [target, name, ' '.join(splited_status)]
+                params = dict(zip_longest(parameters_names, options))
+        else:
             return self.app.send(bot, update, text=self.description)
-        options = [target, name, ' '.join(splited_status)]
-        params = dict(zip_longest(parameters_names, options))
 
-        if params.get('target') not in self.targets:
-            return self.app.send(bot, update, text=self.description)
-
-        if params['status']:
+        if params.get('status'):
             self.app.jira.is_status_exists(host=auth_data.jira_host, status=params['status'], auth_data=auth_data)
 
-            if params['target'] == 'user':
+            if params['target'] == 'my':
+                kwargs.update({'username': auth_data.username, 'status': params['status']})
+                return UserStatusIssuesCommand(self.app).handler(bot, update, *args, **kwargs)
+            elif params['target'] == 'user':
                 kwargs.update({'username': params['name'], 'status': params['status']})
                 return UserStatusIssuesCommand(self.app).handler(bot, update, *args, **kwargs)
             elif params['target'] == 'project':
                 kwargs.update({'project': params['name'], 'status': params['status']})
                 return ProjectStatusIssuesCommand(self.app).handler(bot, update, *args, **kwargs)
 
-        if params['target'] == 'user':
+        if params['target'] == 'my':
+            return UserStatusIssuesMenu(self.app).handler(
+                bot, update, username=auth_data.username, *args, **kwargs
+            )
+        elif params['target'] == 'user':
             return UserStatusIssuesMenu(self.app).handler(
                 bot, update, username=params['name'], *args, **kwargs
             )
