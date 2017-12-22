@@ -156,6 +156,11 @@ class MongoBackend:
         return dict()
 
     def create_webhook(self, key, host):
+        """
+        Creates a webhook
+        :param key: uuid4
+        :param host: jira host
+        """
         collection = self._get_collection('webhook')
         status = collection.insert_one(
             {
@@ -167,52 +172,94 @@ class MongoBackend:
         return True if status else False
 
     def update_webhook(self, host, data):
+        """
+        Updates an exists webhook
+        :param host: jira host
+        :param data: new data in dict type
+        """
         collection = self._get_collection('webhook')
         status = collection.update({'host_url': host}, {'$set': data})
 
         return True if status else False
 
     def get_webhook(self, key):
+        """
+        Gets a webhook by is't uuid4
+        :param key: uuid4
+        :return: a webhook in dict type
+        """
         collection = self._get_collection('webhook')
         webhook = collection.find_one({'webhook_id': key})
 
         return webhook if webhook else False
 
     def search_webhook(self, host):
+        """
+        Searches a webhook by jira host
+        :param host: jira host
+        :return: a webhook in dict type
+        """
         collection = self._get_collection('webhook')
         webhook = collection.find_one({'host_url': host})
 
         return webhook if webhook else False
 
     def create_subscription(self, data):
+        """
+        Creates a subscription on project or issue
+        :param data: dict type
+        """
         collection = self._get_collection('subscriptions')
         status = collection.insert_one(data)
 
         return True if status else False
 
     def get_subscription(self, sub_id):
+        """
+        Gets a subscription by sub_id
+        :param sub_id: in general it's a telegram id and name e.g. 283902890:jtb-99
+        :return: a subscription in dict type
+        """
         collection = self._get_collection('subscriptions')
         subscription = collection.find_one({'sub_id': sub_id})
 
         return subscription if subscription else False
 
     def get_webhook_subscriptions(self, webhook_id):
+        """
+        Returns all subscriptions linked to a webhook
+        :param webhook_id: ObjectId of an exists webhook (webhook collection)
+        :return: list of dict subscriptions
+        """
         collection = self._get_collection('subscriptions')
         subs = collection.find({'webhook_id': webhook_id})
         return list(subs) if subs else list()
 
     def get_user_subscriptions(self, user_id):
+        """
+        Returns all subscriptions linked to a user
+        :param user_id: ObjectId of an exists user (user collection)
+        :return: list of dict subscriptions
+        """
         collection = self._get_collection('subscriptions')
         subs = collection.find({'user_id': user_id})
         return list(subs) if subs else list()
 
     def delete_subscription(self, sub_id):
+        """
+        Deletes a one subscription was searched by sub_id
+        :param sub_id: in general it's a telegram id and name e.g. 283902890:jtb-99
+        """
         collection = self._get_collection('subscriptions')
         status = collection.remove({'sub_id': sub_id})
 
         return True if status else False
 
     def delete_all_subscription(self, user_id):
+        """
+        Deletes all subscriptions linked to a user
+        :param user_id: ObjectId of an exists user (user collection)
+        """
         collection = self._get_collection('subscriptions')
         status = collection.remove({'user_id': user_id})
 
