@@ -4,7 +4,7 @@ from uuid import uuid4
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackQueryHandler, CommandHandler
 
-from bot.decorators import login_required
+from bot.helpers import login_required
 from bot.inlinemenu import build_menu
 from lib import utils
 
@@ -70,6 +70,10 @@ class WatchDispatcherCommand(AbstractCommand):
 
 class CreateWebhookCommand(AbstractCommand):
     """Creates a webhook for JIRA host"""
+    message_template = (
+        'Follow the <a href="http://telegra.ph/Creating-the-Webhook-for-JiraBot-in-Jira-12-22">'
+        'instructions</a> and use the link to create a WebHook in your Jira\n\n'
+        'Your link: {}')
 
     @login_required
     def handler(self, bot, update, *args, **kwargs):
@@ -83,7 +87,7 @@ class CreateWebhookCommand(AbstractCommand):
         status = self.app.db.create_webhook(webhook_id, auth_data.jira_host)
 
         if status:
-            text = utils.generate_webhook_url(webhook_id)
+            text = self.message_template.format(utils.generate_webhook_url(webhook_id))
             return self.app.send(bot, update, text=text)
 
     def command_callback(self):
@@ -126,7 +130,6 @@ class UnwatchDispatcherCommand(AbstractCommand):
     """
     /unwatch project <name> - Unsubscribe from a selected project updates
     /unwatch issue <name> - Unsubscribe from a selected issue updates
-    /unwatch list - Return list of all subscriptions TODO
     /unwatch - Unsubscribe from all updates
     """
     targets = ('project', 'issue')
