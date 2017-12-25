@@ -54,11 +54,11 @@ class MongoBackend:
         db_name (str): database name
     """
     collection_mapping = {
-        'user': config('DB_USER_COLLECTION'),
-        'host': config('DB_HOST_COLLECTION'),
-        'cache': config('DB_CACHE_COLLECTION'),
-        'webhook': config('DB_WEBHOOK_COLLECTION'),
-        'subscriptions': config('DB_SUBSCRIPTIONS_COLLECTION'),
+        'user': config('DB_USER_COLLECTION', default='jira_users'),
+        'host': config('DB_HOST_COLLECTION', default='jira_hosts'),
+        'cache': config('DB_CACHE_COLLECTION', default='cache'),
+        'webhook': config('DB_WEBHOOK_COLLECTION', default='webhooks'),
+        'subscriptions': config('DB_SUBSCRIPTIONS_COLLECTION', default='subscriptions'),
         'schedule': config("SCHEDULE_COLLECTION", "schedules"),
     }
 

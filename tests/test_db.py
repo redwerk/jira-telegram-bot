@@ -25,7 +25,7 @@ class TestMongoBackend:
 
         # creates a collection and index (TTL with expire after 5 seconds)
         test_client = cls.db.conn
-        cache_name = config('DB_CACHE_COLLECTION')
+        cache_name = config('DB_CACHE_COLLECTION', default='cache')
         test_client.create_collection(cache_name)
         test_client[cache_name].create_index('createdAt', expireAfterSeconds=5, background=True)
 
