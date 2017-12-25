@@ -9,8 +9,5 @@ services:
   mongo:
     image: "mongo:latest"
     command: mongod
-    environment:
-        - MONGO_INITDB_ROOT_USERNAME=telegramJiraAdmin
-        - MONGO_INITDB_ROOT_PASSWORD=admin2321
     volumes:
         - './tmp/data:/data/mongo'
