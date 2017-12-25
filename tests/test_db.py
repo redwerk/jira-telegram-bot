@@ -205,12 +205,12 @@ class TestMongoBackend:
     def test_get_webhook_subscriptions(self):
         webhook = self.db.get_webhook(self.new_webhook_id)
         subs = self.db.get_webhook_subscriptions(webhook.get('_id'))
-        assert len(subs) >= 1
+        assert subs.count() >= 1
 
     def test_get_user_subscriptions(self):
         user = self.db.get_user_data(self.test_user.get('telegram_id'))
         subs = self.db.get_user_subscriptions(user.get('_id'))
-        assert len(subs) >= 1
+        assert subs.count() >= 1
 
     def test_delete_subscription(self):
         self.db.delete_subscription(self.sub_id)

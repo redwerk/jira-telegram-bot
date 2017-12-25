@@ -229,7 +229,10 @@ class ListStatusIssuesCommand(AbstractCommand):
 
         target = context.pop(0)
         # validate command options
-        if target == 'user':
+        if target == 'my':
+            if len(context) > 1:
+                raise ContextValidationError("<i>my</i> not accept any arguments.")
+        elif target == 'user':
             if len(context) < 1:
                 raise ContextValidationError("<i>USERNAME</i> is a required argument.")
         elif target == 'project':
