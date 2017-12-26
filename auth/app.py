@@ -11,17 +11,16 @@ import requests
 from decouple import config
 from oauthlib.oauth1 import SIGNATURE_RSA
 
-from lib.utils import read_rsa_key
 from lib.db import MongoBackend
-from run import SMTPHandlerNumb  # WTF
+from lib.utils import read_rsa_key
 
-from .parsers import WebhookUpdateFactory
+from .notifier import UpdateNotifierFactory
 
 # common settings
 fileConfig('./logging_config.ini')
 logger = logging.getLogger()
-logger.handlers[SMTPHandlerNumb].fromaddr = config('LOGGER_EMAIL')
-logger.handlers[SMTPHandlerNumb].toaddrs = [email.strip() for email in config('DEV_EMAILS').split(',')]
+logger.handlers[1].fromaddr = config('LOGGER_EMAIL')
+logger.handlers[1].toaddrs = [email.strip() for email in config('DEV_EMAILS').split(',')]
 
 bot_url = config('BOT_URL')
 db = MongoBackend()
@@ -270,12 +269,12 @@ class IssueWebhookView(BaseWebhookView):
             return 'Unregistered webhook', 403
 
         subs = self.db.get_webhook_subscriptions(webhook.get('_id'))
-        if not subs:
+        if not subs.count():
             return 'No subscribers', 200
 
         jira_update = json.loads(request.data)
         chat_ids = self.filters_subscribers(subs, kwargs.get('project_key'), kwargs.get('issue_key'))
-        WebhookUpdateFactory.notify(jira_update, chat_ids, webhook.get('host_url'), **kwargs)
+        UpdateNotifierFactory.notify(jira_update, chat_ids, webhook.get('host_url'), **kwargs)
 
         return 'OK', 200
 
@@ -292,12 +291,12 @@ class ProjectWebhookView(BaseWebhookView):
             return 'Unregistered webhook', 403
 
         subs = self.db.get_webhook_subscriptions(webhook.get('_id'))
-        if not subs:
+        if not subs.count():
             return 'No subscribers', 200
 
         jira_update = json.loads(request.data)
         chat_ids = self.filters_subscribers(subs, kwargs.get('project_key'))
-        WebhookUpdateFactory.notify(jira_update, chat_ids, webhook.get('host_url'), **kwargs)
+        UpdateNotifierFactory.notify(jira_update, chat_ids, webhook.get('host_url'), **kwargs)
 
         return 'OK', 200
 
