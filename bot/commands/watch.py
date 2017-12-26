@@ -108,7 +108,6 @@ class CreateSubscribeCommand(AbstractCommand):
             return self.app.send(bot, update, text=text)
 
         user = self.app.db.get_user_data(update.message.chat_id)
-
         data = {
             'sub_id': f'{telegram_id}:{name}',
             'user_id': user.get('_id'),

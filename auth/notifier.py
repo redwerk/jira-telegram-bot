@@ -1,4 +1,5 @@
 import logging
+import os
 import queue
 import threading
 import time
@@ -7,7 +8,7 @@ from abc import abstractmethod
 import requests
 from decouple import config
 
-from lib.utils import calculate_tracking_time
+from lib.utils import calculate_tracking_time, read_template
 
 logger = logging.getLogger()
 
@@ -162,14 +163,11 @@ class IssueNotify(BaseNotify):
     attachment_action = 'Attachment'
     assignee_action = 'assignee'
     message_template = {
-        'assignee': 'Issue <a href="{link}">{link_name}</a> was assigned to <b>{user}</b>',
-        'status': (
-            'User {username} updated status from <b>{old_status}</b> to <b>{new_status}</b> '
-            'at <a href="{link}">{link_name}</a>'
-        ),
-        'Attachment': 'A file <b>{filename}</b> was {action} by {username} in <a href="{link}">{link_name}</a>',
-        'description': 'Description was updated by <b>{username}</b> at <a href="{link}">{link_name}</a>',
-        'summary': 'Summary was updated by <b>{username}</b> at <a href="{link}">{link_name}</a>',
+        'assignee': read_template(os.path.join('auth', 'templates', 'issue_assignee.txt')),
+        'status': read_template(os.path.join('auth', 'templates', 'issue_status.txt')),
+        'Attachment': read_template(os.path.join('auth', 'templates', 'issue_attachment.txt')),
+        'description': read_template(os.path.join('auth', 'templates', 'issue_desc.txt')),
+        'summary': read_template(os.path.join('auth', 'templates', 'issue_summary.txt')),
     }
 
     def notify(self):
@@ -193,7 +191,7 @@ class IssueNotify(BaseNotify):
             self.issue_reasigned()
 
         try:
-            msg = self.message_template[action].format(**self.data)
+            msg = self.message_template[action].substitute(self.data)
         except KeyError as error:
             logger.error(f"Issue parser can't send a message: {error}")
         else:

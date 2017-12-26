@@ -4,6 +4,7 @@ import re
 import smtplib
 import uuid
 from email.mime.text import MIMEText
+from string import Template
 
 from cryptography.fernet import Fernet
 from decouple import config
@@ -116,3 +117,10 @@ def generate_webhook_url(webhook_id):
     """Generates a Webhook URL for processing updates"""
     host = config('OAUTH_SERVICE_URL')
     return '{0}/webhook/{1}'.format(host, webhook_id) + '/${project.key}/${issue.key}'
+
+
+def read_template(filepath):
+    """Read a text file and return a string.Template object"""
+    with open(filepath) as file:
+        template = Template(file.read())
+    return template

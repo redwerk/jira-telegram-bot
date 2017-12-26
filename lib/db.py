@@ -152,7 +152,6 @@ class MongoBackend:
                 'content': document.get('content'),
                 'page_count': document.get('page_count')
             }
-
         return dict()
 
     def create_webhook(self, key, host):
@@ -168,8 +167,7 @@ class MongoBackend:
                 'host_url': host,
             }
         )
-
-        return status or False
+        return bool(status)
 
     def update_webhook(self, host, data):
         """
@@ -179,8 +177,7 @@ class MongoBackend:
         """
         collection = self._get_collection('webhook')
         status = collection.update({'host_url': host}, {'$set': data})
-
-        return status or False
+        return bool(status)
 
     def get_webhook(self, key):
         """
@@ -190,7 +187,6 @@ class MongoBackend:
         """
         collection = self._get_collection('webhook')
         webhook = collection.find_one({'webhook_id': key})
-
         return webhook or False
 
     def search_webhook(self, host):
@@ -201,7 +197,6 @@ class MongoBackend:
         """
         collection = self._get_collection('webhook')
         webhook = collection.find_one({'host_url': host})
-
         return webhook or False
 
     def create_subscription(self, data):
@@ -211,8 +206,7 @@ class MongoBackend:
         """
         collection = self._get_collection('subscriptions')
         status = collection.insert_one(data)
-
-        return status or False
+        return bool(status)
 
     def get_subscription(self, sub_id):
         """
@@ -222,7 +216,6 @@ class MongoBackend:
         """
         collection = self._get_collection('subscriptions')
         subscription = collection.find_one({'sub_id': sub_id})
-
         return subscription or False
 
     def get_webhook_subscriptions(self, webhook_id):
@@ -252,8 +245,7 @@ class MongoBackend:
         """
         collection = self._get_collection('subscriptions')
         status = collection.remove({'sub_id': sub_id})
-
-        return status or False
+        return bool(status)
 
     def delete_all_subscription(self, user_id):
         """
@@ -262,8 +254,7 @@ class MongoBackend:
         """
         collection = self._get_collection('subscriptions')
         status = collection.remove({'user_id': user_id})
-
-        return status or False
+        return bool(status)
 
     def get_schedule_commands(self, user_id):
         """Return list of schedules entries.
