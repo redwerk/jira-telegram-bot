@@ -1,5 +1,4 @@
 from itertools import zip_longest
-from uuid import uuid4
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackQueryHandler, CommandHandler
@@ -45,7 +44,7 @@ class WatchDispatcherCommand(AbstractCommand):
                 host=auth_data.jira_host, issue=params['name'], auth_data=auth_data
             )
 
-        host_webhook = self.app.db.search_webhook(auth_data.jira_host)
+        host_webhook = self.app.db.get_webhook(host_url=auth_data.jira_host)
         if not host_webhook:
             confirmation_buttons = [
                 InlineKeyboardButton(text='No', callback_data='create_webhook:{}'.format(self.negative_answer)),
@@ -83,10 +82,8 @@ class CreateWebhookCommand(AbstractCommand):
         if answer == WatchDispatcherCommand.negative_answer:
             return self.app.send(bot, update, text='Creating a new webhook was declined')
 
-        webhook_id = str(uuid4())
-        status = self.app.db.create_webhook(webhook_id, auth_data.jira_host)
-
-        if status:
+        webhook_id = self.app.db.create_webhook(auth_data.jira_host)
+        if webhook_id:
             text = self.message_template.format(utils.generate_webhook_url(webhook_id))
             return self.app.send(bot, update, text=text)
 
@@ -100,16 +97,16 @@ class CreateSubscribeCommand(AbstractCommand):
     def handler(self, bot, update, *args, **kwargs):
         webhook = kwargs.get('webhook')
         topic = kwargs.get('topic')
-        name = kwargs.get('name').lower()
-        telegram_id = update.message.chat_id
+        name = kwargs.get('name').upper()
+        chat_id = update.message.chat_id
 
-        if self.app.db.get_subscription(f'{telegram_id}:{name}'):
+        if self.app.db.get_subscription(chat_id, name):
             text = 'You already subscribed on this updates'
             return self.app.send(bot, update, text=text)
 
-        user = self.app.db.get_user_data(update.message.chat_id)
+        user = self.app.db.get_user_data(chat_id)
         data = {
-            'sub_id': f'{telegram_id}:{name}',
+            'chat_id': chat_id,
             'user_id': user.get('_id'),
             'webhook_id': webhook.get('_id'),
             'topic': topic,
@@ -118,7 +115,7 @@ class CreateSubscribeCommand(AbstractCommand):
 
         status = self.app.db.create_subscription(data)
         if status:
-            text = f'Now you will be notified about updates from {name.upper()}'
+            text = f'Now you will be notified about updates from {name}'
             return self.app.send(bot, update, text=text)
 
         text = "We can't subscribe you on updates at this moment"
@@ -136,7 +133,6 @@ class UnwatchDispatcherCommand(AbstractCommand):
         "<b>Command description:</b>\n",
         "/unwatch project <i>project-key</i> - Unsubscribe from a selected project updates\n"
         "/unwatch issue <i>issue-key</i> - Unsubscribe from a selected issue updates\n"
-        "/unwatch list - Return list of all subscriptions\n"
         "/unwatch - Unsubscribe from all updates"
     )
 
@@ -209,17 +205,17 @@ class UnsubscribeOneItemCommand(AbstractCommand):
 
     def handler(self, bot, update, *args, **kwargs):
         topic = kwargs.get('topic')
-        name = kwargs.get('name')
-        telegram_id = update.message.chat_id
+        name = kwargs.get('name').upper()
+        chat_id = update.message.chat_id
 
-        if not self.app.db.get_subscription(f'{telegram_id}:{name.lower()}'):
-            text = f'You were not subscribed to {name.upper()} {topic.lower()} updates'
+        if not self.app.db.get_subscription(chat_id, name):
+            text = f'You were not subscribed to {name} {topic.lower()} updates'
             return self.app.send(bot, update, text=text)
 
-        status = self.app.db.delete_subscription(f'{telegram_id}:{name.lower()}')
+        status = self.app.db.delete_subscription(chat_id, name)
         if status:
-            text = f'You were unsubscribed from {name.upper()} {topic.lower()} updates'
+            text = f'You were unsubscribed from {name} {topic.lower()} updates'
             return self.app.send(bot, update, text=text)
 
-        text = f"Can't unsubscribe you from {name.upper()} {topic.lower()} updates, please try again later"
+        text = f"Can't unsubscribe you from {name} {topic.lower()} updates, please try again later"
         return self.app.send(bot, update, text=text)

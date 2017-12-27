@@ -114,28 +114,28 @@
 ### webhooks collection
 ```json
 {
-  "_id": ObjectId("5a326c6ea47e652df39e378a"),
-  "webhook_id": "886c5e1b-f5a1-4a39-887f-98fe156a8f46",
-  "host_url": "https://jira.test.redwerk.com"
+  "_id": ObjectId("5a437e5ff595b26337c08ddf"),
+  "host_url": "https://jira.test.redwerk.com",
+  "is_confirmed": false
 }
 ```
 
 ### subscriptions collection
 ```json
 {
-  "_id": ObjectId("5a37b589a47e65231ebd1ec6"),
-  "sub_id": "208810129:web",
-  "user_id": ObjectId("5a29375ca47e655a9c9aa1f5"),
-  "webhook_id": ObjectId("5a326c6ea47e652df39e378a"),
-  "topic": "project",
-  "name": "web"
+  "_id": ObjectId("5a437f5af595b2646b46a3c2"),
+  "chat_id": 208810129,
+  "user_id": ObjectId("5a3b8e6df595b219a7906fc3"),
+  "webhook_id": ObjectId("5a437e5ff595b26337c08ddf"),
+  "topic": "issue",
+  "name": "JTB-99"
 },
 {
-  "_id": ObjectId("5a3936cfa47e654eb2e6e094"),
-  "sub_id": "208810129:jtb-99",
-  "user_id": ObjectId("5a29375ca47e655a9c9aa1f5"),
-  "webhook_id": ObjectId("5a326c6ea47e652df39e378a"),
-  "topic": "issue",
-  "name": "jtb-99"
+  "_id": ObjectId("5a437f68f595b2646b46a3c3"),
+  "chat_id": 208810129,
+  "user_id": ObjectId("5a3b8e6df595b219a7906fc3"),
+  "webhook_id": ObjectId("5a437e5ff595b26337c08ddf"),
+  "topic": "project",
+  "name": "JTB"
 }
 ```

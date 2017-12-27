@@ -12,7 +12,7 @@ from decouple import config
 from oauthlib.oauth1 import SIGNATURE_RSA
 
 from lib.db import MongoBackend
-from lib.utils import read_rsa_key
+from lib.utils import read_rsa_key, filters_subscribers
 
 from .notifier import UpdateNotifierFactory
 
@@ -28,6 +28,9 @@ db = MongoBackend()
 # Flask settings
 app = Flask(__name__)
 app.secret_key = config('SECRET_KEY')
+
+# constants
+jira_agent = 'Atlassian HttpClient'
 
 
 class JiraOAuthApp:
@@ -227,75 +230,45 @@ class OAuthAuthorizedView(SendToChatMixin, OAuthJiraBaseView):
         }
 
 
-class BaseWebhookView(MethodView):
-    def __init__(self):
-        self.db = MongoBackend()
-
-    def filters_subscribers(self, subscribers, project, issue=None):
-        """
-        Filtering subscribers through its topics: project or issue
-        :param subscribers: list of user subscribers info in dictionary type
-        :param project: project key e.g. JTB
-        :param issue: issue key e.g. JTB-99
-        :return: set of strings chat_ids
-        """
-        filtered_participants = list()
-
-        for sub in subscribers:
-            sub_topic = sub.get('topic')
-            sub_name = sub.get('name')
-            sub_chat_id = sub.get('sub_id').split(':')[0]
-            project_cond = sub_topic == 'project' and project.lower() == sub_name
-
-            if project:
-                if sub_topic == 'project' and project.lower() == sub_name:
-                    filtered_participants.append(sub_chat_id)
-            if issue:
-                if sub_topic == 'issue' and issue.lower() == sub_name or project_cond:
-                    filtered_participants.append(sub_chat_id)
-
-        return set(filtered_participants)
-
-
-class IssueWebhookView(BaseWebhookView):
+class IssueWebhookView(MethodView):
     """Processing updates from Jira issues"""
 
     def post(self, **kwargs):
-        if not request.content_length or 'Atlassian HttpClient' not in request.headers.get('User-Agent'):
+        if not request.content_length or jira_agent not in request.headers.get('User-Agent'):
             return 'Endpoint is processing only updates from jira webhook', 403
 
-        webhook = self.db.get_webhook(kwargs.get('webhook_id'))
+        webhook = db.get_webhook(webhook_id=kwargs.get('webhook_id'))
         if not webhook:
             return 'Unregistered webhook', 403
 
-        subs = self.db.get_webhook_subscriptions(webhook.get('_id'))
+        subs = db.get_webhook_subscriptions(webhook.get('_id'))
         if not subs.count():
             return 'No subscribers', 200
 
         jira_update = json.loads(request.data)
-        chat_ids = self.filters_subscribers(subs, kwargs.get('project_key'), kwargs.get('issue_key'))
+        chat_ids = filters_subscribers(subs, kwargs.get('project_key'), kwargs.get('issue_key'))
         UpdateNotifierFactory.notify(jira_update, chat_ids, webhook.get('host_url'), **kwargs)
 
         return 'OK', 200
 
 
-class ProjectWebhookView(BaseWebhookView):
+class ProjectWebhookView(MethodView):
     """Processing updates from Jira projects"""
 
     def post(self, **kwargs):
-        if not request.content_length or 'Atlassian HttpClient' not in request.headers.get('User-Agent'):
+        if not request.content_length or jira_agent not in request.headers.get('User-Agent'):
             return 'Endpoint is processing only updates from jira webhook', 403
 
-        webhook = self.db.get_webhook(kwargs.get('webhook_id'))
+        webhook = db.get_webhook(webhook_id=kwargs.get('webhook_id'))
         if not webhook:
             return 'Unregistered webhook', 403
 
-        subs = self.db.get_webhook_subscriptions(webhook.get('_id'))
+        subs = db.get_webhook_subscriptions(webhook.get('_id'))
         if not subs.count():
             return 'No subscribers', 200
 
         jira_update = json.loads(request.data)
-        chat_ids = self.filters_subscribers(subs, kwargs.get('project_key'))
+        chat_ids = filters_subscribers(subs, kwargs.get('project_key'))
         UpdateNotifierFactory.notify(jira_update, chat_ids, webhook.get('host_url'), **kwargs)
 
         return 'OK', 200

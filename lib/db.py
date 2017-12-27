@@ -161,11 +161,24 @@ class MongoBackend:
         :return: string webhook ObjectID
         """
         collection = self._get_collection('webhook')
-        status = collection.insert_one({'host_url': host})
+        status = collection.insert_one({'host_url': host, 'is_confirmed': False})
         if status:
             created_webhook = collection.find_one({'host_url': host})
             return str(created_webhook.get('_id'))
         return False
+
+    def update_webhook(self, data, webhook_id=None, host_url=None):
+        """
+        Updates a webhook data by string ObjectId or host_url
+        :param webhook_id: string ObjectId
+        :param host_url: a host url
+        """
+        collection = self._get_collection('webhook')
+        if webhook_id:
+            status = collection.update({'_id': ObjectId(webhook_id)}, {'$set': data})
+        elif host_url:
+            status = collection.update({'host_url': host_url}, {'$set': data})
+        return bool(status)
 
     def get_webhook(self, webhook_id=None, host_url=None):
         """

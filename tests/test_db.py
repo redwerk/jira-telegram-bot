@@ -1,5 +1,4 @@
 import time
-from uuid import uuid4
 
 from decouple import config
 from pymongo import MongoClient
@@ -154,6 +153,13 @@ class TestMongoBackend:
         webhook_id = self.db.create_webhook(host.get('url'))
         created_webhook = self.db.get_webhook(webhook_id=webhook_id)
         assert created_webhook.get('host_url') == host.get('url')
+
+    def test_update_webhook(self):
+        webhook = self.db.get_webhook(host_url=self.test_host.get('url'))
+        assert webhook.get('is_confirmed') is False
+        self.db.update_webhook({'is_confirmed': True}, host_url=self.test_host.get('url'))
+        webhook = self.db.get_webhook(host_url=self.test_host.get('url'))
+        assert webhook.get('is_confirmed') is True
 
     def test_get_webhook(self):
         webhook = self.db.get_webhook(host_url=self.test_host.get('url'))
