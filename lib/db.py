@@ -154,49 +154,31 @@ class MongoBackend:
             }
         return dict()
 
-    def create_webhook(self, key, host):
+    def create_webhook(self, host):
         """
         Creates a webhook
-        :param key: uuid4
         :param host: jira host
+        :return: string webhook ObjectID
         """
         collection = self._get_collection('webhook')
-        status = collection.insert_one(
-            {
-                'webhook_id': key,
-                'host_url': host,
-            }
-        )
-        return bool(status)
+        status = collection.insert_one({'host_url': host})
+        if status:
+            created_webhook = collection.find_one({'host_url': host})
+            return str(created_webhook.get('_id'))
+        return False
 
-    def update_webhook(self, host, data):
+    def get_webhook(self, webhook_id=None, host_url=None):
         """
-        Updates an exists webhook
-        :param host: jira host
-        :param data: new data in dict type
-        """
-        collection = self._get_collection('webhook')
-        status = collection.update({'host_url': host}, {'$set': data})
-        return bool(status)
-
-    def get_webhook(self, key):
-        """
-        Gets a webhook by is't uuid4
-        :param key: uuid4
+        Gets a webhook by webhook_id or host
+        :param webhook_id: string ObjectId
+        :param host_url: a host url
         :return: a webhook in dict type
         """
         collection = self._get_collection('webhook')
-        webhook = collection.find_one({'webhook_id': key})
-        return webhook or False
-
-    def search_webhook(self, host):
-        """
-        Searches a webhook by jira host
-        :param host: jira host
-        :return: a webhook in dict type
-        """
-        collection = self._get_collection('webhook')
-        webhook = collection.find_one({'host_url': host})
+        if webhook_id:
+            webhook = collection.find_one({'_id': ObjectId(webhook_id)})
+        elif host_url:
+            webhook = collection.find_one({'host_url': host_url})
         return webhook or False
 
     def create_subscription(self, data):
@@ -208,14 +190,15 @@ class MongoBackend:
         status = collection.insert_one(data)
         return bool(status)
 
-    def get_subscription(self, sub_id):
+    def get_subscription(self, chat_id, name):
         """
         Gets a subscription by sub_id
-        :param sub_id: in general it's a telegram id and name e.g. 283902890:jtb-99
+        :param chat_id: a telegram chat id e.g. 283902890
+        :param name: an issue key e.g. JTB-99
         :return: a subscription in dict type
         """
         collection = self._get_collection('subscriptions')
-        subscription = collection.find_one({'sub_id': sub_id})
+        subscription = collection.find_one({'chat_id': chat_id, 'name': name})
         return subscription or False
 
     def get_webhook_subscriptions(self, webhook_id):
@@ -238,13 +221,14 @@ class MongoBackend:
         subs = collection.find({'user_id': user_id})
         return subs or False
 
-    def delete_subscription(self, sub_id):
+    def delete_subscription(self, chat_id, name):
         """
         Deletes a one subscription was searched by sub_id
-        :param sub_id: in general it's a telegram id and name e.g. 283902890:jtb-99
+        :param chat_id: a telegram chat id e.g. 283902890
+        :param name: an issue key e.g. JTB-99
         """
         collection = self._get_collection('subscriptions')
-        status = collection.remove({'sub_id': sub_id})
+        status = collection.remove({'chat_id': chat_id, 'name': name})
         return bool(status)
 
     def delete_all_subscription(self, user_id):

@@ -62,10 +62,9 @@ class TestMongoBackend:
         cls.test_cache_key = 'test_cache:{}'.format(cls.test_user.get('telegram_id'))
         cls.test_cache_title = 'Test cached items'
 
-        # webhook data
-        cls.webhook_id = str(uuid4())
-        cls.new_webhook_id = str(uuid4())
-        cls.sub_id = '{}:{}'.format(cls.test_user.get('telegram_id'), 'jtb-99')
+        # subscription data
+        cls.sub_name = 'JTB-99'
+        cls.sub_topic = 'issue'
 
     def teardown_class(cls):
         # drops a database after calling all test cases
@@ -152,58 +151,48 @@ class TestMongoBackend:
 
     def test_create_webhook(self):
         host = self.db.get_host_data(self.test_host.get('url'))
-        assert self.db.get_webhook(self.webhook_id) is False
-
-        self.db.create_webhook(self.webhook_id, host.get('url'))
-        created_webhook = self.db.get_webhook(self.webhook_id)
-        assert created_webhook.get('webhook_id') == self.webhook_id
+        webhook_id = self.db.create_webhook(host.get('url'))
+        created_webhook = self.db.get_webhook(webhook_id=webhook_id)
         assert created_webhook.get('host_url') == host.get('url')
 
-    def test_update_webhook(self):
-        self.db.update_webhook(self.test_host.get('url'), {'webhook_id': self.new_webhook_id})
-        webhook = self.db.get_webhook(self.new_webhook_id)
-
-        assert webhook.get('webhook_id') == self.new_webhook_id
-        assert webhook.get('host_url') == self.test_host.get('url')
-
     def test_get_webhook(self):
-        assert self.db.get_webhook(str(uuid4())) is False
-        webhook = self.db.get_webhook(self.new_webhook_id)
-        assert webhook.get('webhook_id') == self.new_webhook_id
+        webhook = self.db.get_webhook(host_url=self.test_host.get('url'))
         assert webhook.get('host_url') == self.test_host.get('url')
 
     def test_create_subscription(self):
-        assert self.db.get_subscription(self.sub_id) is False
-
-        webhook = self.db.get_webhook(self.new_webhook_id)
+        assert self.db.get_subscription(self.test_user.get('telegram_id'), self.sub_name) is False
+        webhook = self.db.get_webhook(host_url=self.test_host.get('url'))
         user = self.db.get_user_data(self.test_user.get('telegram_id'))
         data = {
-            'sub_id': self.sub_id,
+            'chat_id': user.get('telegram_id'),
             'user_id': user.get('_id'),
             'webhook_id': webhook.get('_id'),
-            'topic': 'issue',
+            'topic': self.sub_topic,
+            'name': self.sub_name
         }
         self.db.create_subscription(data)
 
-        subscription = self.db.get_subscription(self.sub_id)
-        assert subscription.get('sub_id') == self.sub_id
+        subscription = self.db.get_subscription(user.get('telegram_id'), self.sub_name)
+        assert subscription.get('chat_id') == user.get('telegram_id')
         assert subscription.get('user_id') == user.get('_id')
         assert subscription.get('webhook_id') == webhook.get('_id')
-        assert subscription.get('topic') == data.get('topic')
+        assert subscription.get('topic') == self.sub_topic
+        assert subscription.get('name') == self.sub_name
 
     def test_get_subscription(self):
-        assert self.db.get_subscription('123123:jtb-11') is False
-        subscription = self.db.get_subscription(self.sub_id)
-        webhook = self.db.get_webhook(self.new_webhook_id)
+        assert self.db.get_subscription('123123', 'JTB-11') is False
+        subscription = self.db.get_subscription(self.test_user.get('telegram_id'), self.sub_name)
+        webhook = self.db.get_webhook(host_url=self.test_host.get('url'))
         user = self.db.get_user_data(self.test_user.get('telegram_id'))
 
-        assert subscription.get('sub_id') == self.sub_id
+        assert subscription.get('chat_id') == user.get('telegram_id')
         assert subscription.get('user_id') == user.get('_id')
         assert subscription.get('webhook_id') == webhook.get('_id')
-        assert subscription.get('topic') == 'issue'
+        assert subscription.get('topic') == self.sub_topic
+        assert subscription.get('name') == self.sub_name
 
     def test_get_webhook_subscriptions(self):
-        webhook = self.db.get_webhook(self.new_webhook_id)
+        webhook = self.db.get_webhook(host_url=self.test_host.get('url'))
         subs = self.db.get_webhook_subscriptions(webhook.get('_id'))
         assert subs.count() >= 1
 
@@ -213,5 +202,5 @@ class TestMongoBackend:
         assert subs.count() >= 1
 
     def test_delete_subscription(self):
-        self.db.delete_subscription(self.sub_id)
-        assert self.db.get_subscription(self.sub_id) is False
+        self.db.delete_subscription(self.test_user.get('telegram_id'), self.sub_name)
+        assert self.db.get_subscription(self.test_user.get('telegram_id'), self.sub_name) is False
