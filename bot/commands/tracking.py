@@ -6,6 +6,7 @@ from telegram.ext import CommandHandler
 
 from bot.helpers import login_required
 from bot.exceptions import ContextValidationError
+from bot.schedules import schedule_commands
 from lib import utils
 
 from .base import AbstractCommand
@@ -174,3 +175,6 @@ class ProjectTimeTrackerCommand(AbstractCommand):
                    f'from <b>{start_date.to_date_string()}</b> to <b>{end_date.to_date_string()}</b>: '
         text = template + str(spended_time) + ' h'
         return self.app.send(bot, update, text=text)
+
+
+schedule_commands.register(TimeTrackingDispatcher)

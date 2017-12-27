@@ -1,6 +1,5 @@
 import datetime
 from functools import partial, wraps
-from importlib import import_module
 import time
 import logging
 
@@ -12,6 +11,7 @@ from pytz import timezone
 
 from lib.db import create_connection
 from .commands.base import AbstractCommand
+from .helpers import Singleton
 
 
 conn = create_connection()
@@ -27,6 +27,63 @@ def adjust(func):
         func(*args, **kwargs)
         return time.time() - start
     return wrapper
+
+
+def error_hendler(func):
+    """Error hendler for schedule commands running in jobqueue"""
+    @wraps(func)
+    def wrapper(instance, bot, update, *args, **kwargs):
+        try:
+            func(instance, bot, update, *args, **kwargs)
+        except Exception as err:
+            # delegate error to JTBApp error_callback
+            instance.app.error_callback(bot, update, err)
+
+    return wrapper
+
+
+class ScheduleCommands(metaclass=Singleton):
+    """List for allowed schedule commands, used `commands` instance
+    for registration new command as `schedule_commands.register(<command cls>)`
+    and get registered commands as `schedule_commands.get_list()`.
+    """
+    __commands = dict()
+
+    def register(self, command):
+        if not issubclass(command, AbstractCommand):
+            raise TypeError("The command must be of type 'AbstractCommand'")
+
+        if command.__name__ in self.__commands:
+            raise ValueError(f"Command class {command.__name__} alreday registered")
+
+        # monkey patching for command error hendler
+        command.handler = error_hendler(command.handler)
+        self.__commands[command.__name__] = command
+
+    def items(self):
+        raise AttributeError("Not implemented")
+
+    def values(self):
+        # get registered commands list
+        return self.__commands.values()
+
+    def get(self, key, default=None):
+        return self.__commands.get(key, default)
+
+    def keys(self):
+        return self.__commands.keys()
+
+    def __contains__(self, key):
+        return key in self.__commands
+
+    def __iter__(self):
+        return iter(self.values())
+
+    def __len__(self):
+        return len(self.__commands)
+
+
+schedule_commands = ScheduleCommands()
 
 
 class ScheduleTaskSerializer:
@@ -57,8 +114,10 @@ class ScheduleTaskSerializer:
             data["update"] = Update.de_json(data["update"], bot)
 
         if "callback" in data:
-            cb_module, cb_cls = data["callback"].split(":")
-            data["callback"] = getattr(import_module(cb_module), cb_cls, None)
+            _, cb_cls = data["callback"].split(":")
+            # for loading command
+            # getattr(import_module(cb_module), cb_cls, None)
+            data["callback"] = schedule_commands.get(cb_cls)
 
         if "_id" in data:
             data["id"] = data.pop("_id")

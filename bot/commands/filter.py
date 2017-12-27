@@ -4,6 +4,7 @@ from telegram.ext import CallbackQueryHandler, CommandHandler
 from bot.helpers import login_required, get_query_scope
 from bot.exceptions import ContextValidationError
 from bot.inlinemenu import build_menu
+from bot.schedules import schedule_commands
 
 from .base import AbstractCommand
 
@@ -82,3 +83,6 @@ class FilterIssuesCommand(AbstractCommand):
     def validate_context(cls, context):
         if len(context) < 1:
             raise ContextValidationError("<i>Filter Name</i> is a required argument.")
+
+
+schedule_commands.register(FilterIssuesCommand)

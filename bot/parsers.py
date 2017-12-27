@@ -2,8 +2,8 @@ import re
 
 from croniter import croniter
 
-from .commands.base import AbstractCommand
 from .exceptions import ScheduleValidationError
+from .schedules import schedule_commands
 
 
 # allowed periodicity types
@@ -29,13 +29,10 @@ monthly_re = r'(?P<day>\d{1,2})\s+?(?P<opt>.*)?'
 time_re = r'(?P<hour>\d{0,2})[:\-\\.\s]+(?P<minute>\d*)'
 
 
-def command_parser(callback, commands):
+def command_parser(callback):
     """Parse and validate accepts command"""
     command_name, *context = callback.split()
-    for command in commands:
-        if not issubclass(command, AbstractCommand):
-            continue
-
+    for command in schedule_commands:
         if command.check_command(command_name):
             command.validate_context(context[:])
             return command, context

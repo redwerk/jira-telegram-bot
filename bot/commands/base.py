@@ -9,7 +9,6 @@ class AbstractCommand(metaclass=ABCMeta):
     """ Abstract base command class.
     In hendler method must be implemented main command logic.
     """
-
     def __init__(self, app, *args, **kwargs):
         self.app = app
 
