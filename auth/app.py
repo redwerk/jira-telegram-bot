@@ -182,7 +182,7 @@ class OAuthAuthorizedView(SendToChatMixin, OAuthJiraBaseView):
         except jira.JIRAError as e:
             logging.exception('Status: {}, message: {}'.format(e.status_code, e.text))
         else:
-            username = authed_jira.myself().get('key')
+            username = authed_jira.myself().get('name')
             data = self.get_auth_data(
                 session['host'],
                 username,

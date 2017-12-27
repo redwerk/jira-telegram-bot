@@ -4,7 +4,7 @@ import pendulum
 from pendulum.parsing.exceptions import ParserError
 from telegram.ext import CommandHandler
 
-from bot.decorators import login_required
+from bot.helpers import login_required
 from bot.exceptions import ContextValidationError
 from lib import utils
 

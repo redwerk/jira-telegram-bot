@@ -5,7 +5,7 @@ from functools import lru_cache
 from telegram.ext import CommandHandler, CallbackQueryHandler
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
-from bot.decorators import login_required
+from bot.helpers import login_required
 from bot.schedules import ScheduleTask
 from bot.exceptions import ScheduleValidationError, ContextValidationError
 from bot.inlinemenu import build_menu
