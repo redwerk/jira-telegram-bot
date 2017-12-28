@@ -1,11 +1,7 @@
 import logging
 import os
-import queue
-import threading
-import time
-from abc import abstractmethod
+from abc import ABCMeta, abstractmethod
 
-import requests
 from decouple import config
 
 from lib.utils import calculate_tracking_time, read_template
@@ -13,59 +9,38 @@ from lib.utils import calculate_tracking_time, read_template
 logger = logging.getLogger()
 
 
-class BaseNotify:
+class BaseNotify(metaclass=ABCMeta):
     api_bot_url = 'https://api.telegram.org/bot{}/sendMessage?chat_id={}&text={}&parse_mode=HTML'
 
-    def __init__(self, update, chat_ids, host, **kwargs):
+    def __init__(self, m_provider, update, chat_ids, host, **kwargs):
         """
+        :param m_provider: message provider for sending into users chats
         :param update: full update in dictionary format
         :param chat_ids: set of string chat ids for delivering notifications
         :param host: host from what the update was delivered
         :param kwargs: project_key and issue_key
         """
+        self.message_provider = m_provider
         self.update = update
         self.chat_ids = chat_ids
         self.host = host
         self.project = kwargs.get('project_key')
         self.issue = kwargs.get('issue_key')
-        self.message_queue = queue.Queue()
-        self.r_count = 0  # request count
 
     @abstractmethod
     def notify(self):
         pass
 
-    def prepare_queue(self, message):
+    def prepare_messages(self, messages):
+        """Generates links with messages for sending into chats"""
+        urls = list()
+        if not isinstance(messages, list):
+            messages = [messages]
+
         for chat_id in self.chat_ids:
-            url = self.api_bot_url.format(config('BOT_TOKEN'), chat_id, message)
-            self.message_queue.put(url)
-
-    def send_to_chat(self):
-        thread = threading.Thread(target=self._send)
-        thread.start()
-        thread.join()
-
-    def _send(self):
-        while not self.message_queue.empty():
-            # https://core.telegram.org/bots/faq#broadcasting-to-users
-            # bot will not be able to send more than 20 messages
-            # per minute to the same group
-            if self.r_count >= 20:
-                self.r_count = 0
-                time.sleep(60)
-
-            url = self.message_queue.get()
-            try:
-                status = requests.get(url)
-            except requests.RequestException as error:
-                logger.error(f'{url}\n{error}')
-                self.message_queue.put(url)
-            else:
-                self.r_count += 1
-                if status.status_code != 200:
-                    self.message_queue.put(url)
-                else:
-                    self.message_queue.task_done()
+            for m in messages:
+                urls.append(self.api_bot_url.format(config('BOT_TOKEN'), chat_id, m))
+        return urls
 
 
 class WorklogNotify(BaseNotify):
@@ -98,8 +73,8 @@ class WorklogNotify(BaseNotify):
         except KeyError as error:
             logger.error(f"Worklog parser can't send a message: {error}")
         else:
-            self.prepare_queue(msg)
-            self.send_to_chat()
+            urls = self.prepare_messages(msg)
+            self.message_provider.push_to_queue(urls)
 
     def worklog_logged(self):
         start_time = int(self.update['changelog']['items'][-1]['from'])
@@ -144,8 +119,8 @@ class CommentNotify(BaseNotify):
             'link_name': self.issue.upper(),
         }
         msg = self.message_template.format(**data)
-        self.prepare_queue(msg)
-        self.send_to_chat()
+        urls = self.prepare_messages(msg)
+        self.message_provider.push_to_queue(urls)
 
 
 class IssueNotify(BaseNotify):
@@ -155,82 +130,106 @@ class IssueNotify(BaseNotify):
         changing assigne, status, description and summary
         attaching or deleting files
     """
-    data = dict()
+    generic_data = dict()
+    messages = list()
     supported_actions = ('issue_assigned', 'issue_generic', 'issue_updated',)
     assigned = 'issue_assigned'
     generic = 'issue_generic'
     updated = 'issue_updated'
+
     attachment_action = 'Attachment'
     assignee_action = 'assignee'
+    status_action = 'status'
+    resolution_action = 'resolution'
+
     message_template = {
         'assignee': read_template(os.path.join('auth', 'templates', 'issue_assignee.txt')),
         'status': read_template(os.path.join('auth', 'templates', 'issue_status.txt')),
         'Attachment': read_template(os.path.join('auth', 'templates', 'issue_attachment.txt')),
         'description': read_template(os.path.join('auth', 'templates', 'issue_desc.txt')),
         'summary': read_template(os.path.join('auth', 'templates', 'issue_summary.txt')),
+        'resolution': read_template(os.path.join('auth', 'templates', 'issue_resolution.txt')),
     }
 
     def notify(self):
         if self.update['issue_event_type_name'] not in self.supported_actions:
             return
 
-        action = self.update['changelog']['items'][0]['field']
-        self.data = {
+        self.generic_data = {
             'username': self.update['user']['displayName'],
             'link': f'{self.host}/browse/{self.issue.upper()}',
             'link_name': self.issue.upper(),
         }
 
-        if self.update['issue_event_type_name'] == self.assigned:
-            self.issue_assigned()
-        elif self.update['issue_event_type_name'] == self.generic:
-            self.issue_generic()
-        elif self.update['issue_event_type_name'] == self.updated and action == self.attachment_action:
-            self.file_attachment()
-        elif self.update['issue_event_type_name'] == self.updated and action == self.assignee_action:
-            self.issue_reasigned()
+        # in one issue update may be coming several items
+        for item in self.update['changelog']['items']:
+            field = item.get('field')
+            template = self.message_template.get(field)
 
-        try:
-            msg = self.message_template[action].substitute(self.data)
-        except KeyError as error:
-            logger.error(f"Issue parser can't send a message: {error}")
-        else:
-            self.prepare_queue(msg)
-            self.send_to_chat()
+            if not template:
+                continue
 
-    def issue_assigned(self):
-        additional_data = {
-            'user': self.update['changelog']['items'][0]['toString'],
+            if self.update['issue_event_type_name'] == self.assigned:
+                self.issue_assigned(item, template)
+            elif self.update['issue_event_type_name'] == self.generic and field == self.status_action:
+                self.issue_status(item, template)
+            elif self.update['issue_event_type_name'] == self.generic and field == self.resolution_action:
+                self.issue_resolution(item, template)
+            elif self.update['issue_event_type_name'] == self.updated and field == self.attachment_action:
+                self.file_attachment(item, template)
+            elif self.update['issue_event_type_name'] == self.updated and field == self.assignee_action:
+                self.issue_reasigned(item, template)
+
+        urls = self.prepare_messages(self.messages)
+        self.message_provider.push_to_queue(urls)
+
+    def issue_assigned(self, item, template):
+        data = {
+            'user': item.get('toString'),
         }
-        self.data.update(additional_data)
+        data.update(self.generic_data)
+        self.messages.append(template.substitute(**data))
 
-    def issue_generic(self):
-        additional_data = {
-            'old_status': self.update['changelog']['items'][0]['fromString'],
-            'new_status': self.update['changelog']['items'][0]['toString'],
+    def issue_status(self, item, template):
+        data = {
+            'old_status': item.get('fromString'),
+            'new_status': item.get('toString'),
         }
-        self.data.update(additional_data)
+        data.update(self.generic_data)
+        self.messages.append(template.substitute(**data))
 
-    def file_attachment(self):
-        filename = self.update['changelog']['items'][0]['toString']
+    def issue_resolution(self, item, template):
+        old_resolution = item.get('fromString')
+        new_resolution = item.get('toString')
+        data = {
+            'old_resolution': old_resolution or 'Unresolved',
+            'new_resolution': new_resolution or 'Unresolved',
+        }
+        data.update(self.generic_data)
+        self.messages.append(template.substitute(**data))
+
+    def file_attachment(self, item, template):
+        filename = item.get('toString')
         if filename:
-            additional_data = {
+            data = {
                 'filename': filename,
                 'action': 'attached',
             }
         else:
-            additional_data = {
-                'filename': self.update['changelog']['items'][0]['fromString'],
+            data = {
+                'filename': item.get('fromString'),
                 'action': 'deleted',
             }
-        self.data.update(additional_data)
+        data.update(self.generic_data)
+        self.messages.append(template.substitute(**data))
 
-    def issue_reasigned(self):
-        username = self.update['changelog']['items'][0]['toString']
-        additional_data = {
+    def issue_reasigned(self, item, template):
+        username = item.get('toString')
+        data = {
             'user': username or 'Unassigned',
         }
-        self.data.update(additional_data)
+        data.update(self.generic_data)
+        self.messages.append(template.substitute(**data))
 
 
 class ProjectNotify(BaseNotify):
@@ -247,8 +246,8 @@ class ProjectNotify(BaseNotify):
             'link_name': self.update['project']['key'].upper(),
         }
         msg = self.message_template.format(**data)
-        self.prepare_queue(msg)
-        self.send_to_chat()
+        urls = self.prepare_messages(msg)
+        self.message_provider.push_to_queue(urls)
 
 
 class UpdateNotifierFactory:
@@ -264,8 +263,8 @@ class UpdateNotifierFactory:
     }
 
     @classmethod
-    def notify(cls, update, chat_ids, host, **kwargs):
+    def notify(cls, m_provider, update, chat_ids, host, **kwargs):
         parser = cls.webhook_event.get(update.get('webhookEvent'))
 
         if parser:
-            parser(update, chat_ids, host, **kwargs).notify()
+            parser(m_provider, update, chat_ids, host, **kwargs).notify()

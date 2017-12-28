@@ -1,18 +1,21 @@
 import json
 import logging
+import queue
+import threading
+import time
 from logging.config import fileConfig
 
 from flask import Flask, redirect, request, session, url_for
-from flask.views import View, MethodView
+from flask.views import MethodView, View
 from flask_oauthlib.client import OAuth, OAuthException
+from oauthlib.oauth1 import SIGNATURE_RSA
 
 import jira
 import requests
 from decouple import config
-from oauthlib.oauth1 import SIGNATURE_RSA
 
 from lib.db import MongoBackend
-from lib.utils import read_rsa_key, filters_subscribers
+from lib.utils import filters_subscribers, read_rsa_key
 
 from .notifier import UpdateNotifierFactory
 
@@ -31,6 +34,54 @@ app.secret_key = config('SECRET_KEY')
 
 # constants
 jira_agent = 'Atlassian HttpClient'
+
+
+class UpdateMessageProvider:
+    """
+    Implements a message provider for sending messages from telegram bot
+    to users according to Telegram API limitation
+    """
+    def __init__(self):
+        self.message_queue = queue.Queue()
+        self.r_count = 0
+        self.thread = threading.Thread(target=self.send_message)
+
+    def run_sender_thread(self):
+        self.thread.start()
+        logger.debug('UpdateMessageProvider was started')
+
+    def send_message(self):
+        """
+        Checking a message to exists in the queue, if a message exists - trying to send message into a user chat
+        If response status not 200 - returns message into queue and tries message sending again later
+        """
+        while True:
+            # https://core.telegram.org/bots/faq#broadcasting-to-users
+            if self.r_count >= 20:
+                self.r_count = 0
+                time.sleep(1)
+
+            if not self.message_queue.empty():
+                url = self.message_queue.get()
+                try:
+                    status = requests.get(url)
+                except requests.RequestException as error:
+                    logger.error(f'{url}\n{error}')
+                    self.message_queue.put(url)
+                else:
+                    self.r_count += 1
+                    if status.status_code != 200:
+                        self.message_queue.put(url)
+                    else:
+                        self.message_queue.task_done()
+
+    def push_to_queue(self, batch):
+        for item in batch:
+            self.message_queue.put(item)
+
+
+message_provider = UpdateMessageProvider()
+message_provider.run_sender_thread()
 
 
 class JiraOAuthApp:
@@ -247,7 +298,7 @@ class IssueWebhookView(MethodView):
 
         jira_update = json.loads(request.data)
         chat_ids = filters_subscribers(subs, kwargs.get('project_key'), kwargs.get('issue_key'))
-        UpdateNotifierFactory.notify(jira_update, chat_ids, webhook.get('host_url'), **kwargs)
+        UpdateNotifierFactory.notify(message_provider, jira_update, chat_ids, webhook.get('host_url'), **kwargs)
 
         return 'OK', 200
 
@@ -269,7 +320,7 @@ class ProjectWebhookView(MethodView):
 
         jira_update = json.loads(request.data)
         chat_ids = filters_subscribers(subs, kwargs.get('project_key'))
-        UpdateNotifierFactory.notify(jira_update, chat_ids, webhook.get('host_url'), **kwargs)
+        UpdateNotifierFactory.notify(message_provider, jira_update, chat_ids, webhook.get('host_url'), **kwargs)
 
         return 'OK', 200
 
