@@ -166,7 +166,7 @@ class TestMongoBackend:
         assert webhook.get('host_url') == self.test_host.get('url')
 
     def test_create_subscription(self):
-        assert self.db.get_subscription(self.test_user.get('telegram_id'), self.sub_name) is False
+        assert self.db.get_subscription(self.test_user.get('telegram_id'), self.sub_name) is None
         webhook = self.db.get_webhook(host_url=self.test_host.get('url'))
         user = self.db.get_user_data(self.test_user.get('telegram_id'))
         data = {
@@ -186,7 +186,7 @@ class TestMongoBackend:
         assert subscription.get('name') == self.sub_name
 
     def test_get_subscription(self):
-        assert self.db.get_subscription('123123', 'JTB-11') is False
+        assert self.db.get_subscription('123123', 'JTB-11') is None
         subscription = self.db.get_subscription(self.test_user.get('telegram_id'), self.sub_name)
         webhook = self.db.get_webhook(host_url=self.test_host.get('url'))
         user = self.db.get_user_data(self.test_user.get('telegram_id'))
@@ -209,4 +209,4 @@ class TestMongoBackend:
 
     def test_delete_subscription(self):
         self.db.delete_subscription(self.test_user.get('telegram_id'), self.sub_name)
-        assert self.db.get_subscription(self.test_user.get('telegram_id'), self.sub_name) is False
+        assert self.db.get_subscription(self.test_user.get('telegram_id'), self.sub_name) is None
