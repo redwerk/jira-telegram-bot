@@ -179,6 +179,8 @@ class IssueNotify(BaseNotify):
                 self.file_attachment(item, template)
             elif self.update['issue_event_type_name'] == self.updated and field == self.assignee_action:
                 self.issue_reasigned(item, template)
+            else:
+                self.messages.append(template.substitute(**self.generic_data))
 
         urls = self.prepare_messages(self.messages)
         self.message_provider.push_to_queue(urls)
