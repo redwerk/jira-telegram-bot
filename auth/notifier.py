@@ -51,7 +51,7 @@ class WorklogNotify(BaseNotify):
     work_logged = 'issue_work_logged'
     work_updated = 'issue_worklog_updated'
     work_deleted = 'issue_worklog_deleted'
-    message_template = 'User {username} {action} spent time {time}h in <a href="{link}">{link_name}</a>'
+    message_template = 'User <b>{username}</b> {action} spent time {time}h in <a href="{link}">{link_name}</a>'
     data = dict()
 
     def notify(self):
@@ -109,7 +109,7 @@ class CommentNotify(BaseNotify):
     Processing updates for Jira comments
     Actions: a comment may be created, updated and deleted
     """
-    message_template = 'User {username} {action} comment in <a href="{link}">{link_name}</a>'
+    message_template = 'User <b>{username}</b> {action} comment in <a href="{link}">{link_name}</a>'
 
     def notify(self):
         data = {
@@ -143,12 +143,12 @@ class IssueNotify(BaseNotify):
     resolution_action = 'resolution'
 
     message_template = {
-        'assignee': read_template(os.path.join('auth', 'templates', 'issue_assignee.txt')),
-        'status': read_template(os.path.join('auth', 'templates', 'issue_status.txt')),
-        'Attachment': read_template(os.path.join('auth', 'templates', 'issue_attachment.txt')),
-        'description': read_template(os.path.join('auth', 'templates', 'issue_desc.txt')),
-        'summary': read_template(os.path.join('auth', 'templates', 'issue_summary.txt')),
-        'resolution': read_template(os.path.join('auth', 'templates', 'issue_resolution.txt')),
+        'assignee': os.path.join('auth', 'templates', 'issue_assignee.txt'),
+        'status': os.path.join('auth', 'templates', 'issue_status.txt'),
+        'Attachment': os.path.join('auth', 'templates', 'issue_attachment.txt'),
+        'description': os.path.join('auth', 'templates', 'issue_desc.txt'),
+        'summary': os.path.join('auth', 'templates', 'issue_summary.txt'),
+        'resolution': os.path.join('auth', 'templates', 'issue_resolution.txt'),
     }
 
     def notify(self):
@@ -180,6 +180,7 @@ class IssueNotify(BaseNotify):
             elif self.update['issue_event_type_name'] == self.updated and field == self.assignee_action:
                 self.issue_reasigned(item, template)
             else:
+                template = read_template(template)
                 self.messages.append(template.substitute(**self.generic_data))
 
         urls = self.prepare_messages(self.messages)
@@ -190,6 +191,7 @@ class IssueNotify(BaseNotify):
             'user': item.get('toString'),
         }
         data.update(self.generic_data)
+        template = read_template(template)
         self.messages.append(template.substitute(**data))
 
     def issue_status(self, item, template):
@@ -198,6 +200,7 @@ class IssueNotify(BaseNotify):
             'new_status': item.get('toString'),
         }
         data.update(self.generic_data)
+        template = read_template(template)
         self.messages.append(template.substitute(**data))
 
     def issue_resolution(self, item, template):
@@ -208,6 +211,7 @@ class IssueNotify(BaseNotify):
             'new_resolution': new_resolution or 'Unresolved',
         }
         data.update(self.generic_data)
+        template = read_template(template)
         self.messages.append(template.substitute(**data))
 
     def file_attachment(self, item, template):
@@ -223,6 +227,7 @@ class IssueNotify(BaseNotify):
                 'action': 'deleted',
             }
         data.update(self.generic_data)
+        template = read_template(template)
         self.messages.append(template.substitute(**data))
 
     def issue_reasigned(self, item, template):
@@ -231,6 +236,7 @@ class IssueNotify(BaseNotify):
             'user': username or 'Unassigned',
         }
         data.update(self.generic_data)
+        template = read_template(template)
         self.messages.append(template.substitute(**data))
 
 
