@@ -1,11 +1,12 @@
+import os
 from itertools import zip_longest
 
 import pendulum
 from pendulum.parsing.exceptions import ParserError
 from telegram.ext import CommandHandler
 
-from bot.helpers import login_required
 from bot.exceptions import ContextValidationError
+from bot.helpers import login_required
 from lib import utils
 
 from .base import AbstractCommand
@@ -17,15 +18,7 @@ class TimeTrackingDispatcher(AbstractCommand):
     """
     command_name = "/time"
     targets = ('user', 'issue', 'project')
-    description = (
-        "<b>Command description:</b>\n"
-        "/time issue <i>issue-key</i> - returns a report of spend time of issue\n"
-        "/time user <i>username</i> - returns a report of spend time of user\n"
-        "/time project <i>KEY</i> - returns a report of spend time of project\n\n"
-        "<i>If the date range is not specified, the command is executed for today</i>\n"
-        "<i>If the start date is specified - the command will be executed inclusively from the "
-        "start date to today's date</i>"
-    )
+    description = utils.read_file(os.path.join('bot', 'templates', 'time_description.tpl'))
 
     @login_required
     def handler(self, bot, update, *args, **kwargs):
@@ -112,7 +105,7 @@ class IssueTimeTrackerCommand(AbstractCommand):
         seconds = sum(worklog.get('time_spent_seconds', 0) for worklog in issue_worklog)
         spended_time = utils.calculate_tracking_time(seconds)
 
-        template = f'Time, spended on issue <b>{issue}</b> from from <b>{start_date.to_date_string()}</b> ' \
+        template = f'Time, spended on issue <b>{issue}</b> from <b>{start_date.to_date_string()}</b> ' \
                    f'to <b>{end_date.to_date_string()}</b>: '
         text = template + str(spended_time) + ' h'
         return self.app.send(bot, update, text=text)

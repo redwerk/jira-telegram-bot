@@ -1,32 +1,21 @@
 import logging
+import os
 
 from telegram.ext import CommandHandler
+
+from lib.utils import read_file
 
 from .base import AbstractCommand
 
 
 class HelpCommand(AbstractCommand):
     """/help - returns help description"""
-    description = [
-        '/start - Starts the bot',
-        '/listunresolved - Shows different issues',
-        '/liststatus - Shows users and projects issues with a selected status',
-        '/filter - Shows issues by favourite filters',
-        '/time - Shows spented time of issue, user or project',
-        '/watch - Allows you to subscribe to notifications about updates',
-        '/unwatch - Unsubscribe from selected or all updates',
-        '/schedule - create new schedule command',
-        '/unschedule - remove command from schedule list',
-        '/connect jira.yourcompany.com username password - Login into host using user/pass',
-        '/oauth jira.yourcompany.com - Login into host using OAuth',
-        '/disconnect - Deletes user credentials from DB',
-        '/help - Returns commands and its descriptions'
-    ]
+    description = read_file(os.path.join('bot', 'templates', 'help_description.tpl'))
 
     def handler(self, bot, update, *args, **kwargs):
         bot.send_message(
             chat_id=update.message.chat_id,
-            text='\n'.join(self.description)
+            text=self.description
         )
 
     def command_callback(self):
