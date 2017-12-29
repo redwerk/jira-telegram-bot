@@ -121,7 +121,7 @@ def generate_webhook_url(webhook_id):
 
 def read_template(filepath):
     """Read a text file and return a string.Template object"""
-    with open(filepath) as file:
+    with open(os.path.join(BASE_DIR, filepath)) as file:
         template = Template(file.read())
     return template
 
