@@ -22,13 +22,6 @@ class AbstractCommand(metaclass=ABCMeta):
         pass
 
     @classmethod
-    def check_command(cls, command_name):
-        """Check command name and if they not allowed return False.
-        This method must be overload only in schedule allowed commands.
-        """
-        return False
-
-    @classmethod
     def validate_context(cls, context):
         """Validate context or raise ContextValidationError.
         This method must be implemented in your command class.

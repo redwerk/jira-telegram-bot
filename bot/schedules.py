@@ -12,6 +12,7 @@ from pytz import timezone
 from lib.db import create_connection
 from .commands.base import AbstractCommand
 from .helpers import Singleton
+from .exceptions import ScheduleValidationError
 
 
 conn = create_connection()
@@ -29,8 +30,8 @@ def adjust(func):
     return wrapper
 
 
-def error_hendler(func):
-    """Error hendler for schedule commands running in jobqueue"""
+def error_wrapper(func):
+    """Error hendle wrapper for schedule commands running in jobqueue"""
     @wraps(func)
     def wrapper(instance, bot, update, *args, **kwargs):
         try:
@@ -45,20 +46,26 @@ def error_hendler(func):
 class ScheduleCommands(metaclass=Singleton):
     """List for allowed schedule commands, used `commands` instance
     for registration new command as `schedule_commands.register(<command cls>)`
-    and get registered commands as `schedule_commands.get_list()`.
+    and get registered commands as `schedule_commands.values()`.
     """
     __commands = dict()
 
-    def register(self, command):
-        if not issubclass(command, AbstractCommand):
-            raise TypeError("The command must be of type 'AbstractCommand'")
+    def register(self, command, cls):
+        if not issubclass(cls, AbstractCommand):
+            raise TypeError("The command class must be of type `AbstractCommand`")
 
-        if command.__name__ in self.__commands:
-            raise ValueError(f"Command class {command.__name__} alreday registered")
+        if not isinstance(command, str):
+            raise TypeError("Command name must be of sting type")
+
+        if not command.startswith('/'):
+            command = '/' + command
+
+        if command in self.__commands:
+            raise ValueError(f"Command {command} alreday registered")
 
         # monkey patching for command error hendler
-        command.handler = error_hendler(command.handler)
-        self.__commands[command.__name__] = command
+        cls.handler = error_wrapper(cls.handler)
+        self.__commands[command] = cls
 
     def items(self):
         raise AttributeError("Not implemented")
@@ -72,6 +79,12 @@ class ScheduleCommands(metaclass=Singleton):
 
     def keys(self):
         return self.__commands.keys()
+
+    def __getitem__(self, key):
+        return self.__commands[key]
+
+    def __setitem__(self, key, item):
+        raise AttributeError("Not implemented")
 
     def __contains__(self, key):
         return key in self.__commands
@@ -97,10 +110,6 @@ class ScheduleTaskSerializer:
         if "update" in data:
             data["update"] = data["update"].to_dict()
 
-        if "callback" in data:
-            cb = data["callback"]
-            data["callback"] = f"{cb.__module__}:{cb.__name__}"
-
         if "id" in data:
             _id = data.pop("id")
             if _id is not None:
@@ -112,12 +121,6 @@ class ScheduleTaskSerializer:
     def deserialize(data, bot):
         if "update" in data:
             data["update"] = Update.de_json(data["update"], bot)
-
-        if "callback" in data:
-            _, cb_cls = data["callback"].split(":")
-            # for loading command
-            # getattr(import_module(cb_module), cb_cls, None)
-            data["callback"] = schedule_commands.get(cb_cls)
 
         if "_id" in data:
             data["id"] = data.pop("_id")
@@ -155,7 +158,7 @@ class ScheduleTask:
             name,
             user_id,
             tz,
-            callback,
+            command,
             context=[],
             last_run=None,
             next_run=None,
@@ -172,7 +175,7 @@ class ScheduleTask:
         if not croniter.is_valid(interval):
             raise ValueError("The 'interval' value is not valid")
         self._interval = interval
-        self._callback = callback
+        self._command = command
         self._context = context
         self._last_run = last_run
         self._next_run = next_run
@@ -187,7 +190,7 @@ class ScheduleTask:
         Returns:
             telegram.ext.Job
         """
-        handler = self.callback(app).handler
+        handler = schedule_commands[self.command](app).handler
         callback = partial(handler, bot, self.update, args=self.context)
         return Job(callback, repeat=False, name=self.id)
 
@@ -218,10 +221,6 @@ class ScheduleTask:
         return self._tz
 
     @property
-    def callback(self):
-        return self._callback
-
-    @property
     def context(self):
         return self._context
 
@@ -229,13 +228,19 @@ class ScheduleTask:
     def update(self):
         return self._update
 
-    @callback.setter
-    def callback(self, value):
-        if not issubclass(value, AbstractCommand):
-            raise TypeError(
-                "The 'callback' must be of type 'AbstractCommand'"
-            )
-        self._callback = value
+    @property
+    def command(self):
+        return self._command
+
+    @command.setter
+    def command(self, command):
+        if command not in schedule_commands:
+            raise ScheduleValidationError(f"Command '{command}' not registered")
+
+        if not command.startswith('/'):
+            command = '/' + command
+
+        self._command = command
 
     @property
     def interval(self):
@@ -338,7 +343,7 @@ class ScheduleTask:
             name=self.name,
             user_id=self.user_id,
             tz=self.tz,
-            callback=self.callback,
+            command=self.command,
             context=self.context,
             interval=self.interval,
             last_run=self.last_run,
@@ -361,15 +366,15 @@ class ScheduleTask:
         return cls(**data)
 
     @classmethod
-    def create(cls, update, name, tz, interval, callback, context=[]):
+    def create(cls, update, name, tz, interval, command, context=[]):
         """Create new periodic task.
 
         Args:
             update (telegram.Update): Update instance
             name (str): command display name
             tz (str): timezone name
-            interval (datetime.timedelta): interval time
-            callback (commands.AbstractCommand): the callback hendler
+            interval (str): interval time in crontab style
+            command (str): command name
             context (list): callback params
         Returns:
             pymongo.results.InsertOneResult
@@ -385,7 +390,7 @@ class ScheduleTask:
             name=name,
             user_id=user_id,
             tz=tz,
-            callback=callback,
+            command=command,
             context=context
         )
         instance.__increase_next_run()

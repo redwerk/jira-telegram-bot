@@ -52,7 +52,6 @@ class ListUnresolvedIssuesCommand(AbstractCommand):
     """
     /listunresolved <target> [name] - shows users or projects unresolved issues
     """
-    command_name = "/listunresolved"
     targets = ('my', 'user', 'project')
     description = (
         "<b>Command description:</b>\n"
@@ -85,11 +84,6 @@ class ListUnresolvedIssuesCommand(AbstractCommand):
 
     def command_callback(self):
         return CommandHandler('listunresolved', self.handler, pass_args=True)
-
-    @classmethod
-    def check_command(cls, command_name):
-        # validate command name
-        return command_name == cls.command_name
 
     @classmethod
     def validate_context(cls, context):
@@ -149,7 +143,6 @@ class ListStatusIssuesCommand(AbstractCommand):
     """
     /liststatus <target> [name] - shows users or projects issues by a selected status
     """
-    command_name = "/liststatus"
     targets = ('my', 'user', 'project')
     description = (
         "<b>Command description:</b>\n"
@@ -182,11 +175,6 @@ class ListStatusIssuesCommand(AbstractCommand):
 
     def command_callback(self):
         return CommandHandler('liststatus', self.handler, pass_args=True)
-
-    @classmethod
-    def check_command(cls, command_name):
-        # validate command name
-        return command_name == cls.command_name
 
     @classmethod
     def validate_context(cls, context):
@@ -310,5 +298,5 @@ class ProjectStatusIssuesCommand(AbstractCommand):
         return CallbackQueryHandler(self.handler, pattern=r'^project_status:')
 
 
-schedule_commands.register(ListUnresolvedIssuesCommand)
-schedule_commands.register(ListStatusIssuesCommand)
+schedule_commands.register('listunresolved', ListUnresolvedIssuesCommand)
+schedule_commands.register('liststatus', ListStatusIssuesCommand)

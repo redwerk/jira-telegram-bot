@@ -1,9 +1,7 @@
 import pytest
 
-from bot.app import JTBApp
 from bot.parsers import command_parser, cron_parser, TYPES, WEEKDAYS, DAYS
 from bot.exceptions import ContextValidationError, ScheduleValidationError
-import bot.commands as commands
 
 
 NOT_ALLOWED_TEST_COMMANDS = (
@@ -19,112 +17,116 @@ NOT_ALLOWED_TEST_COMMANDS = (
 
 class TestCommandParser:
     """Test cases for 'command_parser' function"""
-    def setup(self):
-        self.app = JTBApp()
-        self.commands = self.app.commands
+
+    def setup_class(cls):
+        import bot.commands as commands # noqa
 
     @pytest.mark.parametrize("callback", NOT_ALLOWED_TEST_COMMANDS)
     def test_parse_not_allowed_command(self, callback):
         with pytest.raises(ScheduleValidationError):
-            command_parser(callback, self.commands)
+            command_parser(callback)
+
+    def test_parse_failed_command(self):
+        with pytest.raises(ScheduleValidationError):
+            command_parser("/testfail my")
 
     def test_parse_listunresolved_without_context(self):
         callback = "/listunresolved"
         with pytest.raises(ContextValidationError):
-            command_parser(callback, self.commands)
+            command_parser(callback)
 
     def test_parse_listunresolved_me(self):
         callback = "/listunresolved my"
-        command, context = command_parser(callback, self.commands)
-        assert issubclass(command, commands.ListUnresolvedIssuesCommand)
+        command, context = command_parser(callback)
+        assert command == "/listunresolved"
 
     def test_parse_listunresolved_user(self):
         callback = "/listunresolved user"
         with pytest.raises(ContextValidationError):
-            command_parser(callback, self.commands)
+            command_parser(callback)
 
         callback = "/listunresolved user test_username"
-        command, context = command_parser(callback, self.commands)
-        assert issubclass(command, commands.ListUnresolvedIssuesCommand)
+        command, context = command_parser(callback)
+        assert command == "/listunresolved"
 
     def test_parse_listunresolved_project(self):
         callback = "/listunresolved project"
         with pytest.raises(ContextValidationError):
-            command_parser(callback, self.commands)
+            command_parser(callback)
 
         callback = "/listunresolved project test_project"
-        command, context = command_parser(callback, self.commands)
-        assert issubclass(command, commands.ListUnresolvedIssuesCommand)
+        command, context = command_parser(callback)
+        assert command == "/listunresolved"
 
     def test_parse_liststatus_without_context(self):
         callback = "/liststatus"
         with pytest.raises(ContextValidationError):
-            command_parser(callback, self.commands)
+            command_parser(callback)
 
     def test_parse_liststatus_me(self):
         callback = "/liststatus my"
-        command, context = command_parser(callback, self.commands)
-        assert issubclass(command, commands.ListStatusIssuesCommand)
+        command, context = command_parser(callback)
+        assert command == "/liststatus"
 
     def test_parse_liststatus_user(self):
         callback = "/liststatus user"
         with pytest.raises(ContextValidationError):
-            command_parser(callback, self.commands)
+            command_parser(callback)
 
         callback = "/liststatus user test_username"
-        command, context = command_parser(callback, self.commands)
-        assert issubclass(command, commands.ListStatusIssuesCommand)
+        command, context = command_parser(callback)
+        assert command == "/liststatus"
 
     def test_parse_liststatus_project(self):
         callback = "/liststatus project"
         with pytest.raises(ContextValidationError):
-            command_parser(callback, self.commands)
+            command_parser(callback)
 
         callback = "/liststatus project test_project"
-        command, context = command_parser(callback, self.commands)
-        assert issubclass(command, commands.ListStatusIssuesCommand)
+        command, context = command_parser(callback)
+        assert command == "/liststatus"
 
     def test_parse_filter_without_context(self):
         callback = "/filter"
         with pytest.raises(ContextValidationError):
-            command_parser(callback, self.commands)
+            command_parser(callback)
 
     def test_parse_filter_with_context(self):
         callback = "/filter Test Filter"
-        command, context = command_parser(callback, self.commands)
-        assert issubclass(command, commands.FilterIssuesCommand)
+        command, context = command_parser(callback)
+        assert command == "/filter"
 
     def test_parse_time_without_context(self):
         callback = "/time"
         with pytest.raises(ContextValidationError):
-            command_parser(callback, self.commands)
+            command_parser(callback)
 
     def test_parse_time_issue(self):
         callback = "/time issue"
         with pytest.raises(ContextValidationError):
-            command_parser(callback, self.commands)
+            command_parser(callback)
 
         callback = "/time issue test_issue"
-        command, context = command_parser(callback, self.commands)
-        assert issubclass(command, commands.TimeTrackingDispatcher)
+        command, context = command_parser(callback)
+        assert command == "/time"
 
     def test_parse_time_user(self):
         callback = "/time user"
         with pytest.raises(ContextValidationError):
-            command_parser(callback, self.commands)
+            command_parser(callback)
 
         callback = "/time user test_user"
-        command, context = command_parser(callback, self.commands)
-        assert issubclass(command, commands.TimeTrackingDispatcher)
+        command, context = command_parser(callback)
+        assert command == "/time"
 
     def test_parse_time_project(self):
         callback = "/time project"
         with pytest.raises(ContextValidationError):
-            command_parser(callback, self.commands)
+            command_parser(callback)
 
         callback = "/time project test_project"
-        command, context = command_parser(callback, self.commands)
-        assert issubclass(command, commands.TimeTrackingDispatcher)
+        command, context = command_parser(callback)
+        assert command == "/time"
 
 
 class TestSimpleCronParser:

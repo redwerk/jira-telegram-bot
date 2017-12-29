@@ -48,7 +48,6 @@ class FilterDispatcherCommand(AbstractCommand):
 
 class FilterIssuesCommand(AbstractCommand):
     """/filter -> some filter - return issues getting by a selected filter"""
-    command_name = "/filter"
 
     @login_required
     def handler(self, bot, update, *args, **kwargs):
@@ -75,14 +74,9 @@ class FilterIssuesCommand(AbstractCommand):
         return CallbackQueryHandler(self.handler, pattern=r'^filter_p:')
 
     @classmethod
-    def check_command(cls, command_name):
-        # validate command name
-        return command_name == cls.command_name
-
-    @classmethod
     def validate_context(cls, context):
         if len(context) < 1:
             raise ContextValidationError("<i>Filter Name</i> is a required argument.")
 
 
-schedule_commands.register(FilterIssuesCommand)
+schedule_commands.register('filter', FilterIssuesCommand)

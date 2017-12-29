@@ -3,7 +3,6 @@ import re
 from croniter import croniter
 
 from .exceptions import ScheduleValidationError
-from .schedules import schedule_commands
 
 
 # allowed periodicity types
@@ -31,13 +30,13 @@ time_re = r'(?P<hour>\d{0,2})[:\-\\.\s]+(?P<minute>\d*)'
 
 def command_parser(callback):
     """Parse and validate accepts command"""
-    command_name, *context = callback.split()
-    for command in schedule_commands:
-        if command.check_command(command_name):
-            command.validate_context(context[:])
-            return command, context
+    from .schedules import schedule_commands
+    command, *context = callback.split()
+    if command not in schedule_commands:
+        raise ScheduleValidationError(f"Command '{command}' not registered")
 
-    raise ScheduleValidationError(f"Command '{callback}' not found")
+    schedule_commands[command].validate_context(context[:])
+    return command, context
 
 
 class SimpleCronParser:

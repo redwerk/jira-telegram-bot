@@ -16,7 +16,6 @@ class TimeTrackingDispatcher(AbstractCommand):
     """
     /time <target> <name> [start_date] [end_date] - Shows spended time for users, issues and projects
     """
-    command_name = "/time"
     targets = ('user', 'issue', 'project')
     description = (
         "<b>Command description:</b>\n"
@@ -70,11 +69,6 @@ class TimeTrackingDispatcher(AbstractCommand):
 
     def command_callback(self):
         return CommandHandler('time', self.handler, pass_args=True)
-
-    @classmethod
-    def check_command(cls, command_name):
-        # validate command name
-        return command_name == cls.command_name
 
     @classmethod
     def validate_context(cls, context):
@@ -177,4 +171,4 @@ class ProjectTimeTrackerCommand(AbstractCommand):
         return self.app.send(bot, update, text=text)
 
 
-schedule_commands.register(TimeTrackingDispatcher)
+schedule_commands.register("time", TimeTrackingDispatcher)
