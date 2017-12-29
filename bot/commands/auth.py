@@ -80,6 +80,7 @@ class DisconnectCommand(AbstractCommand):
 
 
 class OAuthLoginCommand(AbstractCommand):
+    description = utils.read_file(os.path.join('bot', 'templates', 'oauth_description.tpl'))
 
     def handler(self, bot, update, *args, **kwargs):
         """
@@ -101,7 +102,7 @@ class OAuthLoginCommand(AbstractCommand):
             )
 
         if not auth_options:
-            return self.app.send(bot, update, text='Host is required option')
+            return self.app.send(bot, update, text=self.description)
 
         domain_name = auth_options[0]
         user_data = self.app.db.get_user_data(chat_id)
@@ -201,6 +202,7 @@ class OAuthLoginCommand(AbstractCommand):
 
 class BasicLoginCommand(AbstractCommand):
     """/connect <host> <username> <password> - Login into Jira via username and password"""
+    description = utils.read_file(os.path.join('bot', 'templates', 'connect_description.tpl'))
 
     def handler(self, bot, update, *args, **kwargs):
         chat_id = update.message.chat_id
@@ -215,11 +217,7 @@ class BasicLoginCommand(AbstractCommand):
 
         if not auth_options:
             # if no parameters are passed
-            return self.app.send(
-                bot,
-                update,
-                text='You did not specify parameters for authorization'
-            )
+            return self.app.send(bot, update, text=self.description)
 
         user_data = self.app.db.get_user_data(chat_id)
         try:
