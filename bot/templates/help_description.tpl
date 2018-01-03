@@ -10,4 +10,4 @@
 /disconnect - Deletes user credentials from DB
 /help - Returns commands and its description
 
-v. 2017-12-29
+v. 2018-01-03
