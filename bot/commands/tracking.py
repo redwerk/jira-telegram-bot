@@ -135,7 +135,7 @@ class UserTimeTrackerCommand(AbstractCommand):
         seconds = sum(worklog.get('time_spent_seconds', 0) for worklog in all_user_logs)
         spended_time = utils.calculate_tracking_time(seconds)
 
-        template = f'User <b>{username}</b> from from <b>{start_date.to_date_string()}</b> ' \
+        template = f'User <b>{username}</b> from <b>{start_date.to_date_string()}</b> ' \
                    f'to <b>{end_date.to_date_string()}</b> spent: '
         text = template + str(spended_time) + ' h'
         return self.app.send(bot, update, text=text)
