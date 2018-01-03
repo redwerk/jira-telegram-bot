@@ -37,15 +37,18 @@ class TimeTrackingDispatcher(AbstractCommand):
             # if the start date is specified - the command will be executed
             # inclusively from the start date to today's date
             try:
-                params['start_date'] = pendulum.parse(params['start_date'])
+                start_date = pendulum.parse(params['start_date'])
+                params['start_date'] = start_date._start_of_day()
             except ParserError:
                 return self.app.send(bot, update, text='Invalid date format')
             else:
                 params['end_date'] = current_date._end_of_day()
         elif params['start_date'] and params['end_date']:
             try:
-                params['start_date'] = pendulum.parse(params['start_date'])
-                params['end_date'] = pendulum.parse(params['end_date'])
+                start_date = pendulum.parse(params['start_date'])
+                end_date = pendulum.parse(params['end_date'])
+                params['start_date'] = start_date._start_of_day()
+                params['end_date'] = end_date._end_of_day()
             except ParserError:
                 return self.app.send(bot, update, text='Invalid date format')
 
