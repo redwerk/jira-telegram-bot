@@ -42,23 +42,21 @@ class UpdateMessageProvider:
     to users according to Telegram API limitation
     """
     def __init__(self):
-        self.message_queue = queue.Queue()
-        self.r_count = 0
+        self.message_queue = queue.Queue(maxsize=20)
         self.thread = threading.Thread(target=self.send_message)
 
-    def run_sender_thread(self):
+    def run(self):
         self.thread.start()
         logger.debug('UpdateMessageProvider was started')
 
     def send_message(self):
         """
         Checking a message to exists in the queue, if a message exists - trying to send message into a user chat
-        If response status not 200 - returns message into queue and tries message sending again later
+        If response status is 429 - returns message into queue and tries message sending again later
         """
         while True:
             # https://core.telegram.org/bots/faq#broadcasting-to-users
-            if self.r_count >= 20:
-                self.r_count = 0
+            if self.message_queue.full():
                 time.sleep(1)
 
             if not self.message_queue.empty():
@@ -67,10 +65,8 @@ class UpdateMessageProvider:
                     status = requests.get(url)
                 except requests.RequestException as error:
                     logger.error(f'{url}\n{error}')
-                    self.message_queue.put(url)
                 else:
-                    self.r_count += 1
-                    if status.status_code != 200:
+                    if status.status_code == 429:
                         self.message_queue.put(url)
                     else:
                         self.message_queue.task_done()
@@ -81,7 +77,7 @@ class UpdateMessageProvider:
 
 
 message_provider = UpdateMessageProvider()
-message_provider.run_sender_thread()
+message_provider.run()
 
 
 class JiraOAuthApp:
