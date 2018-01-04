@@ -1,5 +1,4 @@
 import logging
-
 from collections import namedtuple
 from json.decoder import JSONDecodeError
 
@@ -111,7 +110,13 @@ class JiraBackend:
         jira_conn = kwargs.get('jira_conn')
 
         try:
-            # Formatted string where to put the character code in UTF
+            """
+            Formatted string where to put the character code in UTF
+            Why was this decision chosen? The urllib.parse.quote package does not escape all characters 
+            that allow JIRA itself. In particular, the -./_ characters are not escaped, which does not 
+            correspond to the permissibility of creating a username allowed by JIRA and, as a result, 
+            the error is obtained when login, as described in detail by the testers
+            """
             username_utf = ''.join(['%' + '%0000x' % ord(character) for character in username])
 
             jira_conn._session.get(f'{host}/rest/api/2/user?username={username_utf}')
