@@ -1,0 +1,1 @@
+User $username updated status from <b>$old_status</b> to <b>$new_status</b> at <a href="$link">$link_name</a>

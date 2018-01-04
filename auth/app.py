@@ -1,24 +1,29 @@
+import json
 import logging
+import queue
+import threading
+import time
 from logging.config import fileConfig
 
 from flask import Flask, redirect, request, session, url_for
-from flask.views import View
+from flask.views import MethodView, View
 from flask_oauthlib.client import OAuth, OAuthException
+from oauthlib.oauth1 import SIGNATURE_RSA
 
 import jira
 import requests
 from decouple import config
-from oauthlib.oauth1 import SIGNATURE_RSA
 
-from lib.utils import read_rsa_key
 from lib.db import MongoBackend
-from run import SMTPHandlerNumb  # WTF
+from lib.utils import read_rsa_key
+
+from .notifier import UpdateNotifierFactory
 
 # common settings
 fileConfig('./logging_config.ini')
 logger = logging.getLogger()
-logger.handlers[SMTPHandlerNumb].fromaddr = config('LOGGER_EMAIL')
-logger.handlers[SMTPHandlerNumb].toaddrs = [email.strip() for email in config('DEV_EMAILS').split(',')]
+logger.handlers[1].fromaddr = config('LOGGER_EMAIL')
+logger.handlers[1].toaddrs = [email.strip() for email in config('DEV_EMAILS').split(',')]
 
 bot_url = config('BOT_URL')
 db = MongoBackend()
@@ -26,6 +31,53 @@ db = MongoBackend()
 # Flask settings
 app = Flask(__name__)
 app.secret_key = config('SECRET_KEY')
+
+# constants
+jira_agent = 'Atlassian HttpClient'
+
+
+class UpdateMessageProvider:
+    """
+    Implements a message provider for sending messages from telegram bot
+    to users according to Telegram API limitation
+    """
+    def __init__(self):
+        self.message_queue = queue.Queue(maxsize=20)
+
+    def run(self):
+        thread = threading.Thread(target=self.send_message)
+        thread.start()
+        logger.debug('UpdateMessageProvider was started')
+
+    def send_message(self):
+        """
+        Checking a message to exists in the queue, if a message exists - trying to send message into a user chat
+        If response status is 429 - returns message into queue and tries message sending again later
+        """
+        while True:
+            # https://core.telegram.org/bots/faq#broadcasting-to-users
+            if self.message_queue.full():
+                time.sleep(1)
+
+            if not self.message_queue.empty():
+                url = self.message_queue.get()
+                try:
+                    status = requests.get(url)
+                except requests.RequestException as error:
+                    logger.error(f'{url}\n{error}')
+                else:
+                    if status.status_code == 429:
+                        self.message_queue.put(url)
+                    else:
+                        self.message_queue.task_done()
+
+    def push_to_queue(self, batch):
+        for item in batch:
+            self.message_queue.put(item)
+
+
+message_provider = UpdateMessageProvider()
+message_provider.run()
 
 
 class JiraOAuthApp:
@@ -225,5 +277,79 @@ class OAuthAuthorizedView(SendToChatMixin, OAuthJiraBaseView):
         }
 
 
+class IssueWebhookView(MethodView):
+    """Processing updates from Jira issues"""
+
+    def post(self, **kwargs):
+        if not request.content_length or jira_agent not in request.headers.get('User-Agent'):
+            return 'Endpoint is processing only updates from jira webhook', 403
+
+        webhook = db.get_webhook(webhook_id=kwargs.get('webhook_id'))
+        if not webhook:
+            return 'Unregistered webhook', 403
+
+        subs = db.get_webhook_subscriptions(webhook.get('_id'))
+        if not subs.count():
+            return 'No subscribers', 200
+
+        jira_update = json.loads(request.data)
+        chat_ids = self.filters_subscribers(subs, kwargs.get('project_key'), kwargs.get('issue_key'))
+        UpdateNotifierFactory.notify(message_provider, jira_update, chat_ids, webhook.get('host_url'), **kwargs)
+
+        return 'OK', 200
+
+    @staticmethod
+    def filters_subscribers(subscribers, project, issue=None):
+        """
+        Filtering subscribers through its topics: project or issue
+        :param subscribers: list of user subscribers info in dictionary type
+        :param project: project key e.g. JTB
+        :param issue: issue key e.g. JTB-99
+        :return: set of chat_ids
+        """
+        sub_users = list()
+
+        for sub in subscribers:
+            sub_topic = sub.get('topic')
+            sub_name = sub.get('name')
+            sub_chat_id = sub.get('chat_id')
+            project_cond = sub_topic == 'project' and project == sub_name
+
+            if project:
+                if sub_topic == 'project' and project == sub_name:
+                    sub_users.append(sub_chat_id)
+            if issue:
+                if sub_topic == 'issue' and issue == sub_name or project_cond:
+                    sub_users.append(sub_chat_id)
+
+        return set(sub_users)
+
+
+class ProjectWebhookView(MethodView):
+    """Processing updates from Jira projects"""
+
+    def post(self, **kwargs):
+        if not request.content_length or jira_agent not in request.headers.get('User-Agent'):
+            return 'Endpoint is processing only updates from jira webhook', 403
+
+        webhook = db.get_webhook(webhook_id=kwargs.get('webhook_id'))
+        if not webhook:
+            return 'Unregistered webhook', 403
+
+        subs = db.get_webhook_subscriptions(webhook.get('_id'))
+        if not subs.count():
+            return 'No subscribers', 200
+
+        jira_update = json.loads(request.data)
+        chat_ids = IssueWebhookView.filters_subscribers(subs, kwargs.get('project_key'))
+        UpdateNotifierFactory.notify(message_provider, jira_update, chat_ids, webhook.get('host_url'), **kwargs)
+
+        return 'OK', 200
+
+
 app.add_url_rule('/authorize/<int:telegram_id>/', view_func=AuthorizeView.as_view('authorize'))
 app.add_url_rule('/oauth_authorized', view_func=OAuthAuthorizedView.as_view('oauth_authorized'))
+app.add_url_rule('/webhook/<webhook_id>/<project_key>/', view_func=ProjectWebhookView.as_view('project-webhook'))
+app.add_url_rule(
+    '/webhook/<webhook_id>/<project_key>/<issue_key>/', view_func=IssueWebhookView.as_view('issue-webhook')
+)

@@ -1,0 +1,1 @@
+Resolution at <a href="$link">$link_name</a> changed from <b>$old_resolution</b> to <b>$new_resolution</b> by <b>$username</b>.

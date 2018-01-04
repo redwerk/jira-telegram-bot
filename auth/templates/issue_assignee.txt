@@ -1,0 +1,1 @@
+Issue <a href="$link">$link_name</a> was assigned to <b>$user</b>

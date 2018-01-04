@@ -1,0 +1,1 @@
+Description was updated by <b>$username</b> at <a href="$link">$link_name</a>
