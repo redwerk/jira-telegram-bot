@@ -1,14 +1,15 @@
 import logging
 from collections import namedtuple
 from json.decoder import JSONDecodeError
+from urllib.parse import quote
 
 import jira
 import pendulum
 import pytz
 from jira.resilientsession import ConnectionError
 
-from bot.exceptions import (JiraConnectionError, JiraEmptyData,
-                            JiraLoginError, JiraReceivingDataError)
+from bot.exceptions import (JiraConnectionError, JiraEmptyData, JiraLoginError,
+                            JiraReceivingDataError)
 
 OK_STATUS = 200
 
@@ -108,8 +109,14 @@ class JiraBackend:
     def is_user_on_host(self, host, username, *args, **kwargs):
         """Checking the existence of the user on the Jira host"""
         jira_conn = kwargs.get('jira_conn')
+
         try:
-            jira_conn._session.get(f'{host}/rest/api/2/user?username={username}')
+            """
+            Formatted string where to put the character code in UTF
+            """
+            username_utf = quote(username)
+
+            jira_conn._session.get(f'{host}/rest/api/2/user?username={username_utf}')
         except jira.JIRAError as e:
             raise JiraReceivingDataError(e.text)
 
