@@ -104,7 +104,7 @@ class TestCommandParser:
         with pytest.raises(ContextValidationError):
             command_parser(callback, self.commands)
 
-        callback = "/time issue test_issue"
+        callback = "/time issue test_issue today"
         command, context = command_parser(callback, self.commands)
         assert issubclass(command, commands.TimeTrackingDispatcher)
 
@@ -113,7 +113,7 @@ class TestCommandParser:
         with pytest.raises(ContextValidationError):
             command_parser(callback, self.commands)
 
-        callback = "/time user test_user"
+        callback = "/time user test_user 28/Dec/2017"
         command, context = command_parser(callback, self.commands)
         assert issubclass(command, commands.TimeTrackingDispatcher)
 
@@ -122,7 +122,7 @@ class TestCommandParser:
         with pytest.raises(ContextValidationError):
             command_parser(callback, self.commands)
 
-        callback = "/time project test_project"
+        callback = "/time project test_project yesterday"
         command, context = command_parser(callback, self.commands)
         assert issubclass(command, commands.TimeTrackingDispatcher)
 

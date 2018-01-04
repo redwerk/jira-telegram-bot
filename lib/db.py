@@ -161,10 +161,9 @@ class MongoBackend:
         :return: string webhook ObjectID
         """
         collection = self._get_collection('webhook')
-        status = collection.insert_one({'host_url': host, 'is_confirmed': False})
-        if status:
-            created_webhook = collection.find_one({'host_url': host})
-            return str(created_webhook.get('_id'))
+        webhook = collection.insert_one({'host_url': host, 'is_confirmed': False})
+        if webhook:
+            return str(webhook.inserted_id)
 
     def update_webhook(self, data, webhook_id=None, host_url=None):
         """
@@ -191,8 +190,7 @@ class MongoBackend:
             webhook = collection.find_one({'_id': ObjectId(webhook_id)})
         elif host_url:
             webhook = collection.find_one({'host_url': host_url})
-        if webhook:
-            return webhook
+        return webhook
 
     def create_subscription(self, data):
         """
@@ -212,8 +210,7 @@ class MongoBackend:
         """
         collection = self._get_collection('subscriptions')
         subscription = collection.find_one({'chat_id': chat_id, 'name': name})
-        if subscription:
-            return subscription
+        return subscription
 
     def get_webhook_subscriptions(self, webhook_id):
         """
@@ -223,8 +220,7 @@ class MongoBackend:
         """
         collection = self._get_collection('subscriptions')
         subs = collection.find({'webhook_id': webhook_id})
-        if subs:
-            return subs
+        return subs
 
     def get_user_subscriptions(self, user_id):
         """
@@ -234,8 +230,7 @@ class MongoBackend:
         """
         collection = self._get_collection('subscriptions')
         subs = collection.find({'user_id': user_id})
-        if subs:
-            return subs
+        return subs
 
     def delete_subscription(self, chat_id, name):
         """

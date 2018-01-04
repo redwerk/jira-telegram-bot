@@ -15,7 +15,7 @@ import requests
 from decouple import config
 
 from lib.db import MongoBackend
-from lib.utils import filters_subscribers, read_rsa_key
+from lib.utils import read_rsa_key
 
 from .notifier import UpdateNotifierFactory
 
@@ -43,10 +43,10 @@ class UpdateMessageProvider:
     """
     def __init__(self):
         self.message_queue = queue.Queue(maxsize=20)
-        self.thread = threading.Thread(target=self.send_message)
 
     def run(self):
-        self.thread.start()
+        thread = threading.Thread(target=self.send_message)
+        thread.start()
         logger.debug('UpdateMessageProvider was started')
 
     def send_message(self):
@@ -293,10 +293,36 @@ class IssueWebhookView(MethodView):
             return 'No subscribers', 200
 
         jira_update = json.loads(request.data)
-        chat_ids = filters_subscribers(subs, kwargs.get('project_key'), kwargs.get('issue_key'))
+        chat_ids = self.filters_subscribers(subs, kwargs.get('project_key'), kwargs.get('issue_key'))
         UpdateNotifierFactory.notify(message_provider, jira_update, chat_ids, webhook.get('host_url'), **kwargs)
 
         return 'OK', 200
+
+    @staticmethod
+    def filters_subscribers(subscribers, project, issue=None):
+        """
+        Filtering subscribers through its topics: project or issue
+        :param subscribers: list of user subscribers info in dictionary type
+        :param project: project key e.g. JTB
+        :param issue: issue key e.g. JTB-99
+        :return: set of chat_ids
+        """
+        sub_users = list()
+
+        for sub in subscribers:
+            sub_topic = sub.get('topic')
+            sub_name = sub.get('name')
+            sub_chat_id = sub.get('chat_id')
+            project_cond = sub_topic == 'project' and project == sub_name
+
+            if project:
+                if sub_topic == 'project' and project == sub_name:
+                    sub_users.append(sub_chat_id)
+            if issue:
+                if sub_topic == 'issue' and issue == sub_name or project_cond:
+                    sub_users.append(sub_chat_id)
+
+        return set(sub_users)
 
 
 class ProjectWebhookView(MethodView):
@@ -315,7 +341,7 @@ class ProjectWebhookView(MethodView):
             return 'No subscribers', 200
 
         jira_update = json.loads(request.data)
-        chat_ids = filters_subscribers(subs, kwargs.get('project_key'))
+        chat_ids = IssueWebhookView.filters_subscribers(subs, kwargs.get('project_key'))
         UpdateNotifierFactory.notify(message_provider, jira_update, chat_ids, webhook.get('host_url'), **kwargs)
 
         return 'OK', 200

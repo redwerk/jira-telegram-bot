@@ -113,40 +113,8 @@ def read_file(filename):
     return data
 
 
-def generate_webhook_url(webhook_id):
-    """Generates a Webhook URL for processing updates"""
-    host = config('OAUTH_SERVICE_URL')
-    return '{0}/webhook/{1}'.format(host, webhook_id) + '/${project.key}/${issue.key}'
-
-
 def read_template(filepath):
     """Read a text file and return a string.Template object"""
     with open(os.path.join(BASE_DIR, filepath)) as file:
         template = Template(file.read())
     return template
-
-
-def filters_subscribers(subscribers, project, issue=None):
-    """
-    Filtering subscribers through its topics: project or issue
-    :param subscribers: list of user subscribers info in dictionary type
-    :param project: project key e.g. JTB
-    :param issue: issue key e.g. JTB-99
-    :return: set of chat_ids
-    """
-    sub_users = list()
-
-    for sub in subscribers:
-        sub_topic = sub.get('topic')
-        sub_name = sub.get('name')
-        sub_chat_id = sub.get('chat_id')
-        project_cond = sub_topic == 'project' and project == sub_name
-
-        if project:
-            if sub_topic == 'project' and project == sub_name:
-                sub_users.append(sub_chat_id)
-        if issue:
-            if sub_topic == 'issue' and issue == sub_name or project_cond:
-                sub_users.append(sub_chat_id)
-
-    return set(sub_users)

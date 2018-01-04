@@ -1,11 +1,11 @@
 from itertools import zip_longest
 
+from decouple import config
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackQueryHandler, CommandHandler
 
 from bot.helpers import login_required
 from bot.inlinemenu import build_menu
-from lib import utils
 
 from .base import AbstractCommand
 
@@ -74,6 +74,11 @@ class CreateWebhookCommand(AbstractCommand):
         'instructions</a> and use the link to create a WebHook in your Jira\n\n'
         'Your link: {}')
 
+    def generate_webhook_url(self, webhook_id):
+        """Generates a Webhook URL for processing updates"""
+        host = config('OAUTH_SERVICE_URL')
+        return '{0}/webhook/{1}'.format(host, webhook_id) + '/${project.key}/${issue.key}'
+
     @login_required
     def handler(self, bot, update, *args, **kwargs):
         auth_data = kwargs.get('auth_data')
@@ -84,7 +89,7 @@ class CreateWebhookCommand(AbstractCommand):
 
         webhook_id = self.app.db.create_webhook(auth_data.jira_host)
         if webhook_id:
-            text = self.message_template.format(utils.generate_webhook_url(webhook_id))
+            text = self.message_template.format(self.generate_webhook_url(webhook_id))
             return self.app.send(bot, update, text=text)
 
     def command_callback(self):

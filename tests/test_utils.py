@@ -1,8 +1,9 @@
 import pendulum
 import pytest
 
-from bot.paginations import split_by_pages
+from auth.app import IssueWebhookView
 from bot.exceptions import DateTimeValidationError
+from bot.paginations import split_by_pages
 from lib import utils
 
 
@@ -70,5 +71,5 @@ def test_filters_subscribers():
         {'topic': 'issue', 'name': 'CORP-11', 'chat_id': 20881},
         {'topic': 'issue', 'name': 'JA-241', 'chat_id': 10789},
     ]
-    assert {208810129} == utils.filters_subscribers(subs, project='JA')
-    assert {2010129, 208810789} == utils.filters_subscribers(subs, project='JTB', issue='JTB-99')
+    assert {208810129} == IssueWebhookView.filters_subscribers(subs, project='JA')
+    assert {2010129, 208810789} == IssueWebhookView.filters_subscribers(subs, project='JTB', issue='JTB-99')
