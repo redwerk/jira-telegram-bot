@@ -7,6 +7,7 @@ from telegram.ext import CallbackQueryHandler, CommandHandler
 from bot.exceptions import ContextValidationError
 from bot.helpers import get_query_scope, login_required
 from bot.inlinemenu import build_menu
+from bot.schedules import schedule_commands
 from lib.utils import read_file
 
 from .base import AbstractCommand
@@ -257,7 +258,7 @@ class UserStatusIssuesCommand(AbstractCommand):
     @login_required
     def handler(self, bot, update, *args, **kwargs):
         auth_data = kwargs.get('auth_data')
-        scope = self.app.get_query_scope(update)
+        scope = get_query_scope(update)
         username, status = scope['data'].replace('user_status:', '').split(':')
 
         title = 'Issues of "{}" with the "{}" status'.format(username, status)
@@ -277,7 +278,7 @@ class ProjectStatusIssuesCommand(AbstractCommand):
     @login_required
     def handler(self, bot, update, *args, **kwargs):
         auth_data = kwargs.get('auth_data')
-        scope = self.app.get_query_scope(update)
+        scope = get_query_scope(update)
         project, status = scope['data'].replace('project_status:', '').split(':')
 
         title = 'Issues of "{}" project with the "{}" status'.format(project, status)

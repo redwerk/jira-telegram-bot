@@ -106,7 +106,7 @@ class TestCommandParser:
         with pytest.raises(ContextValidationError):
             command_parser(callback)
 
-        callback = "/time issue test_issue"
+        callback = "/time issue test_issue yesterday"
         command, context = command_parser(callback)
         assert command == "/time"
 
@@ -115,7 +115,7 @@ class TestCommandParser:
         with pytest.raises(ContextValidationError):
             command_parser(callback)
 
-        callback = "/time user test_user"
+        callback = "/time user test_user 24-11-2017 29-11-2017"
         command, context = command_parser(callback)
         assert command == "/time"
 
@@ -124,7 +124,7 @@ class TestCommandParser:
         with pytest.raises(ContextValidationError):
             command_parser(callback)
 
-        callback = "/time project test_project"
+        callback = "/time project test_project 28/Dec/2017"
         command, context = command_parser(callback)
         assert command == "/time"
 
