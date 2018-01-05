@@ -6,6 +6,7 @@ from telegram.ext import CommandHandler
 
 from bot.exceptions import ContextValidationError
 from bot.helpers import login_required
+from bot.schedules import schedule_commands
 from lib import utils
 
 from .base import AbstractCommand
@@ -15,7 +16,6 @@ class TimeTrackingDispatcher(AbstractCommand):
     """
     /time <target> <name> [start_date] [end_date] - Shows spended time for users, issues and projects
     """
-    command_name = "/time"
     targets = ('user', 'issue', 'project')
     available_days = ('today', 'yesterday')
     description = utils.read_file(os.path.join('bot', 'templates', 'time_description.tpl'))
@@ -74,11 +74,6 @@ class TimeTrackingDispatcher(AbstractCommand):
 
     def command_callback(self):
         return CommandHandler('time', self.handler, pass_args=True)
-
-    @classmethod
-    def check_command(cls, command_name):
-        # validate command name
-        return command_name == cls.command_name
 
     @classmethod
     def validate_context(cls, context):
@@ -179,3 +174,6 @@ class ProjectTimeTrackerCommand(AbstractCommand):
                    f'from <b>{start_date.to_date_string()}</b> to <b>{end_date.to_date_string()}</b>: '
         text = template + str(spended_time) + ' h'
         return self.app.send(bot, update, text=text)
+
+
+schedule_commands.register("time", TimeTrackingDispatcher)

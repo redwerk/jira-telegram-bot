@@ -9,7 +9,6 @@ class AbstractCommand(metaclass=ABCMeta):
     """ Abstract base command class.
     In hendler method must be implemented main command logic.
     """
-
     def __init__(self, app, *args, **kwargs):
         self.app = app
 
@@ -21,13 +20,6 @@ class AbstractCommand(metaclass=ABCMeta):
     def command_callback(self):
         # Must be implemented
         pass
-
-    @classmethod
-    def check_command(cls, command_name):
-        """Check command name and if they not allowed return False.
-        This method must be overload only in schedule allowed commands.
-        """
-        return False
 
     @classmethod
     def validate_context(cls, context):

@@ -40,7 +40,7 @@ class ScheduleCommand(AbstractCommand):
             raise ScheduleValidationError("Entered value is not correct")
 
         data = m.groupdict(None)
-        command, context = command_parser(data.get("callback"), self.app.commands)
+        command, context = command_parser(data.get("callback"))
         interval = cron_parser(data.get("type"), data.get("opt") or "")
         # create schedule command
         ScheduleTask.create(update, cmd_name, tz, interval, command, context)
