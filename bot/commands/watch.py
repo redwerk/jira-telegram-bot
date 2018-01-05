@@ -1,3 +1,4 @@
+import os
 from itertools import zip_longest
 
 from decouple import config
@@ -6,6 +7,7 @@ from telegram.ext import CallbackQueryHandler, CommandHandler
 
 from bot.helpers import login_required
 from bot.inlinemenu import build_menu
+from lib import utils
 
 from .base import AbstractCommand
 
@@ -19,11 +21,7 @@ class WatchDispatcherCommand(AbstractCommand):
     targets = ('project', 'issue')
     positive_answer = 'Yes'
     negative_answer = 'No'
-    description = (
-        "<b>Command description:</b>\n"
-        "/watch issue <i>issue-key</i> - subscribe user to events from selected issue\n"
-        "/watch project <i>project-key</i> - subscribe user to events from selected project"
-    )
+    description = utils.read_file(os.path.join('bot', 'templates', 'watch_description.tpl'))
 
     @login_required
     def handler(self, bot, update, *args, **kwargs):
@@ -134,12 +132,7 @@ class UnwatchDispatcherCommand(AbstractCommand):
     /unwatch - Unsubscribe from all updates
     """
     targets = ('project', 'issue')
-    description = (
-        "<b>Command description:</b>\n",
-        "/unwatch project <i>project-key</i> - Unsubscribe from a selected project updates\n"
-        "/unwatch issue <i>issue-key</i> - Unsubscribe from a selected issue updates\n"
-        "/unwatch - Unsubscribe from all updates"
-    )
+    description = utils.read_file(os.path.join('bot', 'templates', 'unwatch_description.tpl'))
 
     @login_required
     def handler(self, bot, update, *args, **kwargs):
