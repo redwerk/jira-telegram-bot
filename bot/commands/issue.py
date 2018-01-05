@@ -1,12 +1,13 @@
+import os
 from itertools import zip_longest
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackQueryHandler, CommandHandler
 
-from bot.helpers import login_required
 from bot.exceptions import ContextValidationError
+from bot.helpers import get_query_scope, login_required
 from bot.inlinemenu import build_menu
-from bot.schedules import schedule_commands
+from lib.utils import read_file
 
 from .base import AbstractCommand
 
@@ -53,12 +54,7 @@ class ListUnresolvedIssuesCommand(AbstractCommand):
     /listunresolved <target> [name] - shows users or projects unresolved issues
     """
     targets = ('my', 'user', 'project')
-    description = (
-        "<b>Command description:</b>\n"
-        "/listunresolved my - returns a list of user's unresolved issues\n"
-        "/listunresolved user <i>username</i> - returns a list of selected user issues\n"
-        "/listunresolved project <i>KEY</i> - returns a list of projects issues\n"
-    )
+    description = read_file(os.path.join('bot', 'templates', 'listunresolved_description.tpl'))
 
     @login_required
     def handler(self, bot, update, *args, **kwargs):
@@ -144,12 +140,7 @@ class ListStatusIssuesCommand(AbstractCommand):
     /liststatus <target> [name] - shows users or projects issues by a selected status
     """
     targets = ('my', 'user', 'project')
-    description = (
-        "<b>Command description:</b>\n"
-        "/liststatus my - returns a list of user's issues with a selected status\n"
-        "/liststatus user *username* - returns a list of selected user issues and status\n"
-        "/liststatus project *KEY* - returns a list of projects issues with selected status\n"
-    )
+    description = read_file(os.path.join('bot', 'templates', 'liststatus_description.tpl'))
 
     @login_required
     def handler(self, bot, update, *args, **kwargs):

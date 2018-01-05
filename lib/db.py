@@ -12,7 +12,7 @@ def create_connection(**kwargs):
     """
     Creates and checks connect to MongoDB.
 
-    Args:
+    Kwargs:
         user (str): database username
         password (str): user password
         host (str): database host location
@@ -54,9 +54,11 @@ class MongoBackend:
         db_name (str): database name
     """
     collection_mapping = {
-        'user': config('DB_USER_COLLECTION'),
-        'host': config('DB_HOST_COLLECTION'),
-        'cache': config('DB_CACHE_COLLECTION'),
+        'user': config('DB_USER_COLLECTION', default='jira_users'),
+        'host': config('DB_HOST_COLLECTION', default='jira_hosts'),
+        'cache': config('DB_CACHE_COLLECTION', default='cache'),
+        'webhook': config('DB_WEBHOOK_COLLECTION', default='webhooks'),
+        'subscriptions': config('DB_SUBSCRIPTIONS_COLLECTION', default='subscriptions'),
         'schedule': config("SCHEDULE_COLLECTION", "schedules"),
     }
 
@@ -70,7 +72,7 @@ class MongoBackend:
     def conn(self):
         return self._conn
 
-    def _get_collection(self, name: str) -> MongoClient:
+    def _get_collection(self, name):
         """Returns MongoClient object which links to selected collection"""
         return self._conn[self.collection_mapping.get(name)]
 
@@ -150,8 +152,104 @@ class MongoBackend:
                 'content': document.get('content'),
                 'page_count': document.get('page_count')
             }
-
         return dict()
+
+    def create_webhook(self, host):
+        """
+        Creates a webhook
+        :param host: jira host
+        :return: string webhook ObjectID
+        """
+        collection = self._get_collection('webhook')
+        webhook = collection.insert_one({'host_url': host, 'is_confirmed': False})
+        if webhook:
+            return str(webhook.inserted_id)
+
+    def update_webhook(self, data, webhook_id=None, host_url=None):
+        """
+        Updates a webhook data by string ObjectId or host_url
+        :param webhook_id: string ObjectId
+        :param host_url: a host url
+        """
+        collection = self._get_collection('webhook')
+        if webhook_id:
+            status = collection.update({'_id': ObjectId(webhook_id)}, {'$set': data})
+        elif host_url:
+            status = collection.update({'host_url': host_url}, {'$set': data})
+        return bool(status)
+
+    def get_webhook(self, webhook_id=None, host_url=None):
+        """
+        Gets a webhook by webhook_id or host
+        :param webhook_id: string ObjectId
+        :param host_url: a host url
+        :return: a webhook in dict type
+        """
+        collection = self._get_collection('webhook')
+        if webhook_id:
+            webhook = collection.find_one({'_id': ObjectId(webhook_id)})
+        elif host_url:
+            webhook = collection.find_one({'host_url': host_url})
+        return webhook
+
+    def create_subscription(self, data):
+        """
+        Creates a subscription on project or issue
+        :param data: dict type
+        """
+        collection = self._get_collection('subscriptions')
+        status = collection.insert_one(data)
+        return bool(status)
+
+    def get_subscription(self, chat_id, name):
+        """
+        Gets a subscription by sub_id
+        :param chat_id: a telegram chat id e.g. 283902890
+        :param name: an issue key e.g. JTB-99
+        :return: a subscription in dict type
+        """
+        collection = self._get_collection('subscriptions')
+        subscription = collection.find_one({'chat_id': chat_id, 'name': name})
+        return subscription
+
+    def get_webhook_subscriptions(self, webhook_id):
+        """
+        Returns all subscriptions linked to a webhook
+        :param webhook_id: ObjectId of an exists webhook (webhook collection)
+        :return: list of dict subscriptions
+        """
+        collection = self._get_collection('subscriptions')
+        subs = collection.find({'webhook_id': webhook_id})
+        return subs
+
+    def get_user_subscriptions(self, user_id):
+        """
+        Returns all subscriptions linked to a user
+        :param user_id: ObjectId of an exists user (user collection)
+        :return: list of dict subscriptions
+        """
+        collection = self._get_collection('subscriptions')
+        subs = collection.find({'user_id': user_id})
+        return subs
+
+    def delete_subscription(self, chat_id, name):
+        """
+        Deletes a one subscription was searched by sub_id
+        :param chat_id: a telegram chat id e.g. 283902890
+        :param name: an issue key e.g. JTB-99
+        """
+        collection = self._get_collection('subscriptions')
+        status = collection.remove({'chat_id': chat_id, 'name': name})
+        return bool(status)
+
+    def delete_all_subscription(self, user_id):
+        """
+        Deletes all subscriptions linked to a user
+        :param user_id: ObjectId of an exists user (user collection)
+        """
+        collection = self._get_collection('subscriptions')
+        status = collection.remove({'user_id': user_id})
+        return bool(status)
 
     def get_schedule_commands(self, user_id):
         """Return list of schedules entries.

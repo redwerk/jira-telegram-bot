@@ -1,8 +1,9 @@
 import pendulum
 import pytest
 
-from bot.paginations import split_by_pages
+from auth.app import IssueWebhookView
 from bot.exceptions import DateTimeValidationError
+from bot.paginations import split_by_pages
 from lib import utils
 
 
@@ -57,3 +58,18 @@ def test_calculate_tracking_time():
     seconds = 17800
     assert 4.94 == utils.calculate_tracking_time(seconds)
     assert 0.0 == utils.calculate_tracking_time(0)
+
+
+def test_filters_subscribers():
+    subs = [
+        {'topic': 'project', 'name': 'JA', 'chat_id': 208810129},
+        {'topic': 'project', 'name': 'JTB', 'chat_id': 2010129},
+        {'topic': 'project', 'name': 'IHB', 'chat_id': 2088129},
+        {'topic': 'project', 'name': 'CORP', 'chat_id': 8810129},
+        {'topic': 'issue', 'name': 'JTB-99', 'chat_id': 208810789},
+        {'topic': 'issue', 'name': 'IHB-1', 'chat_id': 208810987},
+        {'topic': 'issue', 'name': 'CORP-11', 'chat_id': 20881},
+        {'topic': 'issue', 'name': 'JA-241', 'chat_id': 10789},
+    ]
+    assert {208810129} == IssueWebhookView.filters_subscribers(subs, project='JA')
+    assert {2010129, 208810789} == IssueWebhookView.filters_subscribers(subs, project='JTB', issue='JTB-99')

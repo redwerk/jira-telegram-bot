@@ -110,3 +110,32 @@
   "page_count": 2
 }
 ```
+
+### webhooks collection
+```json
+{
+  "_id": ObjectId("5a437e5ff595b26337c08ddf"),
+  "host_url": "https://jira.test.redwerk.com",
+  "is_confirmed": false
+}
+```
+
+### subscriptions collection
+```json
+{
+  "_id": ObjectId("5a437f5af595b2646b46a3c2"),
+  "chat_id": 208810129,
+  "user_id": ObjectId("5a3b8e6df595b219a7906fc3"),
+  "webhook_id": ObjectId("5a437e5ff595b26337c08ddf"),
+  "topic": "issue",
+  "name": "JTB-99"
+},
+{
+  "_id": ObjectId("5a437f68f595b2646b46a3c3"),
+  "chat_id": 208810129,
+  "user_id": ObjectId("5a3b8e6df595b219a7906fc3"),
+  "webhook_id": ObjectId("5a437e5ff595b26337c08ddf"),
+  "topic": "project",
+  "name": "JTB"
+}
+```

@@ -1,11 +1,11 @@
-from itertools import zip_longest
+import os
 
 import pendulum
 from pendulum.parsing.exceptions import ParserError
 from telegram.ext import CommandHandler
 
-from bot.helpers import login_required
 from bot.exceptions import ContextValidationError
+from bot.helpers import login_required
 from bot.schedules import schedule_commands
 from lib import utils
 
@@ -17,44 +17,49 @@ class TimeTrackingDispatcher(AbstractCommand):
     /time <target> <name> [start_date] [end_date] - Shows spended time for users, issues and projects
     """
     targets = ('user', 'issue', 'project')
-    description = (
-        "<b>Command description:</b>\n"
-        "/time issue <i>issue-key</i> - returns a report of spend time of issue\n"
-        "/time user <i>username</i> - returns a report of spend time of user\n"
-        "/time project <i>KEY</i> - returns a report of spend time of project\n\n"
-        "<i>If the date range is not specified, the command is executed for today</i>\n"
-        "<i>If the start date is specified - the command will be executed inclusively from the "
-        "start date to today's date</i>"
-    )
+    available_days = ('today', 'yesterday')
+    description = utils.read_file(os.path.join('bot', 'templates', 'time_description.tpl'))
 
     @login_required
     def handler(self, bot, update, *args, **kwargs):
-        options = kwargs.get('args')
-        parameters_names = ('target', 'name', 'start_date', 'end_date')
         current_date = pendulum.now()
-        params = dict(zip_longest(parameters_names, options))
-        if params['target'] not in self.targets or not params['name']:
+        params = dict()
+        options = kwargs.get('args')
+        if len(options) < 3:
                 return self.app.send(bot, update, text=self.description)
 
-        if not params['start_date'] and not params['end_date']:
-            # if has not date range - command execute for today
-            params['start_date'] = current_date._start_of_day()
-            params['end_date'] = current_date._end_of_day()
-        elif params['start_date'] and not params['end_date']:
+        params['target'] = options.pop(0)
+        params['name'] = options.pop(0)
+        if params.get('target') not in self.targets or not options:
+            return self.app.send(bot, update, text=self.description)
+
+        if len(options) == 1 and options[0] in self.available_days:
+            if options[0] == 'today':
+                params['start_date'] = current_date._start_of_day()
+                params['end_date'] = current_date._end_of_day()
+            elif options[0] == 'yesterday':
+                params['start_date'] = current_date.subtract(days=1)._start_of_day()
+                params['end_date'] = current_date.subtract(days=1)._end_of_day()
+        elif len(options) == 1:
             # if the start date is specified - the command will be executed
             # inclusively from the start date to today's date
             try:
-                params['start_date'] = pendulum.parse(params['start_date'])
+                start_date = pendulum.parse(options[0])
+                params['start_date'] = start_date._start_of_day()
             except ParserError:
                 return self.app.send(bot, update, text='Invalid date format')
             else:
                 params['end_date'] = current_date._end_of_day()
-        elif params['start_date'] and params['end_date']:
+        elif len(options) > 1:
             try:
-                params['start_date'] = pendulum.parse(params['start_date'])
-                params['end_date'] = pendulum.parse(params['end_date'])
+                start_date = pendulum.parse(options[0])
+                end_date = pendulum.parse(options[1])
+                params['start_date'] = start_date._start_of_day()
+                params['end_date'] = end_date._end_of_day()
             except ParserError:
                 return self.app.send(bot, update, text='Invalid date format')
+        else:
+            return self.app.send(bot, update, text=self.description)
 
         kwargs.update(params)
         if params['target'] == 'issue':
@@ -72,20 +77,20 @@ class TimeTrackingDispatcher(AbstractCommand):
 
     @classmethod
     def validate_context(cls, context):
-        if len(context) < 1:
+        if len(context) < 3:  # target, name, start_date are required
             raise ContextValidationError(cls.description)
 
         target = context.pop(0)
         # validate command options
         if target == 'issue':
-            if len(context) < 1:
-                raise ContextValidationError("<i>ISSUE KEY</i> is a required argument.")
+            if len(context) < 2:
+                raise ContextValidationError("<i>ISSUE KEY</i> and <i>START DATE</i> are required arguments.")
         elif target == 'user':
-            if len(context) < 1:
-                raise ContextValidationError("<i>USERNAME</i> is a required argument.")
+            if len(context) < 2:
+                raise ContextValidationError("<i>USERNAME</i> and <i>START DATE</i> are required arguments.")
         elif target == 'project':
-            if len(context) < 1:
-                raise ContextValidationError("<i>KEY</i> is a required argument.")
+            if len(context) < 2:
+                raise ContextValidationError("<i>KEY</i> and <i>START DATE</i> are required arguments.")
         else:
             raise ContextValidationError(f"Argument {target} not allowed.")
 
@@ -107,7 +112,7 @@ class IssueTimeTrackerCommand(AbstractCommand):
         seconds = sum(worklog.get('time_spent_seconds', 0) for worklog in issue_worklog)
         spended_time = utils.calculate_tracking_time(seconds)
 
-        template = f'Time, spended on issue <b>{issue}</b> from from <b>{start_date.to_date_string()}</b> ' \
+        template = f'Time, spended on issue <b>{issue}</b> from <b>{start_date.to_date_string()}</b> ' \
                    f'to <b>{end_date.to_date_string()}</b>: '
         text = template + str(spended_time) + ' h'
         return self.app.send(bot, update, text=text)
@@ -137,7 +142,7 @@ class UserTimeTrackerCommand(AbstractCommand):
         seconds = sum(worklog.get('time_spent_seconds', 0) for worklog in all_user_logs)
         spended_time = utils.calculate_tracking_time(seconds)
 
-        template = f'User <b>{username}</b> from from <b>{start_date.to_date_string()}</b> ' \
+        template = f'User <b>{username}</b> from <b>{start_date.to_date_string()}</b> ' \
                    f'to <b>{end_date.to_date_string()}</b> spent: '
         text = template + str(spended_time) + ' h'
         return self.app.send(bot, update, text=text)

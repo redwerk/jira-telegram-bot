@@ -4,6 +4,7 @@ import re
 import smtplib
 import uuid
 from email.mime.text import MIMEText
+from string import Template
 
 from cryptography.fernet import Fernet
 from decouple import config
@@ -110,3 +111,10 @@ def read_file(filename):
     with open(os.path.join(BASE_DIR, filename), "rt") as file:
         data = file.read()
     return data
+
+
+def read_template(filepath):
+    """Read a text file and return a string.Template object"""
+    with open(os.path.join(BASE_DIR, filepath)) as file:
+        template = Template(file.read())
+    return template
