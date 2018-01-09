@@ -2,7 +2,6 @@ import logging
 from collections import namedtuple
 from json.decoder import JSONDecodeError
 from urllib.parse import quote
-from itertools import chain
 
 import jira
 import pendulum
