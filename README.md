@@ -49,6 +49,8 @@ PUBLIC_KEY_PATH = /absolute/path/jira_publickey.pem
 LOGGER_EMAIL = logger@email.com
 FEEDBACK_RECIPIENT = feedback@email.com
 DEV_EMAILS = user1@email.com,user2@email.com
+
+DEBUG=True # shows errors in console - for development server
 ```
 
 For further deployment see [/docs](docs) folder

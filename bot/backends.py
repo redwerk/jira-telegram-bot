@@ -2,6 +2,7 @@ import logging
 from collections import namedtuple
 from json.decoder import JSONDecodeError
 from urllib.parse import quote
+from itertools import chain
 
 import jira
 import pendulum
@@ -260,6 +261,7 @@ class JiraBackend:
                     username=username, start_date=jira_start_date, end_date=jira_end_date
                 ),
                 expand='changelog',
+                fields='worklog',
                 maxResults=1000
             )
         except jira.JIRAError as e:
@@ -291,6 +293,7 @@ class JiraBackend:
                     issue_name, jira_start_date, jira_end_date
                 ),
                 expand='changelog',
+                fields='worklog',
                 maxResults=1000
             )
         except jira.JIRAError as e:
@@ -320,6 +323,7 @@ class JiraBackend:
                     project=project, start_date=jira_start_date, end_date=jira_end_date
                 ),
                 expand='changelog',
+                fields='worklog',
                 maxResults=1000
             )
         except jira.JIRAError as e:
@@ -338,78 +342,37 @@ class JiraBackend:
 
         issue_key: str
         author_name: str
+        started: Pendulum datetime object
         created: Pendulum datetime object
         time_spent_seconds: int
         """
+        issue_keys = dict()
         all_worklogs = list()
         received_worklogs = list()
+        jira_conn = session_data['jira_conn']
 
-        issues_worklog = self.extraction_worklog_ids(issues, start_date, end_date)
+        for issue in issues:
+            if issue.fields.worklog.total > issue.fields.worklog.maxResults:
+                received_worklogs += jira_conn.worklogs(issue.id)  # additional request to JIRA API
+            else:
+                received_worklogs += issue.fields.worklog.worklogs
 
-        if issues_worklog:
-            w_ids = [int(w_id) for issue in issues_worklog.values() for w_id in issue['worklog_ids']]
-            received_worklogs = self.request_worklogs_by_id(
-                session_data.get('jira_conn'),
-                session_data.get('jira_host'),
-                w_ids
-            )
+            issue_keys[issue.id] = issue.key
 
         for worklog in received_worklogs:
+            worklog_date = pendulum.parse(worklog.started)
+            if worklog_date < start_date or worklog_date > end_date:
+                continue
             w_data = {
-                'issue_key': issues_worklog.get(worklog['issueId'])['issue_key'],
-                'author_name': worklog['author']['name'],
-                'created': pendulum.parse(worklog['created']),
-                'time_spent_seconds': worklog['timeSpentSeconds'],
+                'issue_key': issue_keys[worklog.issueId],
+                'author_name': worklog.author.name,
+                'created': pendulum.parse(worklog.created),
+                'started': worklog_date,
+                'time_spent_seconds': worklog.timeSpentSeconds,
             }
             all_worklogs.append(w_data)
 
         return all_worklogs
-
-    @staticmethod
-    def extraction_worklog_ids(issues, start_date, end_date):
-        """
-        Obtains the identifiers of the vorklogs and combines them in the structure:
-        the worklogs relate to the issues in which they are indicated
-
-        {
-            '321315': { # issue_id
-                'issue_key': 'JTB-19',
-                'issue_permalink': 'https://jira.redwerk.com/browse/JTB-19',
-                'worklog_ids': ['123', '4235', '213423']
-            }
-        }
-
-        :param issues: issues with changelog data
-        :param start_date: start time interval
-        :param end_date: end time interval
-        :return: dict of formatted worklog ids
-        """
-        worklogs = dict()
-
-        try:
-            for issue in issues:
-                issue_data = {
-                    'issue_key': issue.key,
-                    'issue_permalink': issue.permalink(),
-                }
-                worklog_ids = []
-
-                for history in issue.changelog.histories:
-                    creted_date = pendulum.parse(history.created)
-                    time_condition = (creted_date >= start_date) and (creted_date <= end_date)
-
-                    for item in history.items:
-                        if item.field == 'WorklogId' and time_condition:
-                            worklog_ids.append(item.fromString)
-
-                if worklog_ids:
-                    issue_data['worklog_ids'] = worklog_ids
-                    worklogs[issue.id] = issue_data
-
-        except AttributeError as e:
-            logging.exception(e)
-        else:
-            return worklogs
 
     @staticmethod
     def request_worklogs_by_id(jira_conn, host, w_ids):
