@@ -14,7 +14,7 @@ from .base import AbstractCommand
 
 class TimeTrackingDispatcher(AbstractCommand):
     """
-    /time <target> <name> [start_date] [end_date] - Shows spended time for users, issues and projects
+    /time <target> <name> [start_date] [end_date] - Shows spent time for users, issues and projects
     """
     targets = ('user', 'issue', 'project')
     available_days = ('today', 'yesterday')
@@ -97,7 +97,7 @@ class TimeTrackingDispatcher(AbstractCommand):
 
 class IssueTimeTrackerCommand(AbstractCommand):
     """
-    Shows spended time at the issue
+    Shows spent time at the issue
     """
     def handler(self, bot, update, *args, **kwargs):
         auth_data = kwargs.get('auth_data')
@@ -112,7 +112,7 @@ class IssueTimeTrackerCommand(AbstractCommand):
         seconds = sum(worklog.get('time_spent_seconds', 0) for worklog in issue_worklog)
         spended_time = utils.calculate_tracking_time(seconds)
 
-        template = f'Time, spended on issue <b>{issue}</b> from <b>{start_date.to_date_string()}</b> ' \
+        template = f'Time, spent on issue <b>{issue}</b> from <b>{start_date.to_date_string()}</b> ' \
                    f'to <b>{end_date.to_date_string()}</b>: '
         text = template + str(spended_time) + ' h'
         return self.app.send(bot, update, text=text)
@@ -120,7 +120,7 @@ class IssueTimeTrackerCommand(AbstractCommand):
 
 class UserTimeTrackerCommand(AbstractCommand):
     """
-    Shows spended time of the user
+    Shows spent time of the user
     """
 
     def handler(self, bot, update, *args, **kwargs):
@@ -150,7 +150,7 @@ class UserTimeTrackerCommand(AbstractCommand):
 
 class ProjectTimeTrackerCommand(AbstractCommand):
     """
-    Shows spended time at the project
+    Shows spent time at the project
     """
 
     def handler(self, bot, update, *args, **kwargs):
@@ -170,7 +170,7 @@ class ProjectTimeTrackerCommand(AbstractCommand):
         seconds = sum(worklog.get('time_spent_seconds', 0) for worklog in all_worklogs)
         spended_time = utils.calculate_tracking_time(seconds)
 
-        template = f'Spended time on project <b>{project}</b> ' \
+        template = f'Spent time on project <b>{project}</b> ' \
                    f'from <b>{start_date.to_date_string()}</b> to <b>{end_date.to_date_string()}</b>: '
         text = template + str(spended_time) + ' h'
         return self.app.send(bot, update, text=text)
