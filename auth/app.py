@@ -46,6 +46,7 @@ class UpdateMessageProvider:
 
     def run(self):
         thread = threading.Thread(target=self.send_message)
+        thread.daemon = True
         thread.start()
         logger.debug('UpdateMessageProvider was started')
 
