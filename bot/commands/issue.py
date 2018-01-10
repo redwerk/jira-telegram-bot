@@ -22,7 +22,7 @@ class ContentPaginatorCommand(AbstractCommand):
         a new keyboard and modifies the last message (the one under which
         the key with the page number was pressed)
         """
-        scope = self.app.get_query_scope(update)
+        scope = get_query_scope(update)
         key, page = self.get_issue_data(scope['data'])
         user_data = self.app.db.get_cached_content(key=key)
 
