@@ -112,7 +112,7 @@ class IssueTimeTrackerCommand(AbstractCommand):
         seconds = sum(worklog.get('time_spent_seconds', 0) for worklog in issue_worklog)
         spended_time = utils.calculate_tracking_time(seconds)
 
-        template = f'Time, spent on issue <b>{issue}</b> from <b>{start_date.to_date_string()}</b> ' \
+        template = f'Time spent on issue <b>{issue}</b> from <b>{start_date.to_date_string()}</b> ' \
                    f'to <b>{end_date.to_date_string()}</b>: '
         text = template + str(spended_time) + ' h'
         return self.app.send(bot, update, text=text)
@@ -170,7 +170,7 @@ class ProjectTimeTrackerCommand(AbstractCommand):
         seconds = sum(worklog.get('time_spent_seconds', 0) for worklog in all_worklogs)
         spended_time = utils.calculate_tracking_time(seconds)
 
-        template = f'Spent time on project <b>{project}</b> ' \
+        template = f'Time spent on project <b>{project}</b> ' \
                    f'from <b>{start_date.to_date_string()}</b> to <b>{end_date.to_date_string()}</b>: '
         text = template + str(spended_time) + ' h'
         return self.app.send(bot, update, text=text)
