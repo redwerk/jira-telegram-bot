@@ -13,7 +13,6 @@ class FeedbackMessageCommand(AbstractCommand):
         chat_id = update.message.chat_id
         message = 'Thanks for your feedback!'
         raw_feedback = update.message.text.replace('/feedback', '').strip()
-
         if not raw_feedback:
             return
 

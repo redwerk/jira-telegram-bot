@@ -1,26 +1,36 @@
-import logging
 import os
 from abc import ABCMeta, abstractmethod
 
 from decouple import config
 
 from lib.utils import calculate_tracking_time, read_template
+from .tasks import send_message
+from ..app import logger
 
-logger = logging.getLogger()
+
+TEMPLATES_DIR = os.path.join('web', 'webhooks', 'templates')
+BOT_API = 'https://api.telegram.org/bot{}/sendMessage?chat_id={}&text={}&parse_mode=HTML'
+
+
+def broadcast(urls):
+    """Broadcasting messaging.
+
+    Arguments:
+        urls (str): prepared url to telegram API
+    """
+    for url in urls:
+        send_message.delay(url)
 
 
 class BaseNotify(metaclass=ABCMeta):
-    api_bot_url = 'https://api.telegram.org/bot{}/sendMessage?chat_id={}&text={}&parse_mode=HTML'
 
-    def __init__(self, m_provider, update, chat_ids, host, **kwargs):
+    def __init__(self, update, chat_ids, host, **kwargs):
         """
-        :param m_provider: message provider for sending into users chats
         :param update: full update in dictionary format
         :param chat_ids: set of string chat ids for delivering notifications
         :param host: host from what the update was delivered
         :param kwargs: project_key and issue_key
         """
-        self.message_provider = m_provider
         self.update = update
         self.chat_ids = chat_ids
         self.host = host
@@ -39,7 +49,7 @@ class BaseNotify(metaclass=ABCMeta):
 
         for chat_id in self.chat_ids:
             for m in messages:
-                urls.append(self.api_bot_url.format(config('BOT_TOKEN'), chat_id, m))
+                urls.append(BOT_API.format(config('BOT_TOKEN'), chat_id, m))
         return urls
 
 
@@ -74,7 +84,7 @@ class WorklogNotify(BaseNotify):
             logger.error(f"Worklog parser can't send a message: {error}")
         else:
             urls = self.prepare_messages(msg)
-            self.message_provider.push_to_queue(urls)
+            broadcast(urls)
 
     def worklog_logged(self):
         start_time = int(self.update['changelog']['items'][-1]['from'])
@@ -120,7 +130,7 @@ class CommentNotify(BaseNotify):
         }
         msg = self.message_template.format(**data)
         urls = self.prepare_messages(msg)
-        self.message_provider.push_to_queue(urls)
+        broadcast(urls)
 
 
 class IssueNotify(BaseNotify):
@@ -143,12 +153,12 @@ class IssueNotify(BaseNotify):
     resolution_action = 'resolution'
 
     message_template = {
-        'assignee': os.path.join('auth', 'templates', 'issue_assignee.txt'),
-        'status': os.path.join('auth', 'templates', 'issue_status.txt'),
-        'Attachment': os.path.join('auth', 'templates', 'issue_attachment.txt'),
-        'description': os.path.join('auth', 'templates', 'issue_desc.txt'),
-        'summary': os.path.join('auth', 'templates', 'issue_summary.txt'),
-        'resolution': os.path.join('auth', 'templates', 'issue_resolution.txt'),
+        'assignee': os.path.join(TEMPLATES_DIR, 'issue_assignee.txt'),
+        'status': os.path.join(TEMPLATES_DIR, 'issue_status.txt'),
+        'Attachment': os.path.join(TEMPLATES_DIR, 'issue_attachment.txt'),
+        'description': os.path.join(TEMPLATES_DIR, 'issue_desc.txt'),
+        'summary': os.path.join(TEMPLATES_DIR, 'issue_summary.txt'),
+        'resolution': os.path.join(TEMPLATES_DIR, 'issue_resolution.txt'),
     }
 
     def notify(self):
@@ -165,7 +175,6 @@ class IssueNotify(BaseNotify):
         for item in self.update['changelog']['items']:
             field = item.get('field')
             template = self.message_template.get(field)
-
             if not template:
                 continue
 
@@ -184,7 +193,7 @@ class IssueNotify(BaseNotify):
                 self.messages.append(template.substitute(**self.generic_data))
 
         urls = self.prepare_messages(self.messages)
-        self.message_provider.push_to_queue(urls)
+        broadcast(urls)
 
     def issue_assigned(self, item, template):
         data = {
@@ -255,11 +264,11 @@ class ProjectNotify(BaseNotify):
         }
         msg = self.message_template.format(**data)
         urls = self.prepare_messages(msg)
-        self.message_provider.push_to_queue(urls)
+        broadcast(urls)
 
 
-class UpdateNotifierFactory:
-    webhook_event = {
+class NotifierFactory:
+    events = {
         'jira:worklog_updated': WorklogNotify,
         'jira:issue_updated': IssueNotify,
         'comment_created': CommentNotify,
@@ -271,8 +280,13 @@ class UpdateNotifierFactory:
     }
 
     @classmethod
-    def notify(cls, m_provider, update, chat_ids, host, **kwargs):
-        parser = cls.webhook_event.get(update.get('webhookEvent'))
+    def get_notifier(cls, event):
+        return cls.events.get(event)
 
-        if parser:
-            parser(m_provider, update, chat_ids, host, **kwargs).notify()
+
+def notify(update, chat_ids, host, **kwargs):
+    """Send broadcast notification"""
+    event = update.get('webhookEvent')
+    notifier = NotifierFactory.get_notifier(event)
+    if notifier:
+        notifier(update, chat_ids, host, **kwargs).notify()

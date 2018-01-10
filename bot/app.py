@@ -133,7 +133,6 @@ class JTBApp:
     def error_callback(self, bot, update, error):
         if config("DEBUG", False):
             traceback.print_exc(file=sys.stdout)
-
         try:
             raise error
         except BaseJTBException as e:
