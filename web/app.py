@@ -1,17 +1,17 @@
-import logging
-
 from flask import Flask
 from celery import Celery
 from decouple import config
 
 from lib.db import MongoBackend
+import logger
 
 db = MongoBackend()
-logger = logging.getLogger()
 
 # Flask settings
 app = Flask(__name__)
 app.secret_key = config('SECRET_KEY')
+
+logger = logger.logger
 
 celery = Celery(app.name)
 celery.conf.broker_url = config("CELERY_BROKER_URL")

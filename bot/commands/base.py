@@ -2,7 +2,7 @@ from abc import ABCMeta, abstractmethod
 import logging
 
 
-logger = logging.getLogger()
+logger = logging.getLogger('bot')
 
 
 class AbstractCommand(metaclass=ABCMeta):
