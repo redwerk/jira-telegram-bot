@@ -1,4 +1,5 @@
 import logging
+from logging.config import fileConfig
 
 from flask import Flask
 from celery import Celery
@@ -7,7 +8,11 @@ from decouple import config
 from lib.db import MongoBackend
 
 db = MongoBackend()
+
+fileConfig('./logging_config.ini')
 logger = logging.getLogger()
+logger.handlers[0].fromaddr = config('LOGGER_EMAIL')
+logger.handlers[1].toaddrs = [email.strip() for email in config('DEV_EMAILS').split(',')]
 
 # Flask settings
 app = Flask(__name__)
