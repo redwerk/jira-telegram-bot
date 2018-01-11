@@ -7,6 +7,7 @@ pip install -r requirements.txt
 flake8 .
 
 supervisorctl restart bot
-supervisorctl restart auth
+supervisorctl restart bot_celery
+supervisorctl restart botweb
 
 echo "Server restarted successfully"
