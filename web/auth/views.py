@@ -59,7 +59,7 @@ class AuthorizeView(SendToChatMixin, OAuthJiraBaseView):
         session['telegram_id'] = telegram_id
         session['host'] = request.args.get('host')
         callback = url_for(
-            'oauth_authorized',
+            'auth.oauth_authorized',
             next=request.args.get('next') or request.referrer or None
         )
         try:
