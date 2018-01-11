@@ -9,6 +9,8 @@
 
 
 ### Deployment
+> All instructions can be viewed by this [link](https://git.redwerk.com/redwerk/jira-telegram-bot/wikis/home)
+
 1. Clone a repository: `git clone https://git.redwerk.com/redwerk/jira-telegram-bot.git`
 
 2. Navigate into *jira-telegram-bot* folder
