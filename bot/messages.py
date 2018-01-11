@@ -7,7 +7,7 @@ from lib.db import MongoBackend
 from .exceptions import SendMessageHandlerError
 from .paginations import split_by_pages, get_pagination_keyboard
 
-logger = logging.getLogger()
+logger = logging.getLogger('bot')
 
 
 class BaseMessage(metaclass=ABCMeta):
