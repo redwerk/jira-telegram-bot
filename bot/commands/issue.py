@@ -147,7 +147,7 @@ class ListStatusIssuesCommand(AbstractCommand):
     def handler(self, bot, update, *args, **kwargs):
         auth_data = kwargs.get('auth_data')
         options = kwargs.get('args')
-        parameters_names = ('target', 'name')
+        parameters_names = ('target', 'name', 'status')
         params = dict(zip_longest(parameters_names, options))
         optional_condition = params['target'] != 'my' and not params['name']
 
@@ -155,15 +155,23 @@ class ListStatusIssuesCommand(AbstractCommand):
             return self.app.send(bot, update, text=self.description)
 
         if params['target'] == 'my':
-            return UserStatusIssuesMenu(self.app).handler(
-                bot, update, username=auth_data.username, *args, **kwargs
-            )
+            if params['name']:
+                kwargs.update({'username': auth_data.username, 'status': params['name']})
+                UserStatusIssuesCommand(self.app).handler(bot, update, *args, **kwargs)
+            else:
+                UserStatusIssuesMenu(self.app).handler(bot, update, username=auth_data.username, *args, **kwargs)
         elif params['target'] == 'user':
-            return UserStatusIssuesMenu(self.app).handler(
-                bot, update, username=params['name'], *args, **kwargs
-            )
+            if params['status']:
+                kwargs.update({'username': params['name'], 'status': params['status']})
+                UserStatusIssuesCommand(self.app).handler(bot, update, *args, **kwargs)
+            else:
+                UserStatusIssuesMenu(self.app).handler(bot, update, username=params['name'], *args, **kwargs)
         elif params['target'] == 'project':
-            ProjectStatusIssuesMenu(self.app).handler(bot, update, project=params['name'], *args, **kwargs)
+            if params['status']:
+                kwargs.update({'project': params['name'], 'status': params['status']})
+                ProjectStatusIssuesCommand(self.app).handler(bot, update, *args, **kwargs)
+            else:
+                ProjectStatusIssuesMenu(self.app).handler(bot, update, project=params['name'], *args, **kwargs)
 
     def command_callback(self):
         return CommandHandler('liststatus', self.handler, pass_args=True)
@@ -176,14 +184,14 @@ class ListStatusIssuesCommand(AbstractCommand):
         target = context.pop(0)
         # validate command options
         if target == 'my':
-            if len(context) > 1:
-                raise ContextValidationError("<i>my</i> not accept any arguments.")
+            if len(context) < 1:
+                raise ContextValidationError("<i>STATUS</i> is a required argument.")
         elif target == 'user':
-            if len(context) < 1:
-                raise ContextValidationError("<i>USERNAME</i> is a required argument.")
+            if len(context) < 2:
+                raise ContextValidationError("<i>USERNAME</i> and <i>STATUS</i> is a required arguments.")
         elif target == 'project':
-            if len(context) < 1:
-                raise ContextValidationError("<i>KEY</i> is a required argument.")
+            if len(context) < 2:
+                raise ContextValidationError("<i>KEY</i> and <i>STATUS</i> is a required arguments.")
         else:
             raise ContextValidationError(f"Argument {target} not allowed.")
 
@@ -258,12 +266,19 @@ class UserStatusIssuesCommand(AbstractCommand):
     @login_required
     def handler(self, bot, update, *args, **kwargs):
         auth_data = kwargs.get('auth_data')
-        scope = get_query_scope(update)
-        username, status = scope['data'].replace('user_status:', '').split(':')
+        try:
+            scope = get_query_scope(update)
+        except AttributeError:
+            telegram_id = update.message.chat_id
+            username = kwargs.get('username')
+            status = kwargs.get('status')
+        else:
+            telegram_id = scope['telegram_id']
+            username, status = scope['data'].replace('user_status:', '').split(':')
 
         title = 'Issues of "{}" with the "{}" status'.format(username, status)
         raw_items = self.app.jira.get_user_status_issues(username, status, auth_data=auth_data)
-        key = 'us_issue:{}:{}:{}'.format(scope['telegram_id'], username, status)  # user_status
+        key = 'us_issue:{}:{}:{}'.format(telegram_id, username, status)  # user_status
         self.app.send(bot, update, title=title, raw_items=raw_items, key=key)
 
     def command_callback(self):
@@ -278,12 +293,19 @@ class ProjectStatusIssuesCommand(AbstractCommand):
     @login_required
     def handler(self, bot, update, *args, **kwargs):
         auth_data = kwargs.get('auth_data')
-        scope = get_query_scope(update)
-        project, status = scope['data'].replace('project_status:', '').split(':')
+        try:
+            scope = get_query_scope(update)
+        except AttributeError:
+            telegram_id = update.message.chat_id
+            project = kwargs.get('project')
+            status = kwargs.get('status')
+        else:
+            telegram_id = scope['telegram_id']
+            project, status = scope['data'].replace('project_status:', '').split(':')
 
         title = 'Issues of "{}" project with the "{}" status'.format(project, status)
         raw_items = self.app.jira.get_project_status_issues(project, status, auth_data=auth_data)
-        key = 'ps_issue:{}:{}:{}'.format(scope['telegram_id'], project, status)  # project_status
+        key = 'ps_issue:{}:{}:{}'.format(telegram_id, project, status)  # project_status
         self.app.send(bot, update, title=title, raw_items=raw_items, key=key)
 
     def command_callback(self):
