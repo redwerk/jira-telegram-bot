@@ -114,7 +114,7 @@ class UserUnresolvedCommand(AbstractCommand):
         self.app.jira.is_user_on_host(host=auth_data.jira_host, username=username, auth_data=auth_data)
 
         title = 'All unresolved tasks of {}:'.format(username)
-        raw_items = self.app.jira.get_open_issues(username=username, auth_data=auth_data)
+        raw_items = self.app.jira.get_issues(username=username, resolution='Unresolved', auth_data=auth_data)
         key = '{}:{}'.format(telegram_id, username)
         self.app.send(bot, update, title=title, raw_items=raw_items, key=key)
 
@@ -131,7 +131,7 @@ class ProjectUnresolvedCommand(AbstractCommand):
         self.app.jira.is_project_exists(host=auth_data.jira_host, project=project, auth_data=auth_data)
 
         title = 'Unresolved tasks of project {}:'.format(project)
-        raw_items = self.app.jira.get_open_project_issues(project=project, auth_data=auth_data)
+        raw_items = self.app.jira.get_project_issues(project=project, resolution='Unresolved', auth_data=auth_data)
         key = '{}:{}'.format(telegram_id, project)
         self.app.send(bot, update, title=title, raw_items=raw_items, key=key)
 
@@ -211,7 +211,7 @@ class UserStatusIssuesMenu(AbstractCommand):
         self.app.jira.is_user_on_host(host=auth_data.jira_host, username=username, auth_data=auth_data)
 
         # getting statuses from user's unresolved issues
-        raw_items = self.app.jira.get_open_issues(username=username, auth_data=auth_data)
+        raw_items = self.app.jira.get_issues(username=username, auth_data=auth_data)
         statuses = {issue.fields.status.name for issue in raw_items}
 
         # creating an inline keyboard for showing buttons
@@ -242,7 +242,7 @@ class ProjectStatusIssuesMenu(AbstractCommand):
         self.app.jira.is_project_exists(host=auth_data.jira_host, project=project, auth_data=auth_data)
 
         # getting statuses from projects unresolved issues
-        raw_items = self.app.jira.get_open_project_issues(project=project, auth_data=auth_data)
+        raw_items = self.app.jira.get_project_issues(project=project, auth_data=auth_data)
         statuses = {issue.fields.status.name for issue in raw_items}
 
         # creating an inline keyboard for showing buttons
