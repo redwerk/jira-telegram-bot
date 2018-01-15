@@ -107,14 +107,12 @@ class IssueTimeTrackerCommand(AbstractCommand):
 
         utils.validate_date_range(start_date, end_date)
         self.app.jira.is_issue_exists(host=auth_data.jira_host, issue=issue, auth_data=auth_data)
-        issue_worklog = self.app.jira.get_issue_worklogs(issue, start_date, end_date, auth_data=auth_data)
 
-        seconds = sum(worklog.get('time_spent_seconds', 0) for worklog in issue_worklog)
-        spended_time = utils.calculate_tracking_time(seconds)
+        spent_time = self.app.jira.get_issue_worklogs(issue, start_date, end_date, auth_data=auth_data)
 
         template = f'Time spent on issue <b>{issue}</b> from <b>{start_date.to_date_string()}</b> ' \
                    f'to <b>{end_date.to_date_string()}</b>: '
-        text = template + str(spended_time) + ' h'
+        text = template + str(round(spent_time, 2)) + ' h'
         return self.app.send(bot, update, text=text)
 
 
@@ -140,11 +138,11 @@ class UserTimeTrackerCommand(AbstractCommand):
             all_worklogs, username, name_key='author_name'
         )
         seconds = sum(worklog.get('time_spent_seconds', 0) for worklog in all_user_logs)
-        spended_time = utils.calculate_tracking_time(seconds)
+        spent_time = utils.calculate_tracking_time(seconds)
 
         template = f'User <b>{username}</b> from <b>{start_date.to_date_string()}</b> ' \
                    f'to <b>{end_date.to_date_string()}</b> spent: '
-        text = template + str(spended_time) + ' h'
+        text = template + str(round(spent_time, 2)) + ' h'
         return self.app.send(bot, update, text=text)
 
 
@@ -163,16 +161,13 @@ class ProjectTimeTrackerCommand(AbstractCommand):
         self.app.jira.is_project_exists(host=auth_data.jira_host, project=project, auth_data=auth_data)
         utils.validate_date_range(start_date, end_date)
 
-        all_worklogs = self.app.jira.get_project_worklogs(
-            project, start_date, end_date, auth_data=auth_data
+        spent_time = self.app.jira.get_project_worklogs(project, start_date, end_date, auth_data=auth_data)
+
+        template = (
+            f'Time spent on project <b>{project}</b> '
+            f'from <b>{start_date.to_date_string()}</b> to <b>{end_date.to_date_string()}</b>: '
         )
-
-        seconds = sum(worklog.get('time_spent_seconds', 0) for worklog in all_worklogs)
-        spended_time = utils.calculate_tracking_time(seconds)
-
-        template = f'Time spent on project <b>{project}</b> ' \
-                   f'from <b>{start_date.to_date_string()}</b> to <b>{end_date.to_date_string()}</b>: '
-        text = template + str(spended_time) + ' h'
+        text = template + str(round(spent_time, 2)) + ' h'
         return self.app.send(bot, update, text=text)
 
 

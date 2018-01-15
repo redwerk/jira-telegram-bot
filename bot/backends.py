@@ -8,6 +8,7 @@ import pendulum
 import pytz
 from jira.resilientsession import ConnectionError
 
+from lib import utils
 from bot.exceptions import (JiraConnectionError, JiraEmptyData, JiraLoginError,
                             JiraReceivingDataError)
 
@@ -285,7 +286,6 @@ class JiraBackend:
         issue = None
         jira_start_date = start_date.strftime('%Y-%m-%d')
         jira_end_date = end_date.strftime('%Y-%m-%d')
-
         try:
             issue = jira_conn.search_issues(
                 'issue = "{}" and worklogDate >= {} and worklogDate <= {}'.format(
@@ -304,7 +304,7 @@ class JiraBackend:
                     f'to <b>{end_date.to_date_string()}</b>'
                 )
 
-        return self.obtain_worklogs(issue, start_date, end_date, kwargs)
+        return self.calculate_spent_time(issue, start_date, end_date, kwargs)
 
     @jira_connect
     def get_project_worklogs(self, project, start_date, end_date, *args, **kwargs):
@@ -333,7 +333,25 @@ class JiraBackend:
                 f'to <b>{end_date.to_date_string()}</b>'
             )
 
-        return self.obtain_worklogs(p_issues, start_date, end_date, kwargs)
+        return self.calculate_spent_time(p_issues, start_date, end_date, kwargs)
+
+    def calculate_spent_time(self, issues, start_date, end_date, session_data):
+        jira_conn = session_data['jira_conn']
+        spent_time = 0
+        for issue in issues:
+            if issue.fields.worklog.total > issue.fields.worklog.maxResults:
+                received_worklogs = jira_conn.worklogs(issue.id)  # additional request to JIRA API
+            else:
+                received_worklogs = issue.fields.worklog.worklogs
+
+            for worklog in received_worklogs:
+                worklog_date = pendulum.parse(worklog.started)
+                if worklog_date < start_date or worklog_date > end_date:
+                    continue
+
+                spent_time += utils.calculate_tracking_time(worklog.timeSpentSeconds)
+
+        return spent_time
 
     def obtain_worklogs(self, issues, start_date, end_date, session_data):
         """
