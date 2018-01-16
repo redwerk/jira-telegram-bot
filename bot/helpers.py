@@ -1,3 +1,4 @@
+from functools import wraps
 import logging
 
 
@@ -62,3 +63,23 @@ class Singleton(type):
         if cls not in cls._instances:
             cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
         return cls._instances[cls]
+
+
+def with_progress(text="Loading... Pease wait"):
+    """Send information message if the execution time could be long
+
+    Arguments:
+        text (str): information message text
+    """
+    if not isinstance(text, str):
+        raise TypeError("The 'text' argument must be str type")
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(instance, bot, update, *args, **kwargs):
+            result = instance.app.send(bot, update, text=text)
+            kwargs['message_id'] = result.message_id
+            func(instance, bot, update, *args, **kwargs)
+        return wrapper
+
+    return decorator

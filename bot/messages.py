@@ -33,6 +33,7 @@ class BaseMessage(metaclass=ABCMeta):
     def __init__(self, bot, update, **kwargs):
         self.bot = bot
         self.update = update
+        self.message_id = kwargs.get('message_id')
         self.title = kwargs.get('title')
         self.text = kwargs.get('text')
         self.buttons = kwargs.get('buttons')
@@ -54,7 +55,7 @@ class ChatMessage(BaseMessage):
 
     def send(self):
         chat_id = self.get_metadata()
-
+        send = self.bot.edit_message_text if self.message_id else self.bot.send_message
         if self.items or self.raw_items:
             # formatting list of strings from JIRA issue objects
             if self.raw_items:
@@ -66,21 +67,25 @@ class ChatMessage(BaseMessage):
             else:
                 text, buttons = self.processing_single_page()
 
-            self.bot.send_message(
+            context = dict(
                 chat_id=chat_id,
+                message_id=self.message_id,
                 text=text,
                 reply_markup=buttons,
                 parse_mode=ParseMode.HTML,
                 disable_web_page_preview=True
             )
         else:
-            self.bot.send_message(
+            context = dict(
                 chat_id=chat_id,
+                message_id=self.message_id,
                 text=self.text,
                 reply_markup=self.buttons,
                 parse_mode=ParseMode.HTML,
                 disable_web_page_preview=True
             )
+
+        return send(**context)
 
     def issues_format(self):
         """
@@ -160,7 +165,7 @@ class AfterActionMessage(ChatMessage):
             else:
                 text, buttons = self.processing_single_page()
 
-            self.bot.edit_message_text(
+            result = self.bot.edit_message_text(
                 chat_id=chat_id,
                 message_id=message_id,
                 text=text,
@@ -169,7 +174,7 @@ class AfterActionMessage(ChatMessage):
                 disable_web_page_preview=True
             )
         else:
-            self.bot.edit_message_text(
+            result = self.bot.edit_message_text(
                 chat_id=chat_id,
                 message_id=message_id,
                 text=self.text,
@@ -177,6 +182,8 @@ class AfterActionMessage(ChatMessage):
                 parse_mode=ParseMode.HTML,
                 disable_web_page_preview=True
             )
+
+        return result
 
     def get_metadata(self):
         query = self.update.callback_query

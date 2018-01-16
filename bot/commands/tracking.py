@@ -5,7 +5,7 @@ from pendulum.parsing.exceptions import ParserError
 from telegram.ext import CommandHandler
 
 from bot.exceptions import ContextValidationError
-from bot.helpers import login_required
+from bot.helpers import login_required, with_progress
 from bot.schedules import schedule_commands
 from lib import utils
 
@@ -96,9 +96,8 @@ class TimeTrackingDispatcher(AbstractCommand):
 
 
 class IssueTimeTrackerCommand(AbstractCommand):
-    """
-    Shows spent time at the issue
-    """
+    """Shows spent time at the issue"""
+    @with_progress()
     def handler(self, bot, update, *args, **kwargs):
         auth_data = kwargs.get('auth_data')
         issue = kwargs.get('issue')
@@ -113,14 +112,12 @@ class IssueTimeTrackerCommand(AbstractCommand):
         template = f'Time spent on issue <b>{issue}</b> from <b>{start_date.to_date_string()}</b> ' \
                    f'to <b>{end_date.to_date_string()}</b>: '
         text = template + str(round(spent_time, 2)) + ' h'
-        return self.app.send(bot, update, text=text)
+        return self.app.send(bot, update, text=text, **kwargs)
 
 
 class UserTimeTrackerCommand(AbstractCommand):
-    """
-    Shows spent time of the user
-    """
-
+    """Shows spent time of the user"""
+    @with_progress()
     def handler(self, bot, update, *args, **kwargs):
         auth_data = kwargs.get('auth_data')
         username = kwargs.get('username')
@@ -143,14 +140,12 @@ class UserTimeTrackerCommand(AbstractCommand):
         template = f'User <b>{username}</b> from <b>{start_date.to_date_string()}</b> ' \
                    f'to <b>{end_date.to_date_string()}</b> spent: '
         text = template + str(round(spent_time, 2)) + ' h'
-        return self.app.send(bot, update, text=text)
+        return self.app.send(bot, update, text=text, **kwargs)
 
 
 class ProjectTimeTrackerCommand(AbstractCommand):
-    """
-    Shows spent time at the project
-    """
-
+    """Shows spent time at the project"""
+    @with_progress()
     def handler(self, bot, update, *args, **kwargs):
         auth_data = kwargs.get('auth_data')
         project = kwargs.get('project')
@@ -168,7 +163,7 @@ class ProjectTimeTrackerCommand(AbstractCommand):
             f'from <b>{start_date.to_date_string()}</b> to <b>{end_date.to_date_string()}</b>: '
         )
         text = template + str(round(spent_time, 2)) + ' h'
-        return self.app.send(bot, update, text=text)
+        return self.app.send(bot, update, text=text, **kwargs)
 
 
 schedule_commands.register("time", TimeTrackingDispatcher)
