@@ -1,8 +1,18 @@
 from abc import ABCMeta, abstractmethod
+import argparse
 import logging
+
+from bot.exceptions import ArgumentParserError
 
 
 logger = logging.getLogger('bot')
+
+
+class CommandArgumentParser(argparse.ArgumentParser):
+    """Class for parsing command arguments"""
+
+    def error(self, message):
+        raise ArgumentParserError(message)
 
 
 class AbstractCommand(metaclass=ABCMeta):
@@ -27,6 +37,26 @@ class AbstractCommand(metaclass=ABCMeta):
         This method must be implemented in your command class.
         """
         pass
+
+    @staticmethod
+    def parse_arguments(args, parsers):
+        """Parse command arguments
+
+        Arguments:
+            args (list): arguments list
+            parsers (list): parsers list
+        Returns:
+            Namedtuple or None
+        """
+        for parser in parsers:
+            try:
+                result = parser.parse_args(args)
+            except ArgumentParserError:
+                continue
+            else:
+                return result
+
+        return None
 
 
 class AbstractCommandFactory(metaclass=ABCMeta):
