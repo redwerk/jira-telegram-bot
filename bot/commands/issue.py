@@ -205,7 +205,7 @@ class ListStatusIssuesCommand(AbstractCommand):
             if not options.project or not options.status:
                 raise ContextValidationError("<i>KEY</i> and <i>STATUS</i> is a required arguments.")
         else:
-            raise ContextValidationError(f"Argument {target} not allowed.")
+            raise ContextValidationError(f"Argument {options.target} not allowed.")
 
 
 class UserStatusIssuesMenu(AbstractCommand):
