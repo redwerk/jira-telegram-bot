@@ -159,7 +159,7 @@ class JiraBackend:
             jql = f'assignee = "{username}"'
             if resolution:
                 jql += f' and resolution = {resolution}'
-            issues = jira_conn.search_issues(jql, maxResults=200)
+            issues = jira_conn.search_issues(jql, maxResults=1000)
         except jira.JIRAError as e:
             logging.exception('Error while getting {} issues:\n{}'.format(username, e))
             raise JiraReceivingDataError(e.text)
@@ -179,7 +179,7 @@ class JiraBackend:
             jql = f'assignee = "{username}" and status = "{status}"'
             if resolution:
                 jql += f' and resolution = {resolution}'
-            issues = jira_conn.search_issues(jql, maxResults=200)
+            issues = jira_conn.search_issues(jql, maxResults=1000)
         except jira.JIRAError as e:
             logging.exception('Error while getting {} issues:\n{}'.format(username, e))
             raise JiraReceivingDataError(e.text)
@@ -202,7 +202,7 @@ class JiraBackend:
             jql = f'project = "{project}"'
             if resolution:
                 jql += f' and resolution = {resolution}'
-            issues = jira_conn.search_issues(jql, maxResults=200)
+            issues = jira_conn.search_issues(jql, maxResults=1000)
         except jira.JIRAError as e:
             logging.exception('Error while getting unresolved {} issues:\n{}'.format(project, e))
             raise JiraReceivingDataError(e.text)
@@ -222,7 +222,7 @@ class JiraBackend:
             jql = f'project = "{project}" and status = "{status}"'
             if resolution:
                 jql += f' and resolution = {resolution}'
-            issues = jira_conn.search_issues(jql, maxResults=200)
+            issues = jira_conn.search_issues(jql, maxResults=1000)
         except jira.JIRAError as e:
             logging.exception(
                 'Error while getting {} '
@@ -417,7 +417,7 @@ class JiraBackend:
         """Returns issues getting by filter id"""
         jira_conn = kwargs.get('jira_conn')
         try:
-            issues = jira_conn.search_issues('filter={}'.format(filter_id), maxResults=200)
+            issues = jira_conn.search_issues('filter={}'.format(filter_id), maxResults=1000)
         except jira.JIRAError as e:
             logging.exception('Failed to get issues by filter:\n{}'.format(e))
             raise JiraReceivingDataError(e.text)
