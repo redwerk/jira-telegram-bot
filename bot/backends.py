@@ -8,6 +8,7 @@ import pendulum
 import pytz
 from jira.resilientsession import ConnectionError
 
+from lib import utils
 from bot.exceptions import (JiraConnectionError, JiraEmptyData, JiraLoginError,
                             JiraReceivingDataError)
 
@@ -109,7 +110,6 @@ class JiraBackend:
     def is_user_on_host(self, host, username, *args, **kwargs):
         """Checking the existence of the user on the Jira host"""
         jira_conn = kwargs.get('jira_conn')
-
         try:
             """
             Formatted string where to put the character code in UTF
@@ -124,7 +124,6 @@ class JiraBackend:
     def is_project_exists(self, host, project, *args, **kwargs):
         """Checking the existence of the project on the Jira host"""
         jira_conn = kwargs.get('jira_conn')
-
         try:
             jira_conn._session.get(f'{host}/rest/api/2/project/{project.upper()}')
         except jira.JIRAError as e:
@@ -134,7 +133,6 @@ class JiraBackend:
     def is_issue_exists(self, host, issue, *args, **kwargs):
         """Checking the existence of the issue on the Jira host"""
         jira_conn = kwargs.get('jira_conn')
-
         try:
             jira_conn._session.get(f'{host}/rest/api/2/issue/{issue}')
         except jira.JIRAError as e:
@@ -144,27 +142,24 @@ class JiraBackend:
     def is_status_exists(self, host, status, *args, **kwargs):
         """Checking the existence of the status on the Jira host"""
         jira_conn = kwargs.get('jira_conn')
-
         try:
             jira_conn._session.get(f'{host}/rest/api/2/status/{status}')
         except jira.JIRAError as e:
             raise JiraReceivingDataError(e.text)
 
     @jira_connect
-    def get_open_issues(self, username, *args, **kwargs):
+    def get_issues(self, username, resolution=None, *args, **kwargs):
         """
         Getting issues assigned to the user
+        :param resolution(str): issues resolution status
         :return: formatted issues list
         """
         jira_conn = kwargs.get('jira_conn')
-
         try:
-            issues = jira_conn.search_issues(
-                'assignee = "{username}" and resolution = Unresolved'.format(
-                    username=username
-                ),
-                maxResults=200
-            )
+            jql = f'assignee = "{username}"'
+            if resolution:
+                jql += f' and resolution = {resolution}'
+            issues = jira_conn.search_issues(jql, maxResults=200)
         except jira.JIRAError as e:
             logging.exception('Error while getting {} issues:\n{}'.format(username, e))
             raise JiraReceivingDataError(e.text)
@@ -175,19 +170,16 @@ class JiraBackend:
             return issues
 
     @jira_connect
-    def get_user_status_issues(self, username, status, *args, **kwargs):
+    def get_user_status_issues(self, username, status, resolution=None, *args, **kwargs):
         """
         Getting issues assigned to the user with selected status
         """
         jira_conn = kwargs.get('jira_conn')
-
         try:
-            issues = jira_conn.search_issues(
-                'assignee = "{username}" and status = "{status}" and resolution = Unresolved'.format(
-                    username=username, status=status
-                ),
-                maxResults=200
-            )
+            jql = f'assignee = "{username}" and status = "{status}"'
+            if resolution:
+                jql += f' and resolution = {resolution}'
+            issues = jira_conn.search_issues(jql, maxResults=200)
         except jira.JIRAError as e:
             logging.exception('Error while getting {} issues:\n{}'.format(username, e))
             raise JiraReceivingDataError(e.text)
@@ -198,19 +190,19 @@ class JiraBackend:
             return issues
 
     @jira_connect
-    def get_open_project_issues(self, project, *args, **kwargs):
+    def get_project_issues(self, project, resolution=None, *args, **kwargs):
         """
-        Getting unresolved issues by project
+        Getting issues by project
         :param project: abbreviation name of the project
+        :param resolution(str): issues resolution status
         :return: formatted issues list or empty list
         """
         jira_conn = kwargs.get('jira_conn')
-
         try:
-            issues = jira_conn.search_issues(
-                'project = "{}" and resolution = Unresolved'.format(project),
-                maxResults=200
-            )
+            jql = f'project = "{project}"'
+            if resolution:
+                jql += f' and resolution = {resolution}'
+            issues = jira_conn.search_issues(jql, maxResults=200)
         except jira.JIRAError as e:
             logging.exception('Error while getting unresolved {} issues:\n{}'.format(project, e))
             raise JiraReceivingDataError(e.text)
@@ -221,17 +213,16 @@ class JiraBackend:
             return issues
 
     @jira_connect
-    def get_project_status_issues(self, project, status, *args, **kwargs):
+    def get_project_status_issues(self, project, status, resolution=None, *args, **kwargs):
         """
         Gets issues by project with a selected status and status message
         """
         jira_conn = kwargs.get('jira_conn')
-
         try:
-            issues = jira_conn.search_issues(
-                'project = "{}" and status = "{}"'.format(project, status),
-                maxResults=200
-            )
+            jql = f'project = "{project}" and status = "{status}"'
+            if resolution:
+                jql += f' and resolution = {resolution}'
+            issues = jira_conn.search_issues(jql, maxResults=200)
         except jira.JIRAError as e:
             logging.exception(
                 'Error while getting {} '
@@ -253,7 +244,6 @@ class JiraBackend:
         issues = list()
         jira_start_date = start_date.strftime('%Y-%m-%d')
         jira_end_date = end_date.strftime('%Y-%m-%d')
-
         try:
             issues = jira_conn.search_issues(
                 'worklogAuthor = "{username}" and worklogDate >= {start_date} and worklogDate <= {end_date}'.format(
@@ -285,7 +275,6 @@ class JiraBackend:
         issue = None
         jira_start_date = start_date.strftime('%Y-%m-%d')
         jira_end_date = end_date.strftime('%Y-%m-%d')
-
         try:
             issue = jira_conn.search_issues(
                 'issue = "{}" and worklogDate >= {} and worklogDate <= {}'.format(
@@ -304,7 +293,7 @@ class JiraBackend:
                     f'to <b>{end_date.to_date_string()}</b>'
                 )
 
-        return self.obtain_worklogs(issue, start_date, end_date, kwargs)
+        return self.calculate_spent_time(issue, start_date, end_date, kwargs)
 
     @jira_connect
     def get_project_worklogs(self, project, start_date, end_date, *args, **kwargs):
@@ -315,7 +304,6 @@ class JiraBackend:
         p_issues = list()
         jira_start_date = start_date.strftime('%Y-%m-%d')
         jira_end_date = end_date.strftime('%Y-%m-%d')
-
         try:
             p_issues = jira_conn.search_issues(
                 'project = "{project}" and worklogDate >= {start_date} and worklogDate <= {end_date}'.format(
@@ -333,7 +321,25 @@ class JiraBackend:
                 f'to <b>{end_date.to_date_string()}</b>'
             )
 
-        return self.obtain_worklogs(p_issues, start_date, end_date, kwargs)
+        return self.calculate_spent_time(p_issues, start_date, end_date, kwargs)
+
+    def calculate_spent_time(self, issues, start_date, end_date, session_data):
+        jira_conn = session_data['jira_conn']
+        spent_time = 0
+        for issue in issues:
+            if issue.fields.worklog.total > issue.fields.worklog.maxResults:
+                received_worklogs = jira_conn.worklogs(issue.id)  # additional request to JIRA API
+            else:
+                received_worklogs = issue.fields.worklog.worklogs
+
+            for worklog in received_worklogs:
+                worklog_date = pendulum.parse(worklog.started)
+                if worklog_date < start_date or worklog_date > end_date:
+                    continue
+
+                spent_time += utils.calculate_tracking_time(worklog.timeSpentSeconds)
+
+        return spent_time
 
     def obtain_worklogs(self, issues, start_date, end_date, session_data):
         """
@@ -349,7 +355,6 @@ class JiraBackend:
         all_worklogs = list()
         received_worklogs = list()
         jira_conn = session_data['jira_conn']
-
         for issue in issues:
             if issue.fields.worklog.total > issue.fields.worklog.maxResults:
                 received_worklogs += jira_conn.worklogs(issue.id)  # additional request to JIRA API
@@ -399,7 +404,6 @@ class JiraBackend:
     def get_favourite_filters(self, *args, **kwargs):
         """Return list of favourite filters"""
         jira_conn = kwargs.get('jira_conn')
-
         try:
             filters = jira_conn.favourite_filters()
         except jira.JIRAError as e:
@@ -412,7 +416,6 @@ class JiraBackend:
     def get_filter_issues(self, filter_name, filter_id, *args, **kwargs):
         """Returns issues getting by filter id"""
         jira_conn = kwargs.get('jira_conn')
-
         try:
             issues = jira_conn.search_issues('filter={}'.format(filter_id), maxResults=200)
         except jira.JIRAError as e:
