@@ -4,7 +4,7 @@ import pendulum
 from pendulum.parsing.exceptions import ParserError
 from telegram.ext import CommandHandler
 
-from bot.exceptions import ContextValidationError
+from bot.exceptions import ContextValidationError, JiraEmptyData
 from bot.helpers import login_required, with_progress
 from bot.schedules import schedule_commands
 from lib import utils
@@ -103,11 +103,12 @@ class IssueTimeTrackerCommand(AbstractCommand):
         issue = kwargs.get('issue')
         start_date = kwargs.get('start_date')
         end_date = kwargs.get('end_date')
-
         utils.validate_date_range(start_date, end_date)
-        self.app.jira.is_issue_exists(host=auth_data.jira_host, issue=issue, auth_data=auth_data)
-
-        spent_time = self.app.jira.get_issue_worklogs(issue, start_date, end_date, auth_data=auth_data)
+        try:
+            self.app.jira.is_issue_exists(host=auth_data.jira_host, issue=issue, auth_data=auth_data)
+            spent_time = self.app.jira.get_issue_worklogs(issue, start_date, end_date, auth_data=auth_data)
+        except JiraEmptyData as err:
+            return self.app.send(bot, update, text=err.message, **kwargs)
 
         template = f'Time spent on issue <b>{issue}</b> from <b>{start_date.to_date_string()}</b> ' \
                    f'to <b>{end_date.to_date_string()}</b>: '
@@ -123,17 +124,19 @@ class UserTimeTrackerCommand(AbstractCommand):
         username = kwargs.get('username')
         start_date = kwargs.get('start_date')
         end_date = kwargs.get('end_date')
-
         # check if the user exists on Jira host
         self.app.jira.is_user_on_host(host=auth_data.jira_host, username=username, auth_data=auth_data)
         utils.validate_date_range(start_date, end_date)
+        try:
+            all_worklogs = self.app.jira.get_all_user_worklogs(
+                username, start_date, end_date, auth_data=auth_data
+            )
+            all_user_logs = self.app.jira.define_user_worklogs(
+                all_worklogs, username, name_key='author_name'
+            )
+        except JiraEmptyData as err:
+            return self.app.send(bot, update, text=err.message, **kwargs)
 
-        all_worklogs = self.app.jira.get_all_user_worklogs(
-            username, start_date, end_date, auth_data=auth_data
-        )
-        all_user_logs = self.app.jira.define_user_worklogs(
-            all_worklogs, username, name_key='author_name'
-        )
         seconds = sum(worklog.get('time_spent_seconds', 0) for worklog in all_user_logs)
         spent_time = utils.calculate_tracking_time(seconds)
 
@@ -151,12 +154,13 @@ class ProjectTimeTrackerCommand(AbstractCommand):
         project = kwargs.get('project')
         start_date = kwargs.get('start_date')
         end_date = kwargs.get('end_date')
-
         # check if the project exists on Jira host
         self.app.jira.is_project_exists(host=auth_data.jira_host, project=project, auth_data=auth_data)
         utils.validate_date_range(start_date, end_date)
-
-        spent_time = self.app.jira.get_project_worklogs(project, start_date, end_date, auth_data=auth_data)
+        try:
+            spent_time = self.app.jira.get_project_worklogs(project, start_date, end_date, auth_data=auth_data)
+        except JiraEmptyData as err:
+            return self.app.send(bot, update, text=err.message, **kwargs)
 
         template = (
             f'Time spent on project <b>{project}</b> '
