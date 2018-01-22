@@ -111,12 +111,7 @@ class JiraBackend:
         """Checking the existence of the user on the Jira host"""
         jira_conn = kwargs.get('jira_conn')
         try:
-            """
-            Formatted string where to put the character code in UTF
-            """
-            username_utf = quote(username)
-
-            jira_conn._session.get(f'{host}/rest/api/2/user?username={username_utf}')
+            jira_conn._session.get(f'{host}/rest/api/2/user?username={quote(username)}')
         except jira.JIRAError as e:
             raise JiraReceivingDataError(e.text)
 
@@ -156,10 +151,10 @@ class JiraBackend:
         """
         jira_conn = kwargs.get('jira_conn')
         try:
-            jql = f'assignee = "{username}"'
+            jql = f'assignee = "{quote(username)}"'
             if resolution:
                 jql += f' and resolution = {resolution}'
-            issues = jira_conn.search_issues(jql, maxResults=200)
+            issues = jira_conn.search_issues(jql, maxResults=1000)
         except jira.JIRAError as e:
             logging.exception('Error while getting {} issues:\n{}'.format(username, e))
             raise JiraReceivingDataError(e.text)
@@ -176,10 +171,10 @@ class JiraBackend:
         """
         jira_conn = kwargs.get('jira_conn')
         try:
-            jql = f'assignee = "{username}" and status = "{status}"'
+            jql = f'assignee = "{quote(username)}" and status = "{status}"'
             if resolution:
                 jql += f' and resolution = {resolution}'
-            issues = jira_conn.search_issues(jql, maxResults=200)
+            issues = jira_conn.search_issues(jql, maxResults=1000)
         except jira.JIRAError as e:
             logging.exception('Error while getting {} issues:\n{}'.format(username, e))
             raise JiraReceivingDataError(e.text)
@@ -202,7 +197,7 @@ class JiraBackend:
             jql = f'project = "{project}"'
             if resolution:
                 jql += f' and resolution = {resolution}'
-            issues = jira_conn.search_issues(jql, maxResults=200)
+            issues = jira_conn.search_issues(jql, maxResults=1000)
         except jira.JIRAError as e:
             logging.exception('Error while getting unresolved {} issues:\n{}'.format(project, e))
             raise JiraReceivingDataError(e.text)
@@ -222,7 +217,7 @@ class JiraBackend:
             jql = f'project = "{project}" and status = "{status}"'
             if resolution:
                 jql += f' and resolution = {resolution}'
-            issues = jira_conn.search_issues(jql, maxResults=200)
+            issues = jira_conn.search_issues(jql, maxResults=1000)
         except jira.JIRAError as e:
             logging.exception(
                 'Error while getting {} '
@@ -247,7 +242,7 @@ class JiraBackend:
         try:
             issues = jira_conn.search_issues(
                 'worklogAuthor = "{username}" and worklogDate >= {start_date} and worklogDate <= {end_date}'.format(
-                    username=username, start_date=jira_start_date, end_date=jira_end_date
+                    username=quote(username), start_date=jira_start_date, end_date=jira_end_date
                 ),
                 expand='changelog',
                 fields='worklog',
@@ -417,7 +412,7 @@ class JiraBackend:
         """Returns issues getting by filter id"""
         jira_conn = kwargs.get('jira_conn')
         try:
-            issues = jira_conn.search_issues('filter={}'.format(filter_id), maxResults=200)
+            issues = jira_conn.search_issues('filter={}'.format(filter_id), maxResults=1000)
         except jira.JIRAError as e:
             logging.exception('Failed to get issues by filter:\n{}'.format(e))
             raise JiraReceivingDataError(e.text)

@@ -79,4 +79,4 @@ class FilterIssuesCommand(AbstractCommand):
             raise ContextValidationError("<i>Filter Name</i> is a required argument.")
 
 
-schedule_commands.register('filter', FilterIssuesCommand)
+schedule_commands.register('filter', FilterDispatcherCommand)
