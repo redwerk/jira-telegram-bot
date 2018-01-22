@@ -17,6 +17,9 @@ from .schedules import Scheduler
 from .exceptions import BaseJTBException, BotAuthError, SendMessageHandlerError
 
 
+logger = logging.getLogger('bot')
+
+
 class JTBApp:
     """Bot to integrate with the JIRA service"""
     __commands = [
@@ -74,7 +77,7 @@ class JTBApp:
     def start(self):
         self.updater.start_polling()
         self.run_scheduler()
-        logging.debug("Jira bot started successfully!")
+        logger.debug("Jira bot started successfully!")
         self.updater.idle()
 
     @property
@@ -137,5 +140,7 @@ class JTBApp:
             raise error
         except BaseJTBException as e:
             self.send(bot, update, text=e.message)
-        except (NetworkError, TelegramError, TimedOut):
+        except (NetworkError, TimedOut):
             pass
+        except TelegramError as err:
+            logger.error(err)

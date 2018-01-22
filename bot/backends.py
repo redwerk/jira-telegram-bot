@@ -322,7 +322,9 @@ class JiraBackend:
         jira_conn = session_data['jira_conn']
         spent_time = 0
         for issue in issues:
-            if issue.fields and issue.fields.worklog.total > issue.fields.worklog.maxResults:
+            if issue.fields is None:
+                continue
+            if issue.fields.worklog.total > issue.fields.worklog.maxResults:
                 received_worklogs = jira_conn.worklogs(issue.id)  # additional request to JIRA API
             else:
                 received_worklogs = issue.fields.worklog.worklogs
@@ -351,6 +353,8 @@ class JiraBackend:
         received_worklogs = list()
         jira_conn = session_data['jira_conn']
         for issue in issues:
+            if issue.fields is None:
+                continue
             if issue.fields.worklog.total > issue.fields.worklog.maxResults:
                 received_worklogs += jira_conn.worklogs(issue.id)  # additional request to JIRA API
             else:
