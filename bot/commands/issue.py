@@ -10,7 +10,7 @@ from bot.inlinemenu import build_menu
 from bot.schedules import schedule_commands
 from lib.utils import read_file
 
-from .base import AbstractCommand
+from .base import AbstractCommand, CommandArgumentParser
 
 
 class ContentPaginatorCommand(AbstractCommand):
@@ -114,7 +114,7 @@ class UserUnresolvedCommand(AbstractCommand):
         self.app.jira.is_user_on_host(host=auth_data.jira_host, username=username, auth_data=auth_data)
 
         title = 'All unresolved tasks of {}:'.format(username)
-        raw_items = self.app.jira.get_open_issues(username=username, auth_data=auth_data)
+        raw_items = self.app.jira.get_issues(username=username, resolution='Unresolved', auth_data=auth_data)
         key = '{}:{}'.format(telegram_id, username)
         self.app.send(bot, update, title=title, raw_items=raw_items, key=key)
 
@@ -131,7 +131,7 @@ class ProjectUnresolvedCommand(AbstractCommand):
         self.app.jira.is_project_exists(host=auth_data.jira_host, project=project, auth_data=auth_data)
 
         title = 'Unresolved tasks of project {}:'.format(project)
-        raw_items = self.app.jira.get_open_project_issues(project=project, auth_data=auth_data)
+        raw_items = self.app.jira.get_project_issues(project=project, resolution='Unresolved', auth_data=auth_data)
         key = '{}:{}'.format(telegram_id, project)
         self.app.send(bot, update, title=title, raw_items=raw_items, key=key)
 
@@ -140,30 +140,51 @@ class ListStatusIssuesCommand(AbstractCommand):
     """
     /liststatus <target> [name] - shows users or projects issues by a selected status
     """
-    targets = ('my', 'user', 'project')
     description = read_file(os.path.join('bot', 'templates', 'liststatus_description.tpl'))
+
+    @staticmethod
+    def get_argparsers():
+        my = CommandArgumentParser(prog="my", add_help=False)
+        my.add_argument('target', type=str, choices=['my'], nargs='?')
+        my.add_argument('status', type=str, nargs="*")
+
+        user = CommandArgumentParser(prog="user", add_help=False)
+        user.add_argument('target', type=str, choices=['user'], nargs='?')
+        user.add_argument('username', type=str, nargs='?')
+        user.add_argument('status', type=str, nargs="*")
+
+        project = CommandArgumentParser(prog="project", add_help=False)
+        project.add_argument('target', type=str, choices=['project'], nargs='?')
+        project.add_argument('project', type=str, nargs='?')
+        project.add_argument('status', type=str, nargs="*")
+
+        return [my, user, project]
 
     @login_required
     def handler(self, bot, update, *args, **kwargs):
         auth_data = kwargs.get('auth_data')
-        options = kwargs.get('args')
-        parameters_names = ('target', 'name')
-        params = dict(zip_longest(parameters_names, options))
-        optional_condition = params['target'] != 'my' and not params['name']
-
-        if not params['target'] or params['target'] not in self.targets or optional_condition:
-            return self.app.send(bot, update, text=self.description)
-
-        if params['target'] == 'my':
-            return UserStatusIssuesMenu(self.app).handler(
-                bot, update, username=auth_data.username, *args, **kwargs
-            )
-        elif params['target'] == 'user':
-            return UserStatusIssuesMenu(self.app).handler(
-                bot, update, username=params['name'], *args, **kwargs
-            )
-        elif params['target'] == 'project':
-            ProjectStatusIssuesMenu(self.app).handler(bot, update, project=params['name'], *args, **kwargs)
+        options = self.parse_arguments(kwargs.get('args'), self.get_argparsers())
+        status = lambda x: " ".join(x)
+        if options.target == 'my':
+            if options.status:
+                kwargs.update({'username': auth_data.username, 'status': status(options.status)})
+                UserStatusIssuesCommand(self.app).handler(bot, update, *args, **kwargs)
+            else:
+                UserStatusIssuesMenu(self.app).handler(bot, update, username=auth_data.username, *args, **kwargs)
+        elif options.target == 'user' and options.username:
+            if options.status:
+                kwargs.update({'username': options.username, 'status': status(options.status)})
+                UserStatusIssuesCommand(self.app).handler(bot, update, *args, **kwargs)
+            else:
+                UserStatusIssuesMenu(self.app).handler(bot, update, username=options.username, *args, **kwargs)
+        elif options.target == 'project' and options.project:
+            if options.status:
+                kwargs.update({'project': options.project, 'status': status(options.status)})
+                ProjectStatusIssuesCommand(self.app).handler(bot, update, *args, **kwargs)
+            else:
+                ProjectStatusIssuesMenu(self.app).handler(bot, update, project=options.project, *args, **kwargs)
+        else:
+            self.app.send(bot, update, text=self.description)
 
     def command_callback(self):
         return CommandHandler('liststatus', self.handler, pass_args=True)
@@ -173,19 +194,18 @@ class ListStatusIssuesCommand(AbstractCommand):
         if len(context) < 1:
             raise ContextValidationError(cls.description)
 
-        target = context.pop(0)
-        # validate command options
-        if target == 'my':
-            if len(context) > 1:
-                raise ContextValidationError("<i>my</i> not accept any arguments.")
-        elif target == 'user':
-            if len(context) < 1:
-                raise ContextValidationError("<i>USERNAME</i> is a required argument.")
-        elif target == 'project':
-            if len(context) < 1:
-                raise ContextValidationError("<i>KEY</i> is a required argument.")
+        options = cls.parse_arguments(context, cls.get_argparsers())
+        if options.target == 'my':
+            if not options.status:
+                raise ContextValidationError("<i>STATUS</i> is a required argument.")
+        elif options.target == 'user':
+            if not options.username or not options.status:
+                raise ContextValidationError("<i>USERNAME</i> and <i>STATUS</i> is a required arguments.")
+        elif options.target == 'project':
+            if not options.project or not options.status:
+                raise ContextValidationError("<i>KEY</i> and <i>STATUS</i> is a required arguments.")
         else:
-            raise ContextValidationError(f"Argument {target} not allowed.")
+            raise ContextValidationError(f"Argument {options.target} not allowed.")
 
 
 class UserStatusIssuesMenu(AbstractCommand):
@@ -203,7 +223,7 @@ class UserStatusIssuesMenu(AbstractCommand):
         self.app.jira.is_user_on_host(host=auth_data.jira_host, username=username, auth_data=auth_data)
 
         # getting statuses from user's unresolved issues
-        raw_items = self.app.jira.get_open_issues(username=username, auth_data=auth_data)
+        raw_items = self.app.jira.get_issues(username=username, auth_data=auth_data)
         statuses = {issue.fields.status.name for issue in raw_items}
 
         # creating an inline keyboard for showing buttons
@@ -234,7 +254,7 @@ class ProjectStatusIssuesMenu(AbstractCommand):
         self.app.jira.is_project_exists(host=auth_data.jira_host, project=project, auth_data=auth_data)
 
         # getting statuses from projects unresolved issues
-        raw_items = self.app.jira.get_open_project_issues(project=project, auth_data=auth_data)
+        raw_items = self.app.jira.get_project_issues(project=project, auth_data=auth_data)
         statuses = {issue.fields.status.name for issue in raw_items}
 
         # creating an inline keyboard for showing buttons
@@ -258,12 +278,19 @@ class UserStatusIssuesCommand(AbstractCommand):
     @login_required
     def handler(self, bot, update, *args, **kwargs):
         auth_data = kwargs.get('auth_data')
-        scope = get_query_scope(update)
-        username, status = scope['data'].replace('user_status:', '').split(':')
+        try:
+            scope = get_query_scope(update)
+        except AttributeError:
+            telegram_id = update.message.chat_id
+            username = kwargs.get('username')
+            status = kwargs.get('status')
+        else:
+            telegram_id = scope['telegram_id']
+            username, status = scope['data'].replace('user_status:', '').split(':')
 
         title = 'Issues of "{}" with the "{}" status'.format(username, status)
         raw_items = self.app.jira.get_user_status_issues(username, status, auth_data=auth_data)
-        key = 'us_issue:{}:{}:{}'.format(scope['telegram_id'], username, status)  # user_status
+        key = 'us_issue:{}:{}:{}'.format(telegram_id, username, status)  # user_status
         self.app.send(bot, update, title=title, raw_items=raw_items, key=key)
 
     def command_callback(self):
@@ -278,12 +305,19 @@ class ProjectStatusIssuesCommand(AbstractCommand):
     @login_required
     def handler(self, bot, update, *args, **kwargs):
         auth_data = kwargs.get('auth_data')
-        scope = get_query_scope(update)
-        project, status = scope['data'].replace('project_status:', '').split(':')
+        try:
+            scope = get_query_scope(update)
+        except AttributeError:
+            telegram_id = update.message.chat_id
+            project = kwargs.get('project')
+            status = kwargs.get('status')
+        else:
+            telegram_id = scope['telegram_id']
+            project, status = scope['data'].replace('project_status:', '').split(':')
 
         title = 'Issues of "{}" project with the "{}" status'.format(project, status)
         raw_items = self.app.jira.get_project_status_issues(project, status, auth_data=auth_data)
-        key = 'ps_issue:{}:{}:{}'.format(scope['telegram_id'], project, status)  # project_status
+        key = 'ps_issue:{}:{}:{}'.format(telegram_id, project, status)  # project_status
         self.app.send(bot, update, title=title, raw_items=raw_items, key=key)
 
     def command_callback(self):

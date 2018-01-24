@@ -1,18 +1,24 @@
-import logging
-from logging.config import fileConfig
+import argparse
 
-from decouple import config
+from logger import * # noqa
 
-from bot.app import JTBApp
 
-StreamHandlerNumb = 0
-SMTPHandlerNumb = 1
-
-fileConfig('logging_config.ini')
-logger = logging.getLogger()
-logger.handlers[SMTPHandlerNumb].fromaddr = config('LOGGER_EMAIL')
-logger.handlers[SMTPHandlerNumb].toaddrs = [email.strip() for email in config('DEV_EMAILS').split(',')]
-
-if __name__ == '__main__':
+def run_bot():
+    from bot.app import JTBApp
     app = JTBApp()
     app.start()
+
+
+def run_web():
+    from web.app import app
+    app.run()
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Run bot or web application.')
+    parser.add_argument('app', choices=['bot', 'web'])
+    args = parser.parse_args()
+    if args.app == "bot":
+        run_bot()
+    elif args.app == "web":
+        run_web()

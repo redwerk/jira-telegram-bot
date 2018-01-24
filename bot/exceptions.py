@@ -83,3 +83,8 @@ class ScheduleValidationError(BaseJTBException):
 class ContextValidationError(BaseJTBException):
     """Command context validation error"""
     pass
+
+
+class ArgumentParserError(Exception):
+    """Command args parser error"""
+    pass

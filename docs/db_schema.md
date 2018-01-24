@@ -1,6 +1,6 @@
 ### jira_users collection
 ```json
-// Создание нового пользователя
+// Creating a new user
 {
   "_id": ObjectId("59bfbe69a47e654c39355f9d"),
   "telegram_id": 208810129,
@@ -18,7 +18,7 @@
   }
 }
 
-// Пользователь авторизован c помощью username/password
+// User was authorized via username/password
 {
   "_id": ObjectId("59bfbe69a47e654c39355f9d"),
   "telegram_id": 208810129,
@@ -37,7 +37,7 @@
   }
 }
 
-// Пользователь авторизован c помощью OAuth
+// User was authorized via OAuth
 {
   "_id": ObjectId("59bfbe69a47e654c39355f9d"),
   "telegram_id": 208810129,
@@ -55,7 +55,7 @@
   }
 }
 
-// При выполнении команды logout
+// When executed a command /disconnect
 {
   "_id": ObjectId("59bfbe69a47e654c39355f9d"),
   "telegram_id": 208810129,

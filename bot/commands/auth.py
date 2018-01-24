@@ -93,7 +93,6 @@ class OAuthLoginCommand(AbstractCommand):
         """
         chat_id = update.message.chat_id
         auth_options = kwargs.get('args')
-
         if not self.app.db.is_user_exists(chat_id):
             return self.app.send(
                 bot,
@@ -140,7 +139,6 @@ class OAuthLoginCommand(AbstractCommand):
                 )
         else:
             domain_name = self.check_hosturl(domain_name)
-
             if not domain_name:
                 return self.app.send(
                     bot,
@@ -167,7 +165,7 @@ class OAuthLoginCommand(AbstractCommand):
         self.app.send(bot, update, text=text)
 
     def generate_auth_link(self, telegram_id, host_url):
-        return '{}/authorize/{}/?host={}'.format(config('OAUTH_SERVICE_URL'), telegram_id, host_url)
+        return '{}/auth/authorize/{}/?host={}'.format(config('OAUTH_SERVICE_URL'), telegram_id, host_url)
 
     def get_app_links_data(self, jira_host):
         data = {

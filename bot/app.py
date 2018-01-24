@@ -17,6 +17,9 @@ from .schedules import Scheduler
 from .exceptions import BaseJTBException, BotAuthError, SendMessageHandlerError
 
 
+logger = logging.getLogger('bot')
+
+
 class JTBApp:
     """Bot to integrate with the JIRA service"""
     __commands = [
@@ -59,11 +62,11 @@ class JTBApp:
 
         self.updater.dispatcher.add_error_handler(self.error_callback)
 
-    def send(self, bot, update, *args, **kwargs):
+    def send(self, bot, update, **kwargs):
         message_handler = MessageFactory.get_message_handler(update)
         if not message_handler:
             raise SendMessageHandlerError('Unable to get the handler')
-        message_handler(bot, update, **kwargs).send()
+        return message_handler(bot, update, **kwargs).send()
 
     def run_scheduler(self):
         queue = self.updater.job_queue
@@ -74,7 +77,7 @@ class JTBApp:
     def start(self):
         self.updater.start_polling()
         self.run_scheduler()
-        logging.debug("Jira bot started successfully!")
+        logger.debug("Jira bot started successfully!")
         self.updater.idle()
 
     @property
@@ -133,10 +136,11 @@ class JTBApp:
     def error_callback(self, bot, update, error):
         if config("DEBUG", False):
             traceback.print_exc(file=sys.stdout)
-
         try:
             raise error
         except BaseJTBException as e:
             self.send(bot, update, text=e.message)
-        except (NetworkError, TelegramError, TimedOut):
+        except (NetworkError, TimedOut):
             pass
+        except TelegramError as err:
+            logger.error(err)
