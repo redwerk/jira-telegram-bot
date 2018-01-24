@@ -423,3 +423,19 @@ class JiraBackend:
                 raise JiraEmptyData('No tasks which filtered by <b>«{}»</b>'.format(filter_name))
 
             return issues
+
+    @jira_connect
+    def get_webhooks(self, host, *args, **kwargs):
+        """
+        Returns issues getting by filter id
+        :param host: server host
+        """
+        jira_conn = kwargs.get('jira_conn')
+
+        try:
+            response = jira_conn._session.get(host + '/rest/webhooks/1.0/webhook')
+        except jira.JIRAError as e:
+            logging.exception('Failed to get JIRA webhooks')
+            raise JiraReceivingDataError(e.text)
+        else:
+            return response.json()
