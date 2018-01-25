@@ -163,8 +163,9 @@ class UserTimeTrackerCommand(AbstractCommand):
         seconds = sum(worklog.get('time_spent_seconds', 0) for worklog in all_user_logs)
         spent_time = utils.calculate_tracking_time(seconds)
 
-        template = f'User <b>{username}</b> from <b>{start_date.strftime(format="%m-%d-%Y" if is_US_timezone else "%d-%m-%Y")}</b> ' \
-                   f'to <b>{end_date.strftime(format="%m-%d-%Y" if is_US_timezone else "%d-%m-%Y")}</b> spent: '
+        date_fmt = "%m-%d-%Y" if is_US_timezone else "%d-%m-%Y"
+        template = f'User <b>{username}</b> from <b>{start_date.strftime(format=date_fmt)}</b> ' \
+                   f'to <b>{end_date.strftime(format=date_fmt)}</b> spent: '
         text = template + str(round(spent_time, 2)) + ' h'
         return self.app.send(bot, update, text=text, **kwargs)
 
