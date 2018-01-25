@@ -1,6 +1,7 @@
 import os
 
 import pendulum
+from dateparser import parse
 from pendulum.parsing.exceptions import ParserError
 from telegram.ext import CommandHandler
 
@@ -10,6 +11,22 @@ from bot.schedules import schedule_commands
 from lib import utils
 
 from .base import AbstractCommand
+
+US_TIMEZONES = [
+    "US/Alaska",
+    "US/Aleutian",
+    "US/Arizona",
+    "US/Central",
+    "US/East-Indiana",
+    "US/Eastern",
+    "US/Hawaii",
+    "US/Indiana-Starke",
+    "US/Michigan",
+    "US/Mountain",
+    "US/Pacific",
+    "US/Pacific-New",
+    "US/Samoa",
+]
 
 
 class TimeTrackingDispatcher(AbstractCommand):
@@ -122,8 +139,14 @@ class UserTimeTrackerCommand(AbstractCommand):
     def handler(self, bot, update, *args, **kwargs):
         auth_data = kwargs.get('auth_data')
         username = kwargs.get('username')
-        start_date = kwargs.get('start_date')
-        end_date = kwargs.get('end_date')
+
+        is_US_timezone = self.app.jira.get_jira_tz(**kwargs) in US_TIMEZONES
+        settings = {
+            'DATE_ORDER': 'MDY' if is_US_timezone else 'DMY',
+        }
+        start_date = parse(kwargs.get('start_date').to_date_string(), settings=settings)
+        end_date = parse(kwargs.get('end_date').to_date_string(), settings=settings)
+
         # check if the user exists on Jira host
         self.app.jira.is_user_on_host(host=auth_data.jira_host, username=username, auth_data=auth_data)
         utils.validate_date_range(start_date, end_date)
@@ -140,8 +163,8 @@ class UserTimeTrackerCommand(AbstractCommand):
         seconds = sum(worklog.get('time_spent_seconds', 0) for worklog in all_user_logs)
         spent_time = utils.calculate_tracking_time(seconds)
 
-        template = f'User <b>{username}</b> from <b>{start_date.to_date_string()}</b> ' \
-                   f'to <b>{end_date.to_date_string()}</b> spent: '
+        template = f'User <b>{username}</b> from <b>{start_date.strftime(format="%m-%d-%Y" if is_US_timezone else "%d-%m-%Y")}</b> ' \
+                   f'to <b>{end_date.strftime(format="%m-%d-%Y" if is_US_timezone else "%d-%m-%Y")}</b> spent: '
         text = template + str(round(spent_time, 2)) + ' h'
         return self.app.send(bot, update, text=text, **kwargs)
 
