@@ -140,7 +140,7 @@ class UserTimeTrackerCommand(AbstractCommand):
         auth_data = kwargs.get('auth_data')
         username = kwargs.get('username')
 
-        is_US_timezone = True if self.app.jira.get_jira_tz(**kwargs) in US_TIMEZONES else False
+        is_US_timezone = self.app.jira.get_jira_tz(**kwargs) in US_TIMEZONES
         settings = {
             'DATE_ORDER': 'MDY' if is_US_timezone else 'DMY',
         }
