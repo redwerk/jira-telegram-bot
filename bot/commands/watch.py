@@ -43,7 +43,12 @@ class WatchDispatcherCommand(AbstractCommand):
             )
 
         jira_webhooks = self.app.jira.get_webhooks(auth_data.jira_host, *args, **kwargs)
-        jira_webhook = next((hook for hook in jira_webhooks if config('OAUTH_SERVICE_URL') in hook.get('url')), None)
+        jira_webhook = None
+        for hook in jira_webhooks:
+            if config('OAUTH_SERVICE_URL') in hook.get('url'):
+                jira_webhook = hook
+                break
+
         if not jira_webhook:
             confirmation_buttons = [
                 InlineKeyboardButton(text='No', callback_data='create_webhook:{}'.format(self.negative_answer)),
