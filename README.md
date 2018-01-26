@@ -73,6 +73,9 @@ docker-compose build
 docker-compose up
 ```
 
+### Celery run command
+
+celery -A web.app.celery worker -l info -P eventlet -c 30
 
 ### Code style and contribution guide
 - Install the [editorconfig](http://editorconfig.org/) plugin for your code editor.
