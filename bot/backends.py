@@ -154,6 +154,7 @@ class JiraBackend:
             jql = f'assignee = "{quote(username)}"'
             if resolution:
                 jql += f' and resolution = {resolution}'
+            jql += ' ORDER BY updated'
             issues = jira_conn.search_issues(jql, maxResults=1000)
         except jira.JIRAError as e:
             logging.exception('Error while getting {} issues:\n{}'.format(username, e))
@@ -174,6 +175,7 @@ class JiraBackend:
             jql = f'assignee = "{quote(username)}" and status = "{status}"'
             if resolution:
                 jql += f' and resolution = {resolution}'
+            jql += ' ORDER BY updated'
             issues = jira_conn.search_issues(jql, maxResults=1000)
         except jira.JIRAError as e:
             logging.exception('Error while getting {} issues:\n{}'.format(username, e))
@@ -197,6 +199,7 @@ class JiraBackend:
             jql = f'project = "{project}"'
             if resolution:
                 jql += f' and resolution = {resolution}'
+            jql += ' ORDER BY updated'
             issues = jira_conn.search_issues(jql, maxResults=1000)
         except jira.JIRAError as e:
             logging.exception('Error while getting unresolved {} issues:\n{}'.format(project, e))
@@ -217,6 +220,7 @@ class JiraBackend:
             jql = f'project = "{project}" and status = "{status}"'
             if resolution:
                 jql += f' and resolution = {resolution}'
+            jql += ' ORDER BY updated'
             issues = jira_conn.search_issues(jql, maxResults=1000)
         except jira.JIRAError as e:
             logging.exception(
