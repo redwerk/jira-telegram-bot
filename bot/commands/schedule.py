@@ -44,7 +44,7 @@ class ScheduleCommand(AbstractCommand):
         interval = cron_parser(data.get("type"), data.get("opt") or "")
         # create schedule command
         ScheduleTask.create(update, cmd_name, tz, interval, command, context)
-        self.app.send(bot, update, text="Schedule command was created succesffully!")
+        self.app.send(bot, update, text="Schedule command was created successfully!")
 
     def command_callback(self):
         return CommandHandler('schedule', self.handler, pass_args=True)
