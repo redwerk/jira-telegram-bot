@@ -1,6 +1,14 @@
 import pytest
 
-from bot.parsers import command_parser, cron_parser, TYPES, WEEKDAYS, DAYS
+from bot.parsers import (
+    command_parser,
+    cron_parser,
+    TYPES,
+    WEEKDAYS,
+    DAYS,
+    WEEKLY_DEFAULT,
+    MONTHLY_DEFAULT,
+    DAYLY_DEFAULT)
 from bot.exceptions import ContextValidationError, ScheduleValidationError
 
 
@@ -64,16 +72,16 @@ class TestCommandParser:
             command_parser(callback)
 
     def test_parse_liststatus_me(self):
-        callback = "/liststatus my"
+        callback = "/liststatus my daily"
         command, context = command_parser(callback)
         assert command == "/liststatus"
 
     def test_parse_liststatus_user(self):
-        callback = "/liststatus user"
+        callback = "/liststatus user daily"
         with pytest.raises(ContextValidationError):
             command_parser(callback)
 
-        callback = "/liststatus user test_username"
+        callback = "/liststatus user test_username Done"
         command, context = command_parser(callback)
         assert command == "/liststatus"
 
@@ -82,14 +90,13 @@ class TestCommandParser:
         with pytest.raises(ContextValidationError):
             command_parser(callback)
 
-        callback = "/liststatus project test_project"
+        callback = "/liststatus project test_project Done"
         command, context = command_parser(callback)
         assert command == "/liststatus"
 
     def test_parse_filter_without_context(self):
-        callback = "/filter"
-        with pytest.raises(ContextValidationError):
-            command_parser(callback)
+        command, context = command_parser("/filter")
+        assert len(context) == 0
 
     def test_parse_filter_with_context(self):
         callback = "/filter Test Filter"
@@ -201,3 +208,15 @@ class TestSimpleCronParser:
     def test_parser_match_time_failed(self, opt):
         with pytest.raises(ScheduleValidationError):
             cron_parser.match_time(opt)
+
+    def test_default_weekly(self):
+        cron = cron_parser('weekly', '')
+        assert cron == WEEKLY_DEFAULT
+
+    def test_default_monthly(self):
+        cron = cron_parser('monthly', '')
+        assert cron == MONTHLY_DEFAULT
+
+    def test_default_daily(self):
+        cron = cron_parser('daily', '')
+        assert cron == DAYLY_DEFAULT

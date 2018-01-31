@@ -5,6 +5,12 @@ from croniter import croniter
 from .exceptions import ScheduleValidationError
 
 
+# Default periodicities
+WEEKLY_DEFAULT = "0 0 * * 1"
+MONTHLY_DEFAULT = "0 0 1 * *"
+DAYLY_DEFAULT = "0 0 * * *"
+
+
 # allowed periodicity types
 TYPES = ["weekly", "monthly", "daily"]
 # allowed weekdays
@@ -16,10 +22,12 @@ HOURS = range(0, 24)
 # allowed minutes
 MINUTES = range(0, 60)
 
+
 _or = lambda x: "|".join(x)
 
+
 # match: callback <weekly_re>|<monthly_re>|<time_re>
-command_re = r'(?P<callback>.*) (?P<type>%s)\s+?(?P<opt>.*)?' % _or(TYPES)
+command_re = r'(?P<callback>.*) (?P<type>%s)\s?(?P<opt>.*)?' % _or(TYPES)
 # match: sun|mon|tue... <time_re>
 weekly_re = r'(?P<day>%s)\s+?(?P<opt>.*)?' % _or(WEEKDAYS.keys())
 # match: 0-31 <time_re>
@@ -103,6 +111,8 @@ class SimpleCronParser:
         Returns:
             (str): Cron style periodicity value
         """
+        if not opt:
+            return WEEKLY_DEFAULT
         data = self._match(weekly_re, opt)
         day = WEEKDAYS.get(data.get("day", "").lower())
         hour, minute = self.match_time(data.get("opt"))
@@ -116,6 +126,8 @@ class SimpleCronParser:
         Returns:
             (str): Cron style periodicity value
         """
+        if not opt:
+            return MONTHLY_DEFAULT
         data = self._match(monthly_re, opt)
         day = int(data.get("day"))
         if day not in DAYS:
@@ -132,6 +144,8 @@ class SimpleCronParser:
         Returns:
             (str): Cron style periodicity value
         """
+        if not opt:
+            return DAYLY_DEFAULT
         hour, minute = self.match_time(opt)
         return f"{minute} {hour} * * *"
 
