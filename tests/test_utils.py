@@ -1,7 +1,7 @@
 import pendulum
 import pytest
 
-from auth.app import IssueWebhookView
+from web.webhooks.views import IssueWebhookView
 from bot.exceptions import DateTimeValidationError
 from bot.paginations import split_by_pages
 from lib import utils
