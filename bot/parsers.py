@@ -29,9 +29,9 @@ _or = lambda x: "|".join(x)
 # match: callback <weekly_re>|<monthly_re>|<time_re>
 command_re = r'(?P<callback>.*) (?P<type>%s)\s?(?P<opt>.*)?' % _or(TYPES)
 # match: sun|mon|tue... <time_re>
-weekly_re = r'(?P<day>%s)\s+?(?P<opt>.*)?' % _or(WEEKDAYS.keys())
+weekly_re = r'(?P<day>%s)\s?(?P<opt>.*)?' % _or(WEEKDAYS.keys())
 # match: 0-31 <time_re>
-monthly_re = r'(?P<day>\d{1,2})\s+?(?P<opt>.*)?'
+monthly_re = r'(?P<day>\d{1,2})\s?(?P<opt>.*)?'
 # match: 10:20, 10-20, 10.20, 10 20
 time_re = r'(?P<hour>\d{0,2})[:\-\\.\s]+(?P<minute>\d*)'
 
@@ -88,7 +88,7 @@ class SimpleCronParser:
         Returns:
             (int, int): hour and minute
         """
-        if opt is None:
+        if not opt:
             hour = minute = 0
         else:
             data = self._match(time_re, opt)
