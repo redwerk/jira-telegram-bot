@@ -139,10 +139,8 @@ class UserTimeTrackerCommand(AbstractCommand):
     def handler(self, bot, update, *args, **kwargs):
         auth_data = kwargs.get('auth_data')
         username = kwargs.get('username')
-
-        is_US_timezone = self.app.jira.get_jira_tz(**kwargs) in US_TIMEZONES
         settings = {
-            'DATE_ORDER': 'MDY' if is_US_timezone else 'DMY',
+            'RETURN_AS_TIMEZONE_AWARE': True,
         }
         start_date = parse(kwargs.get('start_date').to_date_string(), settings=settings)
         end_date = parse(kwargs.get('end_date').to_date_string(), settings=settings)
@@ -163,7 +161,8 @@ class UserTimeTrackerCommand(AbstractCommand):
         seconds = sum(worklog.get('time_spent_seconds', 0) for worklog in all_user_logs)
         spent_time = utils.calculate_tracking_time(seconds)
 
-        date_fmt = "%m-%d-%Y" if is_US_timezone else "%d-%m-%Y"
+        is_united_states_timezone = self.app.jira.get_jira_tz(**kwargs) in US_TIMEZONES
+        date_fmt = "%m-%d-%Y" if is_united_states_timezone else "%d-%m-%Y"
         template = f'User <b>{username}</b> from <b>{start_date.strftime(format=date_fmt)}</b> ' \
                    f'to <b>{end_date.strftime(format=date_fmt)}</b> spent: '
         text = template + str(round(spent_time, 2)) + ' h'
