@@ -3,7 +3,7 @@ set -e
 
 source env/bin/activate
 
-pip install -r requirements.txt
+pip install -r requirements/dev.txt
 flake8 .
 
 supervisorctl restart bot

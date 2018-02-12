@@ -3,7 +3,7 @@ set -e
 
 source venv/bin/activate
 
-pip install -r requirements.txt
+pip install -r requirements/prod.txt
 flake8 .
 
 supervisorctl restart jirabot
