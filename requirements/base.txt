@@ -14,7 +14,7 @@ defusedxml==0.5.0
 Fabric3==1.13.1.post1
 flake8==3.3.0
 Flask==0.12.2
--e git+https://github.com/redwerk/flask-oauthlib.git@8b4c75de73feba0062e59b1c335e52335e731dd3#egg=Flask_OAuthlib
+Flask-OAuthlib==0.9.4
 future==0.16.0
 eventlet==0.21.0
 gevent==1.2.2
