@@ -24,22 +24,30 @@ def create_connection(**kwargs):
     """
     user = kwargs.get("user", config('DB_USER'))
     password = kwargs.get("password", config('DB_PASS'))
+    name = kwargs.get("db_name", config('DB_NAME'))
     host = kwargs.get("host", config('DB_HOST'))
     port = kwargs.get("port", config('DB_PORT'))
+    url = f'{host}:{port}'
 
     if user and password:
-        uri = f'mongodb://{user}:{password}@{host}:{port}'
+        client = MongoClient(
+            url,
+            username=user,
+            password=password,
+            authSource=name,
+            authMechanism='SCRAM-SHA-1',
+            serverSelectionTimeoutMS=1
+        )
     else:
-        uri = f'mongodb://{host}:{port}'
+        client = MongoClient(url, serverSelectionTimeoutMS=1)
 
     try:
-        client = MongoClient(uri, serverSelectionTimeoutMS=1)
         client.server_info()  # checking a connection to DB
     except (ServerSelectionTimeoutError, OperationFailure) as err:
         logging.exception("Can't connect to DB: {}".format(err))
         sys.exit(1)
 
-    return client[kwargs.get("db_name", config('DB_NAME'))]
+    return client[name]
 
 
 class MongoBackend:
