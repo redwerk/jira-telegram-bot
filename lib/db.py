@@ -22,8 +22,8 @@ def create_connection(**kwargs):
     Returns:
         pymongo.MongoClient: connection to db_name
     """
-    user = kwargs.get("user", config('DB_USER'))
-    password = kwargs.get("password", config('DB_PASS'))
+    user = kwargs.get("user", config('DB_USER', default=None))
+    password = kwargs.get("password", config('DB_PASS', default=None))
     name = kwargs.get("db_name", config('DB_NAME'))
     host = kwargs.get("host", config('DB_HOST'))
     port = kwargs.get("port", config('DB_PORT'))
