@@ -8,7 +8,7 @@
 - [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot)
 
 
-### Deployment
+### Local deployment
 > All instructions can be viewed by this [link](https://git.redwerk.com/redwerk/jira-telegram-bot/wikis/home)
 
 1. Clone a repository: `git clone https://git.redwerk.com/redwerk/jira-telegram-bot.git`
@@ -17,7 +17,7 @@
 
 3. Create a virtualenv: `python3.6 -m venv venv`
 
-4. Install requirements: `pip install -r requirements.txt`
+4. Install requirements: `pip install -r requirements/local.txt`
 
 5. Install and setting up [MongoDB](#creating-mongodb-dbs-for-local-development).
 
@@ -57,11 +57,13 @@ DEBUG=True # shows errors in console - for development server
 
 For further deployment see [/docs](docs) folder
 
+
 ### Running project tests
 
 `DB_NAME` must be a database administrator (with rights to create collections)
 
 Run command in root folder of project: `pytest -v`
+
 
 ### Running via Docker Compose
 
@@ -73,21 +75,23 @@ docker-compose build
 docker-compose up
 ```
 
-### Celery run command
 
+### Celery run command
+```
 celery -A web.app.celery worker -l info -P eventlet -c 30
+```
+
 
 ### Code style and contribution guide
 - Install the [editorconfig](http://editorconfig.org/) plugin for your code editor.
 - Used Flake8 or PEP8 plugins in your console or code editor.
 - Do not copypaste, do not hack, always look for easiest solutions.
 - Write tests for your code.
-- For every task create a branch from current `master`.
+- For every task create a branch from current `master`, when ready create a merge request back to dev.
 - Prefer small commits and branches.
 - Read this [docs]
 
 
-
 ### Deploy changes
 - Add ssh key to server.
-- Run `fab deploy`.
+- Run `fab stage deploy` or `fab prod deploy`.
