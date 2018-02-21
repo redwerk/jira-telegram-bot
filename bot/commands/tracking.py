@@ -1,7 +1,7 @@
 import os
 
+import dateparser
 import pendulum
-from dateparser import parse
 from pendulum.parsing.exceptions import ParserError
 from telegram.ext import CommandHandler
 
@@ -52,27 +52,50 @@ class TimeTrackingDispatcher(AbstractCommand):
 
         if len(options) == 1 and options[0] in self.available_days:
             if options[0] == 'today':
-                params['start_date'] = current_date._start_of_day()
-                params['end_date'] = current_date._end_of_day()
+                start_date, end_date = self.__get_normalize_date(**{
+                    "start_date": current_date.to_date_string(),
+                    "end_date": current_date.to_date_string(),
+                    "is_united_states_timezone": self.app.jira.get_jira_tz(**kwargs) in US_TIMEZONES,
+                })
+                params['start_date'] = pendulum.create(
+                    start_date.year, start_date.month, start_date.day)._start_of_day()
+                params['end_date'] = pendulum.create(
+                    end_date.year, end_date.month, end_date.day)._end_of_day()
             elif options[0] == 'yesterday':
-                params['start_date'] = current_date.subtract(days=1)._start_of_day()
-                params['end_date'] = current_date.subtract(days=1)._end_of_day()
+                start_date, end_date = self.__get_normalize_date(**{
+                    "start_date": current_date.subtract(days=1).to_date_string(),
+                    "end_date": current_date.subtract(days=1).to_date_string(),
+                    "is_united_states_timezone": self.app.jira.get_jira_tz(**kwargs) in US_TIMEZONES,
+                })
+                params['start_date'] = pendulum.create(
+                    start_date.year, start_date.month, start_date.day)._start_of_day()
+                params['end_date'] = pendulum.create(
+                    end_date.year, end_date.month, end_date.day)._end_of_day()
         elif len(options) == 1:
             # if the start date is specified - the command will be executed
             # inclusively from the start date to today's date
             try:
-                start_date = pendulum.parse(options[0])
-                params['start_date'] = start_date._start_of_day()
-            except ParserError:
+                start_date, end_date = self.__get_normalize_date(**{
+                    "start_date": options[0], "end_date": current_date.to_date_string(),
+                    "is_united_states_timezone": self.app.jira.get_jira_tz(**kwargs) in US_TIMEZONES,
+                })
+                params['start_date'] = pendulum.create(
+                    start_date.year, start_date.month, start_date.day)._start_of_day()
+            except (ParserError, Exception):
                 return self.app.send(bot, update, text='Invalid date format')
             else:
-                params['end_date'] = current_date._end_of_day()
+                params['end_date'] = pendulum.create(
+                    end_date.year, end_date.month, end_date.day)._end_of_day()
         elif len(options) > 1:
             try:
-                start_date = pendulum.parse(options[0])
-                end_date = pendulum.parse(options[1])
-                params['start_date'] = start_date._start_of_day()
-                params['end_date'] = end_date._end_of_day()
+                start_date, end_date = self.__get_normalize_date(**{
+                    "start_date": options[0], "end_date": options[1],
+                    "is_united_states_timezone": self.app.jira.get_jira_tz(**kwargs) in US_TIMEZONES,
+                })
+                params['start_date'] = pendulum.create(
+                    start_date.year, start_date.month, start_date.day)._start_of_day()
+                params['end_date'] = pendulum.create(
+                    end_date.year, end_date.month, end_date.day)._end_of_day()
             except ParserError:
                 return self.app.send(bot, update, text='Invalid date format')
         else:
@@ -111,6 +134,69 @@ class TimeTrackingDispatcher(AbstractCommand):
         else:
             raise ContextValidationError(f"Argument {target} not allowed.")
 
+    def __identify_of_date_format(self, date_str, is_united_states_timezone=False) -> str:
+        """
+        The function determines and returns the date format
+        based on the date and timezone
+
+        :param date_str: date for parsing
+        :param is_united_states_timezone: timezone for defining the format
+        :return: date format for configuring library 'date_formats' dateparser
+        """
+        from enum import Enum
+
+        class DateFormatBehavior(Enum):
+            LITTLEENDIAN = 0x0,
+            BIGENDIAN = 0x1,
+
+            MIDDLEENDIAN_FM = 0x2,  # month first
+            MIDDLEENDIAN_SM = 0x3   # month second
+
+        date_patterns = {
+            DateFormatBehavior.LITTLEENDIAN: r"\d{2}-\d{2}-\d{4}",
+            DateFormatBehavior.BIGENDIAN: r"\d{4}-\d{2}-\d{2}",
+            DateFormatBehavior.MIDDLEENDIAN_FM: r"\w{3,}-\d{2}-\d{4}",
+            DateFormatBehavior.MIDDLEENDIAN_SM: r"\d{2}-\w{3,}-\d{4}",
+        }
+
+        def __switch_case(case: DateFormatBehavior):
+            return {
+                DateFormatBehavior.LITTLEENDIAN: "%m-%d-%Y"
+                if is_united_states_timezone else "%d-%m-%Y",
+
+                DateFormatBehavior.BIGENDIAN: "%Y-%m-%d",
+
+                DateFormatBehavior.MIDDLEENDIAN_FM: "%B-%d-%Y",
+                DateFormatBehavior.MIDDLEENDIAN_SM: "%d-%B-%Y",
+            }.get(case)
+
+        from re import (match, compile)
+        result_format = str()
+        for date_patterns_key, date_patterns_value in date_patterns.items():
+            if match(compile(date_patterns_value), date_str):
+                result_format = __switch_case(date_patterns_key)
+
+        return result_format
+
+    def __get_normalize_date(self, **kwargs) -> tuple:
+        start_date_fmt = self.__identify_of_date_format(
+            kwargs.get("start_date"),
+            kwargs.get("is_united_states_timezone")
+        )
+        end_date_fmt = self.__identify_of_date_format(
+            kwargs.get("end_date"),
+            kwargs.get("is_united_states_timezone")
+        )
+
+        start_date = dateparser.parse(
+            kwargs.get("start_date"), date_formats=[start_date_fmt], languages=['en', 'ru']
+        )
+        end_date = dateparser.parse(
+            kwargs.get("end_date"), date_formats=[end_date_fmt], languages=['en', 'ru']
+        )
+
+        return (start_date, end_date)
+
 
 class IssueTimeTrackerCommand(AbstractCommand):
     """Shows spent time at the issue"""
@@ -127,8 +213,10 @@ class IssueTimeTrackerCommand(AbstractCommand):
         except JiraEmptyData as err:
             return self.app.send(bot, update, text=err.message, **kwargs)
 
-        template = f'Time spent on issue <b>{issue}</b> from <b>{start_date.to_date_string()}</b> ' \
-                   f'to <b>{end_date.to_date_string()}</b>: '
+        is_united_states_timezone = self.app.jira.get_jira_tz(**kwargs) in US_TIMEZONES
+        date_fmt = "%m-%d-%Y" if is_united_states_timezone else "%Y-%m-%d"
+        template = f'Time spent on issue <b>{issue}</b> from <b>{start_date.strftime(date_fmt)}</b> ' \
+                   f'to <b>{end_date.strftime(date_fmt)}</b>: '
         text = template + str(round(spent_time, 2)) + ' h'
         return self.app.send(bot, update, text=text, **kwargs)
 
@@ -139,11 +227,8 @@ class UserTimeTrackerCommand(AbstractCommand):
     def handler(self, bot, update, *args, **kwargs):
         auth_data = kwargs.get('auth_data')
         username = kwargs.get('username')
-        settings = {
-            'RETURN_AS_TIMEZONE_AWARE': True,
-        }
-        start_date = parse(kwargs.get('start_date').to_date_string(), settings=settings)
-        end_date = parse(kwargs.get('end_date').to_date_string(), settings=settings)
+        start_date = kwargs.get('start_date')
+        end_date = kwargs.get('end_date')
 
         # check if the user exists on Jira host
         self.app.jira.is_user_on_host(host=auth_data.jira_host, username=username, auth_data=auth_data)
@@ -162,9 +247,9 @@ class UserTimeTrackerCommand(AbstractCommand):
         spent_time = utils.calculate_tracking_time(seconds)
 
         is_united_states_timezone = self.app.jira.get_jira_tz(**kwargs) in US_TIMEZONES
-        date_fmt = "%m-%d-%Y" if is_united_states_timezone else "%d-%m-%Y"
-        template = f'User <b>{username}</b> from <b>{start_date.strftime(format=date_fmt)}</b> ' \
-                   f'to <b>{end_date.strftime(format=date_fmt)}</b> spent: '
+        date_fmt = "%m-%d-%Y" if is_united_states_timezone else "%Y-%m-%d"
+        template = f'User <b>{username}</b> from <b>{start_date.strftime(date_fmt)}</b> ' \
+                   f'to <b>{end_date.strftime(date_fmt)}</b> spent: '
         text = template + str(round(spent_time, 2)) + ' h'
         return self.app.send(bot, update, text=text, **kwargs)
 
@@ -185,9 +270,11 @@ class ProjectTimeTrackerCommand(AbstractCommand):
         except JiraEmptyData as err:
             return self.app.send(bot, update, text=err.message, **kwargs)
 
+        is_united_states_timezone = self.app.jira.get_jira_tz(**kwargs) in US_TIMEZONES
+        date_fmt = "%m-%d-%Y" if is_united_states_timezone else "%Y-%m-%d"
         template = (
             f'Time spent on project <b>{project}</b> '
-            f'from <b>{start_date.to_date_string()}</b> to <b>{end_date.to_date_string()}</b>: '
+            f'from <b>{start_date.strftime(date_fmt)}</b> to <b>{end_date.strftime(date_fmt)}</b>: '
         )
         text = template + str(round(spent_time, 2)) + ' h'
         return self.app.send(bot, update, text=text, **kwargs)
