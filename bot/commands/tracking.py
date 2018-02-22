@@ -52,21 +52,18 @@ class TimeTrackingDispatcher(AbstractCommand):
 
         if len(options) == 1 and options[0] in self.available_days:
             if options[0] == 'today':
-                start_date, end_date = self.__get_normalize_date(**{
-                    "start_date": current_date.to_date_string(),
-                    "end_date": current_date.to_date_string(),
-                    "is_united_states_timezone": self.app.jira.get_jira_tz(**kwargs) in US_TIMEZONES,
-                })
+                start_date = end_date = self.__get_normalize_date(*[
+                    current_date.to_date_string(), self.app.jira.get_jira_tz(**kwargs) in US_TIMEZONES
+                ])
                 params['start_date'] = pendulum.create(
                     start_date.year, start_date.month, start_date.day)._start_of_day()
                 params['end_date'] = pendulum.create(
                     end_date.year, end_date.month, end_date.day)._end_of_day()
             elif options[0] == 'yesterday':
-                start_date, end_date = self.__get_normalize_date(**{
-                    "start_date": current_date.subtract(days=1).to_date_string(),
-                    "end_date": current_date.subtract(days=1).to_date_string(),
-                    "is_united_states_timezone": self.app.jira.get_jira_tz(**kwargs) in US_TIMEZONES,
-                })
+                start_date = end_date = self.__get_normalize_date(*[
+                    current_date.subtract(days=1).to_date_string(),
+                    self.app.jira.get_jira_tz(**kwargs) in US_TIMEZONES
+                ])
                 params['start_date'] = pendulum.create(
                     start_date.year, start_date.month, start_date.day)._start_of_day()
                 params['end_date'] = pendulum.create(
@@ -75,23 +72,27 @@ class TimeTrackingDispatcher(AbstractCommand):
             # if the start date is specified - the command will be executed
             # inclusively from the start date to today's date
             try:
-                start_date, end_date = self.__get_normalize_date(**{
-                    "start_date": options[0], "end_date": current_date.to_date_string(),
-                    "is_united_states_timezone": self.app.jira.get_jira_tz(**kwargs) in US_TIMEZONES,
-                })
+                start_date = self.__get_normalize_date(*[
+                    options[0], self.app.jira.get_jira_tz(**kwargs) in US_TIMEZONES
+                ])
                 params['start_date'] = pendulum.create(
                     start_date.year, start_date.month, start_date.day)._start_of_day()
-            except (ParserError, Exception):
+            except ParserError:
                 return self.app.send(bot, update, text='Invalid date format')
             else:
+                end_date = self.__get_normalize_date(*[
+                    options[1], self.app.jira.get_jira_tz(**kwargs) in US_TIMEZONES
+                ])
                 params['end_date'] = pendulum.create(
                     end_date.year, end_date.month, end_date.day)._end_of_day()
         elif len(options) > 1:
             try:
-                start_date, end_date = self.__get_normalize_date(**{
-                    "start_date": options[0], "end_date": options[1],
-                    "is_united_states_timezone": self.app.jira.get_jira_tz(**kwargs) in US_TIMEZONES,
-                })
+                start_date = self.__get_normalize_date(*[
+                    options[0], self.app.jira.get_jira_tz(**kwargs) in US_TIMEZONES
+                ])
+                end_date = self.__get_normalize_date(*[
+                    options[1], self.app.jira.get_jira_tz(**kwargs) in US_TIMEZONES
+                ])
                 params['start_date'] = pendulum.create(
                     start_date.year, start_date.month, start_date.day)._start_of_day()
                 params['end_date'] = pendulum.create(
@@ -134,7 +135,7 @@ class TimeTrackingDispatcher(AbstractCommand):
         else:
             raise ContextValidationError(f"Argument {target} not allowed.")
 
-    def __identify_of_date_format(self, date_str, is_united_states_timezone=False) -> str:
+    def __identify_of_date_format(self, date, is_united_states_timezone=False):
         """
         The function determines and returns the date format
         based on the date and timezone
@@ -145,57 +146,36 @@ class TimeTrackingDispatcher(AbstractCommand):
         """
         from enum import Enum
 
-        class DateFormatBehavior(Enum):
-            LITTLEENDIAN = 0x0,
-            BIGENDIAN = 0x1,
+        class NoValue(Enum):
+            def __repr__(self):
+                return '<%s.%s>' % (self.__class__.__name__, self.name)
 
-            MIDDLEENDIAN_FM = 0x2,  # month first
-            MIDDLEENDIAN_SM = 0x3   # month second
+        class DateFormatPatterns(NoValue):
+            LITTLEENDIAN = r"\d{2}(.*?)\d{2}(.*?)\d{4}",
+            BIGENDIAN = r"\d{4}(.*?)\d{2}(.*?)\d{2}",
+            MIDDLEENDIAN_MONTH_0 = r"\w{3,}(.*?)\d{2}(.*?)\d{4}",
+            MIDDLEENDIAN_MONTH_1 = r"\d{2}(.*?)\w{3,}(.*?)\d{4}",
 
-        date_patterns = {
-            DateFormatBehavior.LITTLEENDIAN: r"\d{2}-\d{2}-\d{4}",
-            DateFormatBehavior.BIGENDIAN: r"\d{4}-\d{2}-\d{2}",
-            DateFormatBehavior.MIDDLEENDIAN_FM: r"\w{3,}-\d{2}-\d{4}",
-            DateFormatBehavior.MIDDLEENDIAN_SM: r"\d{2}-\w{3,}-\d{4}",
+        date_matches = {
+            DateFormatPatterns.LITTLEENDIAN: "%m-%d-%Y"
+            if is_united_states_timezone else "%d-%m-%Y",
+            DateFormatPatterns.BIGENDIAN: "%Y-%m-%d",
+            DateFormatPatterns.MIDDLEENDIAN_MONTH_0: "%B-%d-%Y",
+            DateFormatPatterns.MIDDLEENDIAN_MONTH_1: "%d-%B-%Y",
         }
-
-        def __switch_case(case: DateFormatBehavior):
-            return {
-                DateFormatBehavior.LITTLEENDIAN: "%m-%d-%Y"
-                if is_united_states_timezone else "%d-%m-%Y",
-
-                DateFormatBehavior.BIGENDIAN: "%Y-%m-%d",
-
-                DateFormatBehavior.MIDDLEENDIAN_FM: "%B-%d-%Y",
-                DateFormatBehavior.MIDDLEENDIAN_SM: "%d-%B-%Y",
-            }.get(case)
 
         from re import (match, compile)
         result_format = str()
-        for date_patterns_key, date_patterns_value in date_patterns.items():
-            if match(compile(date_patterns_value), date_str):
-                result_format = __switch_case(date_patterns_key)
+        for date_pattern in DateFormatPatterns:
+            if match(compile(date_pattern.value[0]), date):
+                result_format = date_matches.get(date_pattern)
+                break
 
         return result_format
 
-    def __get_normalize_date(self, **kwargs) -> tuple:
-        start_date_fmt = self.__identify_of_date_format(
-            kwargs.get("start_date"),
-            kwargs.get("is_united_states_timezone")
-        )
-        end_date_fmt = self.__identify_of_date_format(
-            kwargs.get("end_date"),
-            kwargs.get("is_united_states_timezone")
-        )
-
-        start_date = dateparser.parse(
-            kwargs.get("start_date"), date_formats=[start_date_fmt], languages=['en', 'ru']
-        )
-        end_date = dateparser.parse(
-            kwargs.get("end_date"), date_formats=[end_date_fmt], languages=['en', 'ru']
-        )
-
-        return (start_date, end_date)
+    def __get_normalize_date(self, *args):
+        date_fmt = self.__identify_of_date_format(args[0], args[1])
+        return dateparser.parse(args[0], date_formats=[date_fmt], languages=['en', 'ru'])
 
 
 class IssueTimeTrackerCommand(AbstractCommand):
