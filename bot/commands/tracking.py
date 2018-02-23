@@ -60,14 +60,14 @@ class TimeTrackingDispatcher(AbstractCommand):
                 params['end_date'] = pendulum.create(
                     date.year, date.month, date.day)._end_of_day()
             elif options[0] == 'yesterday':
-                start_date = end_date = self.__get_normalize_date(
+                date = self.__get_normalize_date(
                     current_date.subtract(days=1).to_date_string(),
                     self.app.jira.get_jira_tz(**kwargs)
                 )
                 params['start_date'] = pendulum.create(
-                    start_date.year, start_date.month, start_date.day)._start_of_day()
+                    date.year, date.month, date.day)._start_of_day()
                 params['end_date'] = pendulum.create(
-                    end_date.year, end_date.month, end_date.day)._end_of_day()
+                    date.year, date.month, date.day)._end_of_day()
         elif len(options) == 1:
             # if the start date is specified - the command will be executed
             # inclusively from the start date to today's date
