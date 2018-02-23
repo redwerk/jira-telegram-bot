@@ -52,18 +52,18 @@ class TimeTrackingDispatcher(AbstractCommand):
 
         if len(options) == 1 and options[0] in self.available_days:
             if options[0] == 'today':
-                start_date = end_date = self.__get_normalize_date(*[
+                start_date = end_date = self.__get_normalize_date(
                     current_date.to_date_string(), self.app.jira.get_jira_tz(**kwargs)
-                ])
+                )
                 params['start_date'] = pendulum.create(
                     start_date.year, start_date.month, start_date.day)._start_of_day()
                 params['end_date'] = pendulum.create(
                     end_date.year, end_date.month, end_date.day)._end_of_day()
             elif options[0] == 'yesterday':
-                start_date = end_date = self.__get_normalize_date(*[
+                start_date = end_date = self.__get_normalize_date(
                     current_date.subtract(days=1).to_date_string(),
                     self.app.jira.get_jira_tz(**kwargs)
-                ])
+                )
                 params['start_date'] = pendulum.create(
                     start_date.year, start_date.month, start_date.day)._start_of_day()
                 params['end_date'] = pendulum.create(
@@ -72,27 +72,27 @@ class TimeTrackingDispatcher(AbstractCommand):
             # if the start date is specified - the command will be executed
             # inclusively from the start date to today's date
             try:
-                start_date = self.__get_normalize_date(*[
+                start_date = self.__get_normalize_date(
                     options[0], self.app.jira.get_jira_tz(**kwargs)
-                ])
+                )
                 params['start_date'] = pendulum.create(
                     start_date.year, start_date.month, start_date.day)._start_of_day()
             except ParserError:
                 return self.app.send(bot, update, text='Invalid date format')
             else:
-                end_date = self.__get_normalize_date(*[
+                end_date = self.__get_normalize_date(
                     current_date.to_date_string(), self.app.jira.get_jira_tz(**kwargs)
-                ])
+                )
                 params['end_date'] = pendulum.create(
                     end_date.year, end_date.month, end_date.day)._end_of_day()
         elif len(options) > 1:
             try:
-                start_date = self.__get_normalize_date(*[
+                start_date = self.__get_normalize_date(
                     options[0], self.app.jira.get_jira_tz(**kwargs)
-                ])
-                end_date = self.__get_normalize_date(*[
+                )
+                end_date = self.__get_normalize_date(
                     options[1], self.app.jira.get_jira_tz(**kwargs)
-                ])
+                )
                 params['start_date'] = pendulum.create(
                     start_date.year, start_date.month, start_date.day)._start_of_day()
                 params['end_date'] = pendulum.create(
@@ -165,17 +165,13 @@ class TimeTrackingDispatcher(AbstractCommand):
         }
 
         from re import (match, compile)
-        result_format = str()
         for date_pattern in DateFormatPatterns:
             if match(compile(date_pattern.value[0]), date):
-                result_format = date_matches.get(date_pattern)
-                break
+                return date_matches.get(date_pattern)
 
-        return result_format
-
-    def __get_normalize_date(self, *args):
-        date_fmt = self.__identify_of_date_format(args[0], args[1])
-        return dateparser.parse(args[0], date_formats=[date_fmt], languages=['en', 'ru'])
+    def __get_normalize_date(self, date, timezone):
+        date_fmt = self.__identify_of_date_format(date, timezone)
+        return dateparser.parse(date, date_formats=[date_fmt], languages=['en', 'ru'])
 
 
 class IssueTimeTrackerCommand(AbstractCommand):
