@@ -1,11 +1,13 @@
 import os
+import re
 
 import dateparser
 import pendulum
 from pendulum.parsing.exceptions import ParserError
 from telegram.ext import CommandHandler
 
-from bot.exceptions import ContextValidationError, JiraEmptyData, DateTimeValidationError
+from bot.exceptions import (ContextValidationError, DateTimeValidationError,
+                            JiraEmptyData)
 from bot.helpers import login_required, with_progress
 from bot.schedules import schedule_commands
 from lib import utils
@@ -157,11 +159,10 @@ class TimeTrackingDispatcher(AbstractCommand):
             BIGENDIAN_0 = r"\d{4}(.*?)\d{2}(.*?)\d{2}",
             BIGENDIAN_1 = r"\d{4}(.*?)\w{3,}(.*?)\d{2}",
 
-        from re import (match, compile, search)
-        delimiters_scope = str(f"/.-")
+        delimiters = "/.-"
         delimiter = str()
-        for item in delimiters_scope:
-            if search(r"\{}".format(item), date):
+        for item in delimiters:
+            if item in date:
                 if delimiter and item != delimiter:
                     raise DateTimeValidationError(f"Too many delimiters in date.")
                 else:
@@ -177,7 +178,7 @@ class TimeTrackingDispatcher(AbstractCommand):
         }
 
         for date_pattern in DateFormatPatterns:
-            if match(compile(date_pattern.value[0]), date):
+            if re.match(re.compile(date_pattern.value[0]), date):
                 return date_matches.get(date_pattern)
 
     def __get_normalize_date(self, date, timezone):
@@ -186,10 +187,6 @@ class TimeTrackingDispatcher(AbstractCommand):
             return dateparser.parse(date, date_formats=[date_fmt], languages=['en', 'ru'])
         except TypeError:
             raise TypeError(f"Invalid format date.")
-        except DateTimeValidationError:
-            raise DateTimeValidationError(f"Too many delimiters in date.")
-        except Exception:
-            raise Exception(f"Undefined error.")
 
 
 class IssueTimeTrackerCommand(AbstractCommand):
