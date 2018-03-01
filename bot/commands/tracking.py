@@ -1,11 +1,13 @@
 import os
+import re
 
 import dateparser
 import pendulum
 from pendulum.parsing.exceptions import ParserError
 from telegram.ext import CommandHandler
 
-from bot.exceptions import ContextValidationError, JiraEmptyData
+from bot.exceptions import (ContextValidationError, DateTimeValidationError,
+                            JiraEmptyData)
 from bot.helpers import login_required, with_progress
 from bot.schedules import schedule_commands
 from lib import utils
@@ -152,26 +154,39 @@ class TimeTrackingDispatcher(AbstractCommand):
 
         class DateFormatPatterns(NoValue):
             LITTLEENDIAN = r"\d{2}(.*?)\d{2}(.*?)\d{4}",
-            BIGENDIAN = r"\d{4}(.*?)\d{2}(.*?)\d{2}",
-            MIDDLEENDIAN_MONTH_0 = r"\w{3,}(.*?)\d{2}(.*?)\d{4}",
-            MIDDLEENDIAN_MONTH_1 = r"\d{2}(.*?)\w{3,}(.*?)\d{4}",
+            MIDDLEENDIAN_0 = r"\w{3,}(.*?)\d{2}(.*?)\d{4}",
+            MIDDLEENDIAN_1 = r"\d{2}(.*?)\w{3,}(.*?)\d{4}",
+            BIGENDIAN_0 = r"\d{4}(.*?)\d{2}(.*?)\d{2}",
+            BIGENDIAN_1 = r"\d{4}(.*?)\w{3,}(.*?)\d{2}",
+
+        delimiters = "/.-"
+        delimiter = str()
+        for item in delimiters:
+            if item in date:
+                if delimiter and item != delimiter:
+                    raise DateTimeValidationError(f"Too many delimiters in date.")
+                else:
+                    delimiter = item
 
         date_matches = {
-            DateFormatPatterns.LITTLEENDIAN: "%m-%d-%Y"
-            if timezone in US_TIMEZONES else "%d-%m-%Y",
-            DateFormatPatterns.BIGENDIAN: "%Y-%m-%d",
-            DateFormatPatterns.MIDDLEENDIAN_MONTH_0: "%B-%d-%Y",
-            DateFormatPatterns.MIDDLEENDIAN_MONTH_1: "%d-%B-%Y",
+            DateFormatPatterns.LITTLEENDIAN: "%m{dlm}%d{dlm}%Y".format(dlm=delimiter)
+            if timezone in US_TIMEZONES else "%d{dlm}%m{dlm}%Y".format(dlm=delimiter),
+            DateFormatPatterns.MIDDLEENDIAN_0: "%B{dlm}%d{dlm}%Y".format(dlm=delimiter),
+            DateFormatPatterns.MIDDLEENDIAN_1: "%d{dlm}%B{dlm}%Y".format(dlm=delimiter),
+            DateFormatPatterns.BIGENDIAN_0: "%Y{dlm}%m{dlm}%d".format(dlm=delimiter),
+            DateFormatPatterns.BIGENDIAN_1: "%Y{dlm}%B{dlm}%d".format(dlm=delimiter),
         }
 
-        from re import (match, compile)
         for date_pattern in DateFormatPatterns:
-            if match(compile(date_pattern.value[0]), date):
+            if re.match(re.compile(date_pattern.value[0]), date):
                 return date_matches.get(date_pattern)
 
     def __get_normalize_date(self, date, timezone):
-        date_fmt = self.__identify_of_date_format(date, timezone)
-        return dateparser.parse(date, date_formats=[date_fmt], languages=['en', 'ru'])
+        try:
+            date_fmt = self.__identify_of_date_format(date, timezone)
+            return dateparser.parse(date, date_formats=[date_fmt], languages=['en', 'ru'])
+        except TypeError:
+            raise TypeError(f"Invalid format date.")
 
 
 class IssueTimeTrackerCommand(AbstractCommand):
