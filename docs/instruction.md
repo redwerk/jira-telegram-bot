@@ -1,6 +1,16 @@
 #### Prepare environment
 - Create directories
-* keys
+
+keys
+* Generate RSA keys
+```.env
+cd keys
+openssl genrsa -out jtb_privatekey.pem 1024
+openssl req -newkey rsa:1024 -x509 -key jtb_privatekey.pem -out jtb_publickey.cer -days 365
+openssl pkcs8 -topk8 -nocrypt -in jtb_privatekey.pem -out jtb_privatekey.pcks8
+openssl x509 -pubkey -noout -in jtb_publickey.cer  > jtb_publickey.pem
+
+```
 
 #### Prepare MongoDB database
 - Create database and collections
@@ -82,3 +92,5 @@ Bash
 python run.py bot
 python run.py web
 ```
+
+#### Running (Docker)

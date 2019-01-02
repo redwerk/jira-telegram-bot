@@ -7,16 +7,26 @@ services:
       - .:/code
     depends_on:
       - mongo
-    restart: always
+      - redis
+      - celery
+    restart: unless-stopped
     command: python3 run.py bot
   webhooks:
     build:
       context: .
+    volumes:
+        - .:/code
     depends_on:
       - mongo
+      - redis
+      - celery
       - telegram-bot
-    restart: always
+    links:
+        - redis
+    restart: unless-stopped
     command: python3 run.py web
+    ports:
+       - 5000:5000
   mongo:
     image: "mongo:latest"
     environment:
@@ -26,22 +36,28 @@ services:
     volumes:
        - ./mongo:/docker-entrypoint-initdb.d
        - mongo_data:/data/db
-    restart: always
+    restart: unless-stopped
+    ports:
+        - 8181:27017
   celery:
     build:
       context: .
     depends_on:
       - mongo
       - redis
+    links:
+      - redis
+    environment:
+      C_FORCE_ROOT: "true"
     volumes:
       - .:/code
     command: celery -A web.app.celery worker -l info -P eventlet -c 30
-    restart: always
+    restart: unless-stopped
   redis:
     image: 'redis:latest'
     volumes:
       - redis_data:/data
-
+      - .:/code
 volumes:
   mongo_data:
   redis_data:

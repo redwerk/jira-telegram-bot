@@ -27,3 +27,6 @@ tmp/
 *.pem
 *.cer
 .cache/
+
+# keys
+keys
