@@ -1,13 +1,47 @@
 version: '3'
 services:
   telegram-bot:
-    build: .
+    build:
+      context: .
     volumes:
-        - .:/code
+      - .:/code
     depends_on:
-        - mongo
+      - mongo
+    restart: always
+    command: python3 run.py bot
+  webhooks:
+    build:
+      context: .
+    depends_on:
+      - mongo
+      - telegram-bot
+    restart: always
+    command: python3 run.py web
   mongo:
     image: "mongo:latest"
-    command: mongod
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${DB_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${DB_PASS}
+      MONGO_INITDB_DATABASE: ${DB_NAME}
     volumes:
-        - './tmp/data:/data/mongo'
+       - ./mongo:/docker-entrypoint-initdb.d
+       - mongo_data:/data/db
+    restart: always
+  celery:
+    build:
+      context: .
+    depends_on:
+      - mongo
+      - redis
+    volumes:
+      - .:/code
+    command: celery -A web.app.celery worker -l info -P eventlet -c 30
+    restart: always
+  redis:
+    image: 'redis:latest'
+    volumes:
+      - redis_data:/data
+
+volumes:
+  mongo_data:
+  redis_data:
