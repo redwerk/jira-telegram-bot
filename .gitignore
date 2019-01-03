@@ -28,5 +28,6 @@ tmp/
 *.cer
 .cache/
 
-# keys
+# keys and logs
 keys
+logs

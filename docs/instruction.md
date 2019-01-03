@@ -1,7 +1,7 @@
 #### Prepare environment
 - Create directories
 
-keys
+keys, logs
 * Generate RSA keys
 ```.env
 cd keys
@@ -93,4 +93,12 @@ python run.py bot
 python run.py web
 ```
 
-#### Running (Docker)
+#### Running (Docker, locally)
+```.env
+docker-compose up --build
+```
+
+#### Running (Docker, staging)
+```.env
+docker-compose -f docker-compose.yml -f docker-compose.staging.yml up -d
+```

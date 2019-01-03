@@ -1,0 +1,5 @@
+version: '3'
+services:
+  webhooks:
+    ports:
+      - 80:5000

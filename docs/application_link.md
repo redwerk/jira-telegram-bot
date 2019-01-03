@@ -6,11 +6,6 @@
     Application Name: JT-OAuth
     Application Type: Generic Application
     Service Provider Name: JT-OAuth
-    Consumer key: whatever
-    Shared secret: whatever
-    Request Token URL: jira.host/plugins/servlet/oauth/request-token
-    Access token URL: jira.host/plugins/servlet/oauth/access-token
-    Authorize URL: jira.host/plugins/servlet/oauth/authorize
     Create incoming link [V]
     ```
     
