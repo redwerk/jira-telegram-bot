@@ -1,6 +1,22 @@
-- Создать пользователя **DB_USER** и пароль **DB_PASS** в БД
-
+### 
 - Создать базу данных **DB_NAME**, коллекцию для пользователей **DB_USER_COLLECTION** и коллекцию для хостов **DB_HOST_COLLECTION**
+```mongo
+mongo
+use DB_NAME
+db.createCollection("DB_USER_COLLECTION")
+db.createCollection("DB_HOST_COLLECTION")
+```
+- Создать пользователя **DB_USER** и пароль **DB_PASS** в БД
+````
+mongo
+use jbt_db
+db.createUser(
+{
+    user: "DB_USER",
+    pwd: "DB_PASS",
+    roles: [{role: "readWrite" , db: "jbt_db"}]
+})
+````
 
 - Создать коллекцию **DB_CACHE_COLLECTION** для хранения кэша: `db.DB_CACHE_COLLECTION.createIndex( { "createdAt": 1 }, { expireAfterSeconds: 3600 } )`, *запись удалится через 1 час
 
@@ -21,7 +37,11 @@ openssl x509 -pubkey -noout -in jira_publickey.cer  > name_publickey.pem
 
 - Пример добавления с Flask приложением открытым через ngrok:
 
-Добавление ссылки **OAUTH_SERVICE_URL**:
+#### Добавление Application link
+```
+
+```
+#### Добавление ссылки **OAUTH_SERVICE_URL**:
 ![step 1](1.png)
 
 ![step 2](2.png)

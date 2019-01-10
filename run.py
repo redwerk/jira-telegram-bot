@@ -11,7 +11,7 @@ def run_bot():
 
 def run_web():
     from web.app import app
-    app.run()
+    app.run(host='0.0.0.0')
 
 
 if __name__ == '__main__':
