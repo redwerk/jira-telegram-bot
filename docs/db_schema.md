@@ -1,5 +1,5 @@
 ### jira_users collection
-```json
+```text
 // Creating a new user
 {
   "_id": ObjectId("59bfbe69a47e654c39355f9d"),
@@ -17,7 +17,7 @@
     }
   }
 }
-
+```
 // User was authorized via username/password
 {
   "_id": ObjectId("59bfbe69a47e654c39355f9d"),

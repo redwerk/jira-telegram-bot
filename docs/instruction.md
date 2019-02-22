@@ -1,7 +1,6 @@
 #### Prepare environment
-- Create directories
-
-keys, logs
+- Create **keys**, **logs** directories
+- Create **.env** fle, populate with **.env.example** data
 * Generate RSA keys
 ```.env
 cd keys
@@ -12,7 +11,13 @@ openssl x509 -pubkey -noout -in jtb_publickey.cer  > jtb_publickey.pem
 
 ```
 
-#### Prepare MongoDB database
+#### Installation and configuration [Local]
+1. Create a virtualenv: `python3.6 -m venv venv`
+2. Install requirements `pip3 install -r requirements/local.txt`
+3. Install and set up [MongoDB](creating-mongodb-dbs-for-local-development)
+4. Install and set up [Redis](https://redis.io/topics/quickstart)
+
+#### Prepare MongoDB database [Local]
 - Create database and collections
 
 Variables .env
@@ -50,21 +55,6 @@ db.createUser(
 })
 ````
 
-#### Prepare public and private keys
-```
-openssl genrsa -out jtb_privatekey.pem 1024
-openssl req -newkey rsa:1024 -x509 -key jtb_privatekey.pem -out jtb_publickey.cer -days 365
-openssl pkcs8 -topk8 -nocrypt -in jtb_privatekey.pem -out jtb_privatekey.pcks8
-openssl x509 -pubkey -noout -in jtb_publickey.cer  > jtb_publickey.pem
-```
-Put keys in the folder. Absolute path set in  **PRIVATE_KEY_PATH** и **PUBLIC_KEY_PATH** .env variables
-
-E. g.
-```.env
-PRIVATE_KEY_PATH=/home/user/.keys/jtb_privatekey.pem
-PUBLIC_KEY_PATH=/home/user/.keys/jtb_publickey.pem
-```
-
 #### Get URL for Oauth 2.0 authorization
 Locally
 ```.env
@@ -84,21 +74,27 @@ via localtunnel
 ```.env
 jtb_test.localtunnel.me
 ```
-Production (later)
 
-#### Running (locally)
+
+#### Running [Local]
 Bash
 ```.env
 python run.py bot
 python run.py web
 ```
 
-#### Running (Docker, locally)
+#### Running [Docker locally]
 ```.env
 docker-compose up --build
 ```
 
-#### Running (Docker, staging)
+#### Running [Docker staging]
 ```.env
 docker-compose -f docker-compose.yml -f docker-compose.staging.yml up -d
+```
+
+#### Running tests [Local]
+```text
+In root folder
+pytest -v
 ```

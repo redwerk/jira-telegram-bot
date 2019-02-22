@@ -9,6 +9,7 @@ services:
       - mongo
       - redis
       - celery
+      - postfix
     restart: always
     command: python3 run.py bot
   webhooks:
@@ -21,6 +22,7 @@ services:
       - redis
       - celery
       - telegram-bot
+      - postfix
     links:
         - redis
     restart: always
@@ -54,6 +56,11 @@ services:
     volumes:
       - redis_data:/data
       - .:/code
+  postfix:
+    image: 'boky/postfix'
+    environment:
+      HOSTNAME: ${LOGGER_EMAIL_HOSTNAME}
+      ALLOWED_SENDER_DOMAINS: ${LOGGER_EMAIL_HOSTNAME}
 volumes:
   mongo_data:
   redis_data:

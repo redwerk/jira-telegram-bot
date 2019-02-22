@@ -9,12 +9,12 @@ db.createCollection("DB_HOST_COLLECTION")
 - Создать пользователя **DB_USER** и пароль **DB_PASS** в БД
 ````
 mongo
-use jbt_db
+use jtb_db
 db.createUser(
 {
     user: "DB_USER",
     pwd: "DB_PASS",
-    roles: [{role: "readWrite" , db: "jbt_db"}]
+    roles: [{role: "readWrite" , db: "jtb_db"}]
 })
 ````
 
@@ -35,12 +35,6 @@ openssl x509 -pubkey -noout -in jira_publickey.cer  > name_publickey.pem
 
 - С правами администратора добавить [Application links](https://developer.atlassian.com/cloud/jira/platform/jira-rest-api-oauth-authentication/)
 
-- Пример добавления с Flask приложением открытым через ngrok:
-
-#### Добавление Application link
-```
-
-```
 #### Добавление ссылки **OAUTH_SERVICE_URL**:
 ![step 1](1.png)
 
