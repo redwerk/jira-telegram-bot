@@ -9,78 +9,15 @@
 
 
 ### Local deployment
-> All instructions can be viewed by this [link](https://git.redwerk.com/redwerk/jira-telegram-bot/wikis/home)
-
-1. Clone a repository: `git clone https://git.redwerk.com/redwerk/jira-telegram-bot.git`
-
-2. Navigate into *jira-telegram-bot* folder
-
-3. Create a virtualenv: `python3.6 -m venv venv`
-
-4. Install requirements: `pip install -r requirements/local.txt`
-
-5. Install and setting up [MongoDB](#creating-mongodb-dbs-for-local-development).
-
-6. Create **.env** text file with following data:
-
-```
-BOT_TOKEN = <string>
-WORKERS = <integer>
-SECRET_KEY = <string> # from cryptography.fernet import Fernet; Fernet.generate_key()
-
-DB_HOST = <string>
-DB_PORT = <string>
-
-DB_USER = <string>
-DB_PASS = <string>
-DB_NAME = <string>
-
-DB_USER_COLLECTION = <string>
-DB_HOST_COLLECTION = <string>
-DB_CACHE_COLLECTION = <string>
-DB_WEBHOOK_COLLECTION = <string>
-DB_SUBSCRIPTIONS_COLLECTION = <string>
-
-BOT_URL = https://t.me/<bot_name>
-OAUTH_SERVICE_URL = http://url.to.flask.service
-
-DOCS_PATH = /absolute/path/path/to/jira-telegram-bot/docs
-PRIVATE_KEY_PATH = /absolute/path/jira_privatekey.pem
-PUBLIC_KEY_PATH = /absolute/path/jira_publickey.pem
-
-LOGGER_EMAIL = logger@email.com
-FEEDBACK_RECIPIENT = feedback@email.com
-DEV_EMAILS = user1@email.com,user2@email.com
-
-DEBUG=True # shows errors in console - for development server
-```
-
-For further deployment see [/docs](docs) folder
-
+1. Git wiki [link](https://git.redwerk.com/redwerk/jira-telegram-bot/wikis/home)
+2. Instructions [link](docs/instruction.md)
+3. Docs [link](docs)
 
 ### Running project tests
 
 `DB_NAME` must be a database administrator (with rights to create collections)
 
 Run command in root folder of project: `pytest -v`
-
-
-### Running via Docker Compose
-
-1. Set value `DB_HOST = mongo` to **.env** and file And fill in the remaining fields.
-
-2. Run:
-```
-docker-compose build
-docker-compose up
-```
-
-
-### Celery run command
-```
-celery -A web.app.celery worker -l info -P eventlet -c 30
-```
-
 
 ### Code style and contribution guide
 - Install the [editorconfig](http://editorconfig.org/) plugin for your code editor.
@@ -90,8 +27,3 @@ celery -A web.app.celery worker -l info -P eventlet -c 30
 - For every task create a branch from current `master`, when ready create a merge request back to dev.
 - Prefer small commits and branches.
 - Read this [docs]
-
-
-### Deploy changes
-- Add ssh key to server.
-- Run `fab stage deploy` or `fab prod deploy`.
