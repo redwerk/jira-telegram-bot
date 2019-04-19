@@ -52,7 +52,7 @@ dictConfig(
             '': {
                 'level': log_level,
                 'handlers': ['console', 'root_file', 'email']
-             },
+            },
             'bot': {
                 'level': log_level,
                 'handlers': ['console', 'root_file', 'email']
