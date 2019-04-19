@@ -6,7 +6,6 @@ from celery.signals import after_setup_logger
 from decouple import config
 
 from lib.db import MongoBackend
-from utils.logging_handlers import MailAdminHandler
 
 import logger
 

@@ -1,5 +1,12 @@
 version: '3'
 services:
+  nginx:
+    image: nginx:latest
+    volumes:
+        - .:/code
+        - ./config/nginx:/etc/nginx/conf.d
+    depends_on:
+        - webhooks
   telegram-bot:
     build:
       context: .
@@ -26,7 +33,8 @@ services:
     links:
         - redis
     restart: always
-    command: python3 run.py web
+    # command: python3 run.py web
+    command: bash -c "pip3 install gunicorn && gunicorn --access-logfile logs/gunicorn.log -b 0.0.0.0:5000 run:app"
   mongo:
     image: "mongo:latest"
     environment:
@@ -34,7 +42,7 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: ${DB_PASS}
       MONGO_INITDB_DATABASE: ${DB_NAME}
     volumes:
-       - ./mongo:/docker-entrypoint-initdb.d
+       - ./config/mongo:/docker-entrypoint-initdb.d
        - mongo_data:/data/db
     restart: always
   celery:
