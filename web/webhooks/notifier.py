@@ -137,11 +137,9 @@ class IssueNotify(BaseNotify):
     """
     Processing updates for Jira issues
     Actions:
-        changing assigne, status, description and summary
+        changing assignee, status, description and summary
         attaching or deleting files
     """
-    generic_data = dict()
-    messages = list()
     supported_actions = ('issue_assigned', 'issue_generic', 'issue_updated',)
     assigned = 'issue_assigned'
     generic = 'issue_generic'
@@ -160,6 +158,11 @@ class IssueNotify(BaseNotify):
         'summary': os.path.join(TEMPLATES_DIR, 'issue_summary.txt'),
         'resolution': os.path.join(TEMPLATES_DIR, 'issue_resolution.txt'),
     }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.messages = []
+        self.generic_data = {}
 
     def notify(self):
         if self.update['issue_event_type_name'] not in self.supported_actions:
