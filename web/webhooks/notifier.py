@@ -190,7 +190,7 @@ class IssueNotify(BaseNotify):
             elif self.update['issue_event_type_name'] == self.updated and field == self.attachment_action:
                 self.file_attachment(item, template)
             elif self.update['issue_event_type_name'] == self.updated and field == self.assignee_action:
-                self.issue_reasigned(item, template)
+                self.issue_reassigned(item, template)
             else:
                 template = read_template(template)
                 self.messages.append(template.substitute(**self.generic_data))
@@ -242,7 +242,7 @@ class IssueNotify(BaseNotify):
         template = read_template(template)
         self.messages.append(template.substitute(**data))
 
-    def issue_reasigned(self, item, template):
+    def issue_reassigned(self, item, template):
         username = item.get('toString')
         data = {
             'user': username or 'Unassigned',

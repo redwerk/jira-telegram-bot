@@ -17,18 +17,18 @@ class CommandArgumentParser(argparse.ArgumentParser):
 
 class AbstractCommand(metaclass=ABCMeta):
     """ Abstract base command class.
-    In hendler method must be implemented main command logic.
+    In handler method must be implemented main command logic.
     """
     def __init__(self, app, *args, **kwargs):
         self.app = app
 
     @abstractmethod
     def handler(self, *args, **kwargs):
-        # Must be implemented
         pass
 
     def command_callback(self):
-        # Must be implemented
+        # Must be implemented if used as main command
+        # TODO: Move all not main commands to new abstract class
         pass
 
     @classmethod

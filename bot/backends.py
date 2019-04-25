@@ -7,12 +7,11 @@ import jira
 import pendulum
 import pytz
 from jira.resilientsession import ConnectionError
+from requests.status_codes import codes as status_codes
 
 from lib import utils
 from bot.exceptions import (JiraConnectionError, JiraEmptyData, JiraLoginError,
                             JiraReceivingDataError)
-
-OK_STATUS = 200
 
 
 def jira_connect(func):
@@ -113,7 +112,11 @@ class JiraBackend:
         try:
             jira_conn._session.get(f'{host}/rest/api/2/user?username={quote(username)}')
         except jira.JIRAError as e:
-            raise JiraReceivingDataError(e.text)
+            if e.status_code == status_codes.NOT_FOUND:
+                message = "'{}' does not exist".format(username)
+            else:
+                message = e.text
+            raise JiraReceivingDataError(message)
 
     @jira_connect
     def is_project_exists(self, host, project, *args, **kwargs):
@@ -122,7 +125,11 @@ class JiraBackend:
         try:
             jira_conn._session.get(f'{host}/rest/api/2/project/{project.upper()}')
         except jira.JIRAError as e:
-            raise JiraReceivingDataError(e.text)
+            if e.status_code == status_codes.NOT_FOUND:
+                message = "'{}' does not match with any existing project".format(project.upper())
+            else:
+                message = e.text
+            raise JiraReceivingDataError(message)
 
     @jira_connect
     def is_issue_exists(self, host, issue, *args, **kwargs):
@@ -146,7 +153,10 @@ class JiraBackend:
     def get_issues(self, username, resolution=None, *args, **kwargs):
         """
         Getting issues assigned to the user
-        :param resolution(str): issues resolution status
+        :param username: username in JIRA
+        :type username: str
+        :param resolution: issues resolution status
+        :type resolution: str
         :return: formatted issues list
         """
         jira_conn = kwargs.get('jira_conn')
@@ -161,7 +171,7 @@ class JiraBackend:
             raise JiraReceivingDataError(e.text)
         else:
             if not issues:
-                raise JiraEmptyData('Woohoo! No unresolved tasks')
+                raise JiraEmptyData("'{}' doesn't have any unresolved issues".format(username))
 
             return issues
 
@@ -178,11 +188,14 @@ class JiraBackend:
             jql += ' ORDER BY updated'
             issues = jira_conn.search_issues(jql, maxResults=1000)
         except jira.JIRAError as e:
-            logging.exception('Error while getting {} issues:\n{}'.format(username, e))
-            raise JiraReceivingDataError(e.text)
+            if e.status_code == status_codes.BAD_REQUEST:
+                message = "Value '{}' does not exist".format(status)
+            else:
+                message = e.text
+            raise JiraReceivingDataError(message)
         else:
             if not issues:
-                raise JiraEmptyData('Woohoo! You do not have any issues')
+                raise JiraEmptyData("'{}' doesn't have any unresolved issues".format(username))
 
             return issues
 
@@ -322,7 +335,8 @@ class JiraBackend:
 
         return self.calculate_spent_time(p_issues, start_date, end_date, kwargs)
 
-    def calculate_spent_time(self, issues, start_date, end_date, session_data):
+    @staticmethod
+    def calculate_spent_time(issues, start_date, end_date, session_data):
         jira_conn = session_data['jira_conn']
         spent_time = 0
         for issue in issues:
@@ -342,7 +356,8 @@ class JiraBackend:
 
         return spent_time
 
-    def obtain_worklogs(self, issues, start_date, end_date, session_data):
+    @staticmethod
+    def obtain_worklogs(issues, start_date, end_date, session_data):
         """
         Returns list of worklogs in dict flat structure
 
@@ -393,7 +408,7 @@ class JiraBackend:
         worklogs = {}
         response = jira_conn._session.post(host + '/rest/api/2/worklog/list', json={'ids': w_ids})
 
-        if response.status_code == OK_STATUS:
+        if response.status_code == status_codes.OK:
             worklogs = response.json()
 
         return worklogs

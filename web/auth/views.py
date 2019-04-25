@@ -51,12 +51,12 @@ class SendToChatMixin:
 class AuthorizeView(SendToChatMixin, OAuthJiraBaseView):
     methods = ['GET']
 
-    def dispatch_request(self, telegram_id):
+    def dispatch_request(self, *args, **kwargs):
         """
         Endpoint which saves telegram_id into session and
         generates an authorization request
         """
-        session['telegram_id'] = telegram_id
+        session['telegram_id'] = kwargs['telegram_id']
         session['host'] = request.args.get('host')
         callback = url_for(
             'auth.oauth_authorized',

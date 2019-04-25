@@ -15,7 +15,7 @@ from bot.exceptions import DateTimeValidationError
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 HOSTNAME_RE = re.compile(r'^http[s]?://([^:/\s]+)?$')
-HTTP_PTOTOCOL = re.compile(r'^http[s]?://')
+HTTP_PROTOCOL = re.compile(r'^http[s]?://')
 EMAIL_ADDRESS = re.compile(r'([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)')
 
 

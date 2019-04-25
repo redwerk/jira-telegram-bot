@@ -6,6 +6,8 @@ import pendulum
 from pendulum.parsing.exceptions import ParserError
 from telegram.ext import CommandHandler
 
+from .base import CommandArgumentParser
+
 from bot.exceptions import (ContextValidationError, DateTimeValidationError,
                             JiraEmptyData)
 from bot.helpers import login_required, with_progress
@@ -39,80 +41,78 @@ class TimeTrackingDispatcher(AbstractCommand):
     available_days = ('today', 'yesterday')
     description = utils.read_file(os.path.join('bot', 'templates', 'time_description.tpl'))
 
+    @staticmethod
+    def get_argparsers():
+        issue = CommandArgumentParser(prog='issue', add_help=False)
+        issue.add_argument('target', type=str, choices=['issue'])
+        issue.add_argument('issue_key', type=str)
+        issue.add_argument('start_date', type=str)
+        issue.add_argument('end_date', type=str, nargs='?')
+
+        user = CommandArgumentParser(prog='user', add_help=False)
+        user.add_argument('target', type=str, choices=['user'])
+        user.add_argument('username', type=str)
+        user.add_argument('start_date', type=str)
+        user.add_argument('end_date', type=str, nargs='?')
+
+        project = CommandArgumentParser(prog='project', add_help=False)
+        project.add_argument('target', type=str, choices=['project'])
+        project.add_argument('project_key', type=str)
+        project.add_argument('start_date', type=str)
+        project.add_argument('end_date', type=str, nargs='?')
+
+        return [issue, user, project]
+
     @login_required
     def handler(self, bot, update, *args, **kwargs):
         current_date = pendulum.now()
-        params = dict()
-        options = kwargs.get('args')
-        if len(options) < 3:
-                return self.app.send(bot, update, text=self.description)
-
-        params['target'] = options.pop(0)
-        params['name'] = options.pop(0)
-        if params.get('target') not in self.targets or not options:
+        options = self.parse_arguments(kwargs.get('args'), self.get_argparsers())
+        if not options:
             return self.app.send(bot, update, text=self.description)
 
-        if len(options) == 1 and options[0] in self.available_days:
-            if options[0] == 'today':
+        try:
+            if options.start_date == 'today':
                 date = self.__get_normalize_date(
                     current_date.to_date_string(), self.app.jira.get_jira_tz(**kwargs)
                 )
-                params['start_date'] = pendulum.create(
-                    date.year, date.month, date.day)._start_of_day()
-                params['end_date'] = pendulum.create(
-                    date.year, date.month, date.day)._end_of_day()
-            elif options[0] == 'yesterday':
+                options.start_date = pendulum.create(date.year, date.month, date.day)._start_of_day()
+                options.end_date = pendulum.create(date.year, date.month, date.day)._end_of_day()
+            elif options.start_date == 'yesterday':
                 date = self.__get_normalize_date(
                     current_date.subtract(days=1).to_date_string(),
                     self.app.jira.get_jira_tz(**kwargs)
                 )
-                params['start_date'] = pendulum.create(
-                    date.year, date.month, date.day)._start_of_day()
-                params['end_date'] = pendulum.create(
-                    date.year, date.month, date.day)._end_of_day()
-        elif len(options) == 1:
-            # if the start date is specified - the command will be executed
-            # inclusively from the start date to today's date
-            try:
-                start_date = self.__get_normalize_date(
-                    options[0], self.app.jira.get_jira_tz(**kwargs)
-                )
-                params['start_date'] = pendulum.create(
-                    start_date.year, start_date.month, start_date.day)._start_of_day()
-            except ParserError:
-                return self.app.send(bot, update, text='Invalid date format')
+                options.start_date = pendulum.create(date.year, date.month, date.day)._start_of_day()
+                options.end_date = pendulum.create(date.year, date.month, date.day)._end_of_day()
             else:
-                end_date = self.__get_normalize_date(
-                    current_date.to_date_string(), self.app.jira.get_jira_tz(**kwargs)
-                )
-                params['end_date'] = pendulum.create(
-                    end_date.year, end_date.month, end_date.day)._end_of_day()
-        elif len(options) > 1:
-            try:
-                start_date = self.__get_normalize_date(
-                    options[0], self.app.jira.get_jira_tz(**kwargs)
-                )
-                end_date = self.__get_normalize_date(
-                    options[1], self.app.jira.get_jira_tz(**kwargs)
-                )
-                params['start_date'] = pendulum.create(
-                    start_date.year, start_date.month, start_date.day)._start_of_day()
-                params['end_date'] = pendulum.create(
-                    end_date.year, end_date.month, end_date.day)._end_of_day()
-            except ParserError:
-                return self.app.send(bot, update, text='Invalid date format')
-        else:
-            return self.app.send(bot, update, text=self.description)
+                if not options.end_date:
+                    start_date = self.__get_normalize_date(options.start_date, self.app.jira.get_jira_tz(**kwargs))
+                    end_date = self.__get_normalize_date(
+                        current_date.to_date_string(), self.app.jira.get_jira_tz(**kwargs)
+                    )
 
-        kwargs.update(params)
-        if params['target'] == 'issue':
-            kwargs.update({'issue': params['name']})
+                    options.start_date = pendulum.create(start_date.year, start_date.month, start_date.day)._start_of_day()
+                    options.end_date = pendulum.create(end_date.year, end_date.month, end_date.day)._end_of_day()
+                else:
+                    start_date = self.__get_normalize_date(options.start_date, self.app.jira.get_jira_tz(**kwargs))
+                    end_date = self.__get_normalize_date(options.end_date, self.app.jira.get_jira_tz(**kwargs))
+
+                    options.start_date = pendulum.create(start_date.year, start_date.month, start_date.day)._start_of_day()
+                    options.end_date = pendulum.create(end_date.year, end_date.month, end_date.day)._end_of_day()
+        except ParserError:
+            return self.app.send(bot, update, text='Invalid date format')
+
+        kwargs['start_date'] = options.start_date
+        kwargs['end_date'] = options.end_date
+
+        if options.target == 'issue':
+            kwargs['issue'] = options.issue_key
             return IssueTimeTrackerCommand(self.app).handler(bot, update, *args, **kwargs)
-        elif params['target'] == 'user':
-            kwargs.update({'username': params['name']})
+        elif options.target == 'user':
+            kwargs['username'] = options.username
             return UserTimeTrackerCommand(self.app).handler(bot, update, *args, **kwargs)
-        elif params['target'] == 'project':
-            kwargs.update({'project': params['name']})
+        elif options.target == 'project':
+            kwargs['project'] = options.project_key
             return ProjectTimeTrackerCommand(self.app).handler(bot, update, *args, **kwargs)
 
     def command_callback(self):

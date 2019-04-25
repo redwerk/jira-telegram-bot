@@ -164,10 +164,12 @@ class OAuthLoginCommand(AbstractCommand):
 
         self.app.send(bot, update, text=text)
 
-    def generate_auth_link(self, telegram_id, host_url):
+    @staticmethod
+    def generate_auth_link(telegram_id, host_url):
         return '{}/auth/authorize/{}/?host={}'.format(config('OAUTH_SERVICE_URL'), telegram_id, host_url)
 
-    def get_app_links_data(self, jira_host):
+    @staticmethod
+    def get_app_links_data(jira_host):
         data = {
             'consumer_key': jira_host.get('consumer_key'),
             'public_key': utils.read_rsa_key(config('PUBLIC_KEY_PATH')),

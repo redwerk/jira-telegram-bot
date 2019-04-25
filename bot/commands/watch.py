@@ -9,7 +9,7 @@ from bot.helpers import login_required
 from bot.inlinemenu import build_menu
 from lib import utils
 
-from .base import AbstractCommand
+from .base import AbstractCommand, CommandArgumentParser
 
 
 class WatchDispatcherCommand(AbstractCommand):
@@ -23,23 +23,32 @@ class WatchDispatcherCommand(AbstractCommand):
     negative_answer = 'No'
     description = utils.read_file(os.path.join('bot', 'templates', 'watch_description.tpl'))
 
+    @staticmethod
+    def get_argparsers():
+        issue = CommandArgumentParser(prog='issue', add_help=False)
+        issue.add_argument('target', type=str, choices=['issue'])
+        issue.add_argument('key', type=str)
+
+        project = CommandArgumentParser(prog='project', add_help=False)
+        project.add_argument('target', type=str, choices=['project'])
+        project.add_argument('key', type=str)
+
+        return [issue, project]
+
     @login_required
     def handler(self, bot, update, *args, **kwargs):
         auth_data = kwargs.get('auth_data')
-        options = kwargs.get('args')
-        parameters_names = ('target', 'name')
-        params = dict(zip_longest(parameters_names, options))
-
-        if params['target'] not in self.targets or not params['name']:
+        options = self.parse_arguments(kwargs.get('args'), self.get_argparsers())
+        if not options:
             return self.app.send(bot, update, text=self.description)
 
-        if params['target'] == 'project':
-            self.app.jira.is_project_exists(
-                host=auth_data.jira_host, project=params['name'], auth_data=auth_data
-            )
-        elif params['target'] == 'issue':
+        if options.target == 'issue':
             self.app.jira.is_issue_exists(
-                host=auth_data.jira_host, issue=params['name'], auth_data=auth_data
+                host=auth_data.jira_host, issue=options.key, auth_data=auth_data
+            )
+        elif options.target == 'project':
+            self.app.jira.is_project_exists(
+                host=auth_data.jira_host, project=options.key, auth_data=auth_data
             )
 
         jira_webhooks = self.app.jira.get_webhooks(auth_data.jira_host, *args, **kwargs)
@@ -68,7 +77,7 @@ class WatchDispatcherCommand(AbstractCommand):
         host_webhook = self.app.db.get_webhook(webhook_id=webhook_id)
 
         CreateSubscribeCommand(self.app).handler(
-            bot, update, topic=params['target'], name=params['name'], webhook=host_webhook
+            bot, update, topic=options.target, name=options.key, webhook=host_webhook
         )
 
     def command_callback(self):

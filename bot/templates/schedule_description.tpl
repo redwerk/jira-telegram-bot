@@ -1,8 +1,8 @@
 <b>Command description:</b>
-This command creates a query, the results of which will be regularly sent into the chat.
+This command creates a query, that sends certain data to your chat regularly.
 
 <b>Schedule command structure:</b>
-/schedule <i>command</i> <i>periodicity</i>
+/schedule <i>command periodicity</i>
 
 <b>Periodicity:</b>
 <i>weekly</i> (sun/mon/tue/wed/thu/fri/sat)* (HH:MM)

@@ -8,7 +8,7 @@ from bot.parsers import (
     DAYS,
     WEEKLY_DEFAULT,
     MONTHLY_DEFAULT,
-    DAYLY_DEFAULT)
+    DAILY_DEFAULT)
 from bot.exceptions import ContextValidationError, ScheduleValidationError
 
 
@@ -219,4 +219,4 @@ class TestSimpleCronParser:
 
     def test_default_daily(self):
         cron = cron_parser('daily', '')
-        assert cron == DAYLY_DEFAULT
+        assert cron == DAILY_DEFAULT

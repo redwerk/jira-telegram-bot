@@ -19,7 +19,7 @@ class JiraLoginError(BaseJTBException):
              '1. If you logged in already, please try to use /disconnect command and log in again.\n'
              '2. Update a previously created Application link ( /disconnect, /oauth)',
         403: 'Login is denied due to a CAPTCHA requirement, or any other '
-             'reason. Please, login (relogin) into Jira via browser '
+             'reason. Please, login (re-login) into Jira via browser '
              'and try again.',
         409: 'Login is denied due to an unverified email. '
              'The email must be verified by logging in to JIRA through a '

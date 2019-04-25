@@ -62,7 +62,8 @@ class JTBApp:
 
         self.updater.dispatcher.add_error_handler(self.error_callback)
 
-    def send(self, bot, update, **kwargs):
+    @staticmethod
+    def send(bot, update, **kwargs):
         message_handler = MessageFactory.get_message_handler(update)
         if not message_handler:
             raise SendMessageHandlerError('Unable to get the handler')
