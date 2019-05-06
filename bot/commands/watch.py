@@ -43,13 +43,9 @@ class WatchDispatcherCommand(AbstractCommand):
             return self.app.send(bot, update, text=self.description)
 
         if options.target == 'issue':
-            self.app.jira.is_issue_exists(
-                host=auth_data.jira_host, issue=options.key, auth_data=auth_data
-            )
+            self.app.jira.is_issue_exists(issue=options.key, auth_data=auth_data)
         elif options.target == 'project':
-            self.app.jira.is_project_exists(
-                host=auth_data.jira_host, project=options.key, auth_data=auth_data
-            )
+            self.app.jira.is_project_exists(project=options.key, auth_data=auth_data)
 
         jira_webhooks = self.app.jira.get_webhooks(auth_data.jira_host, *args, **kwargs)
         jira_webhook = None
@@ -179,13 +175,9 @@ class UnwatchDispatcherCommand(AbstractCommand):
             return self.app.send(bot, update, text=self.description)
 
         if params['target'] == 'project':
-            self.app.jira.is_project_exists(
-                host=auth_data.jira_host, project=params['name'], auth_data=auth_data
-            )
+            self.app.jira.is_project_exists(project=params['name'], auth_data=auth_data)
         elif params['target'] == 'issue':
-            self.app.jira.is_issue_exists(
-                host=auth_data.jira_host, issue=params['name'], auth_data=auth_data
-            )
+            self.app.jira.is_issue_exists(issue=params['name'], auth_data=auth_data)
 
         kwargs.update({'topic': params['target'], 'name': params['name']})
         UnsubscribeOneItemCommand(self.app).handler(bot, update, **kwargs)
@@ -207,7 +199,7 @@ class UnsubscribeAllUpdatesCommand(AbstractCommand):
         status = self.app.db.delete_all_subscription(user.get('_id'))
 
         if status:
-            text = 'You were unsubscribed from all updates'
+            text = 'You are unsubscribed from all updates'
             return self.app.send(bot, update, text=text)
 
         text = "Can't unsubscribe you from all updates at this moment, please try again later"

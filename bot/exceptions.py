@@ -50,13 +50,15 @@ class JiraConnectionError(BaseJTBException):
         self.message = "Can't connect to Jira host, please check the host status:\n{}".format(host)
 
 
-class JiraReceivingDataError(BaseJTBException):
-    """Any errors during receiving data from Jira API"""
-    pass
+class JiraReceivingDataException(BaseJTBException):
+    """Any unpredictable errors during receiving data from Jira API"""
+    def __init__(self, occurrence, message):
+        super(TelegramError, self).__init__()
+        self.message = f"Unpredictable error occurred during {occurrence} - {message}"
 
 
-class JiraEmptyData(BaseJTBException):
-    """Signal that the response did not return any data to display to the user"""
+class JiraInfoException(BaseJTBException):
+    """Any predictable informational error during receiving data from JIRA API"""
     pass
 
 

@@ -8,8 +8,7 @@ from telegram.ext import CommandHandler
 
 from .base import CommandArgumentParser
 
-from bot.exceptions import (ContextValidationError, DateTimeValidationError,
-                            JiraEmptyData)
+from bot.exceptions import (ContextValidationError, DateTimeValidationError)
 from bot.helpers import login_required, with_progress
 from bot.schedules import schedule_commands
 from lib import utils
@@ -91,13 +90,15 @@ class TimeTrackingDispatcher(AbstractCommand):
                         current_date.to_date_string(), self.app.jira.get_jira_tz(**kwargs)
                     )
 
-                    options.start_date = pendulum.create(start_date.year, start_date.month, start_date.day)._start_of_day()
+                    options.start_date = pendulum.create(start_date.year, start_date.month, start_date.day).\
+                        _start_of_day()
                     options.end_date = pendulum.create(end_date.year, end_date.month, end_date.day)._end_of_day()
                 else:
                     start_date = self.__get_normalize_date(options.start_date, self.app.jira.get_jira_tz(**kwargs))
                     end_date = self.__get_normalize_date(options.end_date, self.app.jira.get_jira_tz(**kwargs))
 
-                    options.start_date = pendulum.create(start_date.year, start_date.month, start_date.day)._start_of_day()
+                    options.start_date = pendulum.create(start_date.year, start_date.month, start_date.day).\
+                        _start_of_day()
                     options.end_date = pendulum.create(end_date.year, end_date.month, end_date.day)._end_of_day()
         except ParserError:
             return self.app.send(bot, update, text='Invalid date format')
@@ -198,11 +199,9 @@ class IssueTimeTrackerCommand(AbstractCommand):
         start_date = kwargs.get('start_date')
         end_date = kwargs.get('end_date')
         utils.validate_date_range(start_date, end_date)
-        try:
-            self.app.jira.is_issue_exists(host=auth_data.jira_host, issue=issue, auth_data=auth_data)
-            spent_time = self.app.jira.get_issue_worklogs(issue, start_date, end_date, auth_data=auth_data)
-        except JiraEmptyData as err:
-            return self.app.send(bot, update, text=err.message, **kwargs)
+
+        self.app.jira.is_issue_exists(issue=issue, auth_data=auth_data)
+        spent_time = self.app.jira.get_issue_worklogs(issue, start_date, end_date, auth_data=auth_data)
 
         is_united_states_timezone = self.app.jira.get_jira_tz(**kwargs) in US_TIMEZONES
         date_fmt = "%m-%d-%Y" if is_united_states_timezone else "%Y-%m-%d"
@@ -224,15 +223,13 @@ class UserTimeTrackerCommand(AbstractCommand):
         # check if the user exists on Jira host
         self.app.jira.is_user_on_host(host=auth_data.jira_host, username=username, auth_data=auth_data)
         utils.validate_date_range(start_date, end_date)
-        try:
-            all_worklogs = self.app.jira.get_all_user_worklogs(
-                username, start_date, end_date, auth_data=auth_data
-            )
-            all_user_logs = self.app.jira.define_user_worklogs(
-                all_worklogs, username, name_key='author_name'
-            )
-        except JiraEmptyData as err:
-            return self.app.send(bot, update, text=err.message, **kwargs)
+
+        all_worklogs = self.app.jira.get_all_user_worklogs(
+            username, start_date, end_date, auth_data=auth_data
+        )
+        all_user_logs = self.app.jira.define_user_worklogs(
+            all_worklogs, username, name_key='author_name'
+        )
 
         seconds = sum(worklog.get('time_spent_seconds', 0) for worklog in all_user_logs)
         spent_time = utils.calculate_tracking_time(seconds)
@@ -254,12 +251,9 @@ class ProjectTimeTrackerCommand(AbstractCommand):
         start_date = kwargs.get('start_date')
         end_date = kwargs.get('end_date')
         # check if the project exists on Jira host
-        self.app.jira.is_project_exists(host=auth_data.jira_host, project=project, auth_data=auth_data)
+        self.app.jira.is_project_exists(project=project, auth_data=auth_data)
         utils.validate_date_range(start_date, end_date)
-        try:
-            spent_time = self.app.jira.get_project_worklogs(project, start_date, end_date, auth_data=auth_data)
-        except JiraEmptyData as err:
-            return self.app.send(bot, update, text=err.message, **kwargs)
+        spent_time = self.app.jira.get_project_worklogs(project, start_date, end_date, auth_data=auth_data)
 
         is_united_states_timezone = self.app.jira.get_jira_tz(**kwargs) in US_TIMEZONES
         date_fmt = "%m-%d-%Y" if is_united_states_timezone else "%Y-%m-%d"

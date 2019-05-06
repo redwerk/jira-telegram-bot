@@ -10,8 +10,8 @@ from jira.resilientsession import ConnectionError
 from requests.status_codes import codes as status_codes
 
 from lib import utils
-from bot.exceptions import (JiraConnectionError, JiraEmptyData, JiraLoginError,
-                            JiraReceivingDataError)
+from bot.exceptions import (JiraConnectionError, JiraInfoException, JiraLoginError,
+                            JiraReceivingDataException)
 
 
 def jira_connect(func):
@@ -106,48 +106,59 @@ class JiraBackend:
         return tz
 
     @jira_connect
-    def is_user_on_host(self, host, username, *args, **kwargs):
+    def is_user_on_host(self, username, *args, **kwargs):
         """Checking the existence of the user on the Jira host"""
         jira_conn = kwargs.get('jira_conn')
         try:
-            jira_conn._session.get(f'{host}/rest/api/2/user?username={quote(username)}')
+            jira_conn.user(quote(username))
         except jira.JIRAError as e:
             if e.status_code == status_codes.NOT_FOUND:
-                message = "'{}' does not exist".format(username)
+                message = f"'{username}' does not exist"
+                raise JiraReceivingDataException(f"getting user {username} on host", message)
+                raise JiraInfoException(message)
             else:
                 message = e.text
-            raise JiraReceivingDataError(message)
+                raise JiraReceivingDataException(f"getting user {username} on host", message)
 
     @jira_connect
-    def is_project_exists(self, host, project, *args, **kwargs):
+    def is_project_exists(self, project, *args, **kwargs):
         """Checking the existence of the project on the Jira host"""
         jira_conn = kwargs.get('jira_conn')
         try:
-            jira_conn._session.get(f'{host}/rest/api/2/project/{project.upper()}')
+            jira_conn.project(project.upper())
         except jira.JIRAError as e:
             if e.status_code == status_codes.NOT_FOUND:
-                message = "'{}' does not match with any existing project".format(project.upper())
+                message = f"Project key {project.upper()} does not exist"
+                raise JiraInfoException(message)
             else:
                 message = e.text
-            raise JiraReceivingDataError(message)
+                raise JiraReceivingDataException(f"checking existence of project {project}", message)
 
     @jira_connect
-    def is_issue_exists(self, host, issue, *args, **kwargs):
+    def is_issue_exists(self, issue, *args, **kwargs):
         """Checking the existence of the issue on the Jira host"""
         jira_conn = kwargs.get('jira_conn')
         try:
-            jira_conn._session.get(f'{host}/rest/api/2/issue/{issue}')
+            jira_conn.issue(issue)
         except jira.JIRAError as e:
-            raise JiraReceivingDataError(e.text)
+            if e.status_code == status_codes.NOT_FOUND:
+                message = f"Issue {issue} doesn't exist"
+                raise JiraInfoException(message)
+            else:
+                raise JiraReceivingDataException(f"checking existence of issue {issue}", e.text)
 
     @jira_connect
-    def is_status_exists(self, host, status, *args, **kwargs):
+    def is_status_exists(self, status, *args, **kwargs):
         """Checking the existence of the status on the Jira host"""
         jira_conn = kwargs.get('jira_conn')
         try:
-            jira_conn._session.get(f'{host}/rest/api/2/status/{status}')
+            jira_conn.status(status.capitalize())
         except jira.JIRAError as e:
-            raise JiraReceivingDataError(e.text)
+            if e.status_code == status_codes.NOT_FOUND:
+                message = f"Value '{status}' does not exist."
+                raise JiraInfoException(message)
+            else:
+                raise JiraReceivingDataException(f"checking existence of status {status}", e.text)
 
     @jira_connect
     def get_issues(self, username, resolution=None, *args, **kwargs):
@@ -167,12 +178,10 @@ class JiraBackend:
             jql += ' ORDER BY updated'
             issues = jira_conn.search_issues(jql, maxResults=1000)
         except jira.JIRAError as e:
-            logging.exception('Error while getting {} issues:\n{}'.format(username, e))
-            raise JiraReceivingDataError(e.text)
+            raise JiraReceivingDataException(f"getting issues for {username} with {jql}", e.text)
         else:
             if not issues:
-                raise JiraEmptyData("'{}' doesn't have any unresolved issues".format(username))
-
+                raise JiraInfoException("'{}' doesn't have any unresolved issues".format(username))
             return issues
 
     @jira_connect
@@ -188,14 +197,11 @@ class JiraBackend:
             jql += ' ORDER BY updated'
             issues = jira_conn.search_issues(jql, maxResults=1000)
         except jira.JIRAError as e:
-            if e.status_code == status_codes.BAD_REQUEST:
-                message = "Value '{}' does not exist".format(status)
-            else:
-                message = e.text
-            raise JiraReceivingDataError(message)
+            message = e.text
+            raise JiraReceivingDataException(f"getting issues for user {username} with {jql}", message)
         else:
             if not issues:
-                raise JiraEmptyData("'{}' doesn't have any unresolved issues".format(username))
+                raise JiraInfoException("'{}' doesn't have any unresolved issues".format(username))
 
             return issues
 
@@ -204,7 +210,8 @@ class JiraBackend:
         """
         Getting issues by project
         :param project: abbreviation name of the project
-        :param resolution(str): issues resolution status
+        :param resolution: issues resolution status
+        :type resolution: str
         :return: formatted issues list or empty list
         """
         jira_conn = kwargs.get('jira_conn')
@@ -215,11 +222,15 @@ class JiraBackend:
             jql += ' ORDER BY updated'
             issues = jira_conn.search_issues(jql, maxResults=1000)
         except jira.JIRAError as e:
-            logging.exception('Error while getting unresolved {} issues:\n{}'.format(project, e))
-            raise JiraReceivingDataError(e.text)
+            # Very specific error, status code doesn't differentiate
+            if e.status_code == status_codes.BAD_REQUEST:
+                message = "There are no tickets in this project"
+                raise JiraInfoException(message)
+            else:
+                raise JiraReceivingDataException(f"getting project issues for {project} with {jql}", e.text)
         else:
             if not issues:
-                raise JiraEmptyData("Project <b>{}</b> doesn't have any unresolved tasks".format(project))
+                raise JiraInfoException(f"Project <b>{project}</b> doesn't have any unresolved tasks")
 
             return issues
 
@@ -236,14 +247,12 @@ class JiraBackend:
             jql += ' ORDER BY updated'
             issues = jira_conn.search_issues(jql, maxResults=1000)
         except jira.JIRAError as e:
-            logging.exception(
-                'Error while getting {} '
-                'issues with status = {}:\n{}'.format(project, status, e)
-            )
-            raise JiraReceivingDataError(e.text)
+            raise JiraReceivingDataException(f"getting project status issues for {project} with {jql}", e.text)
         else:
             if not issues:
-                raise JiraEmptyData("No tasks with <b>«{}»</b> status in <b>{}</b> project ".format(status, project))
+                raise JiraInfoException(
+                    "No tasks with <b>«{}»</b> status in <b>{}</b> project ".format(status, project)
+                )
 
             return issues
 
@@ -257,21 +266,20 @@ class JiraBackend:
         jira_start_date = start_date.strftime('%Y-%m-%d')
         jira_end_date = end_date.strftime('%Y-%m-%d')
         try:
+            jql = 'worklogAuthor = "{username}" and worklogDate >= {start_date} and worklogDate <= {end_date}'.format(
+                username=quote(username), start_date=jira_start_date, end_date=jira_end_date,
+            )
             issues = jira_conn.search_issues(
-                'worklogAuthor = "{username}" and worklogDate >= {start_date} and worklogDate <= {end_date}'.format(
-                    username=quote(username), start_date=jira_start_date, end_date=jira_end_date
-                ),
+                jql,
                 expand='changelog',
                 fields='worklog',
                 maxResults=1000
             )
         except jira.JIRAError as e:
-            logging.exception(
-                'Failed to get assigned or '
-                'watched {} questions:\n{}'.format(username, e)
-            )
+            raise JiraReceivingDataException(f"getting all user worklogs for {username} with {jql}", e.text)
+        else:
             if not issues:
-                raise JiraEmptyData(
+                raise JiraInfoException(
                     f'Has no worklogs for <b>{username}</b> from <b>{start_date.to_date_string()}</b> '
                     f'to <b>{end_date.to_date_string()}</b>'
                 )
@@ -288,19 +296,20 @@ class JiraBackend:
         jira_start_date = start_date.strftime('%Y-%m-%d')
         jira_end_date = end_date.strftime('%Y-%m-%d')
         try:
+            jql = 'issue = "{}" and worklogDate >= {} and worklogDate <= {}'.format(
+                issue_name, jira_start_date, jira_end_date,
+                )
             issue = jira_conn.search_issues(
-                'issue = "{}" and worklogDate >= {} and worklogDate <= {}'.format(
-                    issue_name, jira_start_date, jira_end_date
-                ),
+                jql,
                 expand='changelog',
                 fields='worklog',
                 maxResults=1000
             )
         except jira.JIRAError as e:
-            logging.exception('Failed while getting {} issue worklog: {}'.format(issue_name, e))
+            raise JiraReceivingDataException(f"getting issue worklogs for {issue_name} with {jql}")
         else:
             if not issue:
-                raise JiraEmptyData(
+                raise JiraInfoException(
                     f'Has no worklogs for <b>{issue_name}</b> issue from <b>{start_date.to_date_string()}</b> '
                     f'to <b>{end_date.to_date_string()}</b>'
                 )
@@ -317,23 +326,25 @@ class JiraBackend:
         jira_start_date = start_date.strftime('%Y-%m-%d')
         jira_end_date = end_date.strftime('%Y-%m-%d')
         try:
+            jql = 'project = "{project}" and worklogDate >= {start_date} and worklogDate <= {end_date}'.format(
+                project=project, start_date=jira_start_date, end_date=jira_end_date,
+            )
             p_issues = jira_conn.search_issues(
-                'project = "{project}" and worklogDate >= {start_date} and worklogDate <= {end_date}'.format(
-                    project=project, start_date=jira_start_date, end_date=jira_end_date
-                ),
+                jql,
                 expand='changelog',
                 fields='worklog',
                 maxResults=1000
             )
         except jira.JIRAError as e:
-            logging.exception('Failed to get issues of {}:\n{}'.format(project, e))
-        if not p_issues:
-            raise JiraEmptyData(
-                f'Has no worklogs for <b>{project}</b> project from <b>{start_date.to_date_string()}</b> '
-                f'to <b>{end_date.to_date_string()}</b>'
-            )
+            raise JiraReceivingDataException(f"getting project worklogs for {project} with {jql}", e.text)
+        else:
+            if not p_issues:
+                raise JiraInfoException(
+                    f'Has no worklogs for <b>{project}</b> project from <b>{start_date.to_date_string()}</b> '
+                    f'to <b>{end_date.to_date_string()}</b>'
+                )
 
-        return self.calculate_spent_time(p_issues, start_date, end_date, kwargs)
+            return self.calculate_spent_time(p_issues, start_date, end_date, kwargs)
 
     @staticmethod
     def calculate_spent_time(issues, start_date, end_date, session_data):
@@ -397,23 +408,6 @@ class JiraBackend:
         return all_worklogs
 
     @staticmethod
-    def request_worklogs_by_id(jira_conn, host, w_ids):
-        """
-        Gets worklogs by their identifiers making a request for an endpoint that is not supported by the library
-        :param jira_conn: auth object for making requests
-        :param host: server host
-        :param w_ids: list of worklog ids
-        :return: dict with data about worklogs
-        """
-        worklogs = {}
-        response = jira_conn._session.post(host + '/rest/api/2/worklog/list', json={'ids': w_ids})
-
-        if response.status_code == status_codes.OK:
-            worklogs = response.json()
-
-        return worklogs
-
-    @staticmethod
     def define_user_worklogs(_worklogs, username, name_key):
         """Gets the only selected user worklogs"""
         return [log for log in _worklogs if log.get(name_key) == username]
@@ -425,8 +419,7 @@ class JiraBackend:
         try:
             filters = jira_conn.favourite_filters()
         except jira.JIRAError as e:
-            logging.exception('Failed to get filters:\n{}'.format(e))
-            raise JiraReceivingDataError(e.text)
+            raise JiraReceivingDataException("getting favourite filters", e.text)
         else:
             return {f.name: f.id for f in filters}
 
@@ -435,13 +428,13 @@ class JiraBackend:
         """Returns issues getting by filter id"""
         jira_conn = kwargs.get('jira_conn')
         try:
-            issues = jira_conn.search_issues('filter={}'.format(filter_id), maxResults=1000)
+            jql = 'filter={}'.format(filter_id)
+            issues = jira_conn.search_issues(jql, maxResults=1000)
         except jira.JIRAError as e:
-            logging.exception('Failed to get issues by filter:\n{}'.format(e))
-            raise JiraReceivingDataError(e.text)
+            raise JiraReceivingDataException(f"getting filter issues for {filter_name} with {jql}", e.text)
         else:
             if not issues:
-                raise JiraEmptyData('No tasks which filtered by <b>«{}»</b>'.format(filter_name))
+                raise JiraInfoException('No tasks which filtered by <b>«{}»</b>'.format(filter_name))
 
             return issues
 
@@ -456,7 +449,6 @@ class JiraBackend:
         try:
             response = jira_conn._session.get(host + '/rest/webhooks/1.0/webhook')
         except jira.JIRAError as e:
-            logging.exception('Failed to get JIRA webhooks')
-            raise JiraReceivingDataError(e.text)
+            raise JiraReceivingDataException(f"getting webhooks for {host}", e.text)
         else:
             return response.json()

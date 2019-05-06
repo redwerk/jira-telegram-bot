@@ -14,7 +14,7 @@ import bot.commands as commands
 from .backends import JiraBackend
 from .messages import MessageFactory
 from .schedules import Scheduler
-from .exceptions import BaseJTBException, BotAuthError, SendMessageHandlerError
+from .exceptions import BaseJTBException, BotAuthError, SendMessageHandlerError, JiraReceivingDataException
 
 
 logger = logging.getLogger('bot')
@@ -139,9 +139,14 @@ class JTBApp:
             traceback.print_exc(file=sys.stdout)
         try:
             raise error
+        except (NetworkError, TimedOut, JiraReceivingDataException) as e:
+            logger.critical(
+                f"User={update.effective_user.username} Message={update.effective_message.text} Error={e.message})"
+            )
+            self.send(bot, update, text="Something went wrong. Check your request or network.")
+            self.send(bot, update, text=self.commands[0].description)
         except BaseJTBException as e:
+            # TODO: Too broad, add more specific exceptions
             self.send(bot, update, text=e.message)
-        except (NetworkError, TimedOut):
-            pass
         except TelegramError as err:
             logger.error(err)
