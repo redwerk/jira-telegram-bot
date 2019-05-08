@@ -8,7 +8,7 @@ from .exceptions import ScheduleValidationError
 # Default periodicities
 WEEKLY_DEFAULT = "0 0 * * 1"
 MONTHLY_DEFAULT = "0 0 1 * *"
-DAYLY_DEFAULT = "0 0 * * *"
+DAILY_DEFAULT = "0 0 * * *"
 
 
 # allowed periodicity types
@@ -50,28 +50,8 @@ def command_parser(callback):
 class SimpleCronParser:
     """Custom and simple crontab parser."""
 
-    def parse(self, ptype, opt):
-        """Get parser, validate and parse periodicity.
-
-        Args:
-            ptype (str): periodicity parser type
-            opt (str): periodicity options
-        Returns:
-            Cron style periodicity value
-        """
-        parser = getattr(self, f"parse_{ptype}", None)
-        if parser is None:
-            raise AttributeError(
-                f"Parser method parse_{ptype} not implemented."
-            )
-
-        crontab = parser(opt)
-        if not croniter.is_valid(crontab):
-            raise ScheduleValidationError(f"Incorrect schedule value '{opt}'")
-
-        return crontab
-
-    def _match(self, pat, opt):
+    @staticmethod
+    def _match(pat, opt):
         """Match pattern on options and return groupdict
         with default values.
         """
@@ -80,6 +60,7 @@ class SimpleCronParser:
             raise ScheduleValidationError(f"Incorrect periodicity value '{opt}'")
         return m.groupdict(None)
 
+    @staticmethod
     def match_time(self, opt):
         """Parse time periodicity.
 
@@ -102,6 +83,27 @@ class SimpleCronParser:
             raise ScheduleValidationError(f"Minute {minute} out of range")
 
         return hour, minute
+
+    def parse(self, ptype, opt):
+        """Get parser, validate and parse periodicity.
+
+        Args:
+            ptype (str): periodicity parser type
+            opt (str): periodicity options
+        Returns:
+            Cron style periodicity value
+        """
+        parser = getattr(self, f"parse_{ptype}", None)
+        if parser is None:
+            raise AttributeError(
+                f"Parser method parse_{ptype} not implemented."
+            )
+
+        crontab = parser(opt)
+        if not croniter.is_valid(crontab):
+            raise ScheduleValidationError(f"Incorrect schedule value '{opt}'")
+
+        return crontab
 
     def parse_weekly(self, opt):
         """Parse weekly periodicity.
@@ -145,7 +147,7 @@ class SimpleCronParser:
             (str): Cron style periodicity value
         """
         if not opt:
-            return DAYLY_DEFAULT
+            return DAILY_DEFAULT
         hour, minute = self.match_time(opt)
         return f"{minute} {hour} * * *"
 

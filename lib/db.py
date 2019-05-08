@@ -176,6 +176,8 @@ class MongoBackend:
     def update_webhook(self, data, webhook_id=None, host_url=None):
         """
         Updates a webhook data by string ObjectId or host_url
+        :param data: dict with updated webhook data
+        :type data: dict
         :param webhook_id: string ObjectId
         :param host_url: a host url
         """

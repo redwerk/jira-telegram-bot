@@ -65,7 +65,7 @@ class Singleton(type):
         return cls._instances[cls]
 
 
-def with_progress(text="Loading... Pease wait"):
+def with_progress(text="Loading... Please wait"):
     """Send information message if the execution time could be long
 
     Arguments:

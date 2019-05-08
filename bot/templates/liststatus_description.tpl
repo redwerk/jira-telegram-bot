@@ -1,9 +1,9 @@
 <b>Command description:</b>
-/liststatus my <i>status</i> - returns a list of current user's issues and status
-/liststatus user <i>username</i> <i>status</i> - returns a list of selected user issues and status
-/liststatus project <i>key</i> <i>status</i> - returns a list of projects issues with selected status
+/liststatus <i>my {status}</i> - return a list of current user issues and statuses
+/liststatus <i>user {username}</i> <i>status</i> - return a list of selected user issues and statuses
+/liststatus <i> project {project key} {status}</i> - return a list of project issues with selected
 
-NOTE:
-<i>status</i> parameter hasn't required for all options
+<b>Note:</b>
+<i>status</i> parameter is optional
 <i>username</i> option has a required <i>username</i> parameter
-<i>project</i> option has a required <i>PROJECT-KEY</i> parameter
+<i>project</i> option has a required <i>{project-key}</i> parameter

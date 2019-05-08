@@ -51,12 +51,12 @@ class SendToChatMixin:
 class AuthorizeView(SendToChatMixin, OAuthJiraBaseView):
     methods = ['GET']
 
-    def dispatch_request(self, telegram_id):
+    def dispatch_request(self, *args, **kwargs):
         """
         Endpoint which saves telegram_id into session and
         generates an authorization request
         """
-        session['telegram_id'] = telegram_id
+        session['telegram_id'] = kwargs['telegram_id']
         session['host'] = request.args.get('host')
         callback = url_for(
             'auth.oauth_authorized',
@@ -71,7 +71,9 @@ class AuthorizeView(SendToChatMixin, OAuthJiraBaseView):
                 jira_host.update({'is_confirmed': False})
                 db.update_host(host_url=jira_host.get('url'), host_data=jira_host)
 
-            logger.exception('{}, Telegram ID: {}, Host: {}'.format(e.message, telegram_id, session['host']))
+            logger.exception(
+                '{}, Telegram ID: {}, Host: {}'.format(e.message, session['telegram_id'], session['host'])
+            )
             message = '{}\nPlease check if you created an Application link in your Jira.\n' \
                       'You can get settings for creating Application link via /oauth command'.format(e.message)
             self.send_to_chat(session['telegram_id'], message)
