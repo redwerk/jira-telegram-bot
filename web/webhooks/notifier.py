@@ -14,9 +14,8 @@ BOT_API = 'https://api.telegram.org/bot{}/sendMessage?chat_id={}&text={}&parse_m
 
 def broadcast(urls):
     """Broadcasting messaging.
-
-    Arguments:
-        urls (str): prepared url to telegram API
+    :param urls: prepared urls to telegram API
+    :type urls: list
     """
     for url in urls:
         send_message.delay(url)
