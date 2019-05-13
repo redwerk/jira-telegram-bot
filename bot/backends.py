@@ -114,7 +114,6 @@ class JiraBackend:
         except jira.JIRAError as e:
             if e.status_code == status_codes.NOT_FOUND:
                 message = f"'{username}' does not exist"
-                raise JiraReceivingDataException(f"getting user {username} on host", message)
                 raise JiraInfoException(message)
             else:
                 message = e.text
