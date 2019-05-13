@@ -1,7 +1,7 @@
 <b>Command description:</b>
 /time <i>issue {issue-key} {start-date} {end-date}</i> - return a report of time spent on a certain issue
 /time <i>user {username} {start-date} {end-date}</i> - return a report of time spent by a certain user
-/time <i>project {project-key} {start-date} {end-date}</i> - returns a report of spend time of project
+/time <i>project {project-key} {start-date} {end-date}</i> - return a report of time spent on a certain project
 
 <b>Note:</b>
 1. <i>{end date}</i> is optional
