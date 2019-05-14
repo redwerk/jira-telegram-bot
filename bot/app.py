@@ -139,14 +139,15 @@ class JTBApp:
             traceback.print_exc(file=sys.stdout)
         try:
             raise error
-        except (NetworkError, TimedOut, JiraReceivingDataException) as e:
-            logger.critical(
+        except (NetworkError, TimedOut, JiraReceivingDataException, TelegramError) as e:
+            logger.error(
                 f"User={update.effective_user.username} Message={update.effective_message.text} Error={e.message})"
             )
             self.send(bot, update, text="Something went wrong. Check your request or network.")
             self.send(bot, update, text=self.commands[0].description)
         except BaseJTBException as e:
-            # TODO: Too broad, add more specific exceptions
             self.send(bot, update, text=e.message)
-        except TelegramError as err:
-            logger.error(err)
+        except Exception as e:
+            logger.critical(
+                f"User={update.effective_user.username} Message={update.effective_message.text} Exception={e})"
+            )

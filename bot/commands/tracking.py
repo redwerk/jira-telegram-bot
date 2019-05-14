@@ -66,40 +66,40 @@ class TimeTrackingDispatcher(AbstractCommand):
     def handler(self, bot, update, *args, **kwargs):
         current_date = pendulum.now()
         options = self.parse_arguments(kwargs.get('args'), self.get_argparsers())
+        jira_timezone = self.app.jira.get_jira_tz(**kwargs)
+
         if not options:
             return self.app.send(bot, update, text=self.description)
 
         try:
             if options.start_date == 'today':
-                date = self.__get_normalize_date(
-                    current_date.to_date_string(), self.app.jira.get_jira_tz(**kwargs)
-                )
-                options.start_date = pendulum.create(date.year, date.month, date.day)._start_of_day()
-                options.end_date = pendulum.create(date.year, date.month, date.day)._end_of_day()
+                date = self.__get_normalize_date(current_date.to_date_string(), jira_timezone)
+                options.start_date = pendulum.create(date.year, date.month, date.day, tz=jira_timezone)._start_of_day()
+                options.end_date = pendulum.create(date.year, date.month, date.day, tz=jira_timezone)._end_of_day()
             elif options.start_date == 'yesterday':
                 date = self.__get_normalize_date(
                     current_date.subtract(days=1).to_date_string(),
                     self.app.jira.get_jira_tz(**kwargs)
                 )
-                options.start_date = pendulum.create(date.year, date.month, date.day)._start_of_day()
-                options.end_date = pendulum.create(date.year, date.month, date.day)._end_of_day()
+                options.start_date = pendulum.create(date.year, date.month, date.day, tz=jira_timezone)._start_of_day()
+                options.end_date = pendulum.create(date.year, date.month, date.day, tz=jira_timezone)._end_of_day()
             else:
                 if not options.end_date:
                     start_date = self.__get_normalize_date(options.start_date, self.app.jira.get_jira_tz(**kwargs))
-                    end_date = self.__get_normalize_date(
-                        current_date.to_date_string(), self.app.jira.get_jira_tz(**kwargs)
-                    )
+                    end_date = self.__get_normalize_date(current_date.to_date_string(), jira_timezone)
 
-                    options.start_date = pendulum.create(start_date.year, start_date.month, start_date.day).\
-                        _start_of_day()
-                    options.end_date = pendulum.create(end_date.year, end_date.month, end_date.day)._end_of_day()
+                    options.start_date = pendulum.create(
+                        start_date.year, start_date.month, start_date.day, tz=jira_timezone)._start_of_day()
+                    options.end_date = pendulum.create(
+                        end_date.year, end_date.month, end_date.day, tz=jira_timezone)._end_of_day()
                 else:
-                    start_date = self.__get_normalize_date(options.start_date, self.app.jira.get_jira_tz(**kwargs))
-                    end_date = self.__get_normalize_date(options.end_date, self.app.jira.get_jira_tz(**kwargs))
+                    start_date = self.__get_normalize_date(options.start_date, jira_timezone)
+                    end_date = self.__get_normalize_date(options.end_date, jira_timezone)
 
-                    options.start_date = pendulum.create(start_date.year, start_date.month, start_date.day).\
-                        _start_of_day()
-                    options.end_date = pendulum.create(end_date.year, end_date.month, end_date.day)._end_of_day()
+                    options.start_date = pendulum.create(
+                        start_date.year, start_date.month, start_date.day, tz=jira_timezone)._start_of_day()
+                    options.end_date = pendulum.create(
+                        end_date.year, end_date.month, end_date.day, tz=jira_timezone)._end_of_day()
         except ParserError:
             return self.app.send(bot, update, text='Invalid date format')
 
@@ -113,7 +113,7 @@ class TimeTrackingDispatcher(AbstractCommand):
             kwargs['username'] = options.username
             return UserTimeTrackerCommand(self.app).handler(bot, update, *args, **kwargs)
         elif options.target == 'project':
-            kwargs['project'] = options.project_key
+            kwargs['project_key'] = options.project_key
             return ProjectTimeTrackerCommand(self.app).handler(bot, update, *args, **kwargs)
 
     def command_callback(self):
@@ -247,18 +247,18 @@ class ProjectTimeTrackerCommand(AbstractCommand):
     @with_progress()
     def handler(self, bot, update, *args, **kwargs):
         auth_data = kwargs.get('auth_data')
-        project = kwargs.get('project')
+        project_key = kwargs.get('project_key')
         start_date = kwargs.get('start_date')
         end_date = kwargs.get('end_date')
         # check if the project exists on Jira host
-        self.app.jira.is_project_exists(project=project, auth_data=auth_data)
+        self.app.jira.is_project_exists(project=project_key, auth_data=auth_data)
         utils.validate_date_range(start_date, end_date)
-        spent_time = self.app.jira.get_project_worklogs(project, start_date, end_date, auth_data=auth_data)
+        spent_time = self.app.jira.get_project_worklogs(project_key, start_date, end_date, auth_data=auth_data)
 
         is_united_states_timezone = self.app.jira.get_jira_tz(**kwargs) in US_TIMEZONES
         date_fmt = "%m-%d-%Y" if is_united_states_timezone else "%Y-%m-%d"
         template = (
-            f'Time spent on project <b>{project}</b> '
+            f'Time spent on project <b>{project_key}</b> '
             f'from <b>{start_date.strftime(date_fmt)}</b> to <b>{end_date.strftime(date_fmt)}</b>: '
         )
         text = template + str(round(spent_time, 2)) + ' h'

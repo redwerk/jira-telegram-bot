@@ -23,7 +23,7 @@ services:
     build:
       context: .
     volumes:
-        - .:/code
+      - .:/code
     depends_on:
       - mongo
       - redis
