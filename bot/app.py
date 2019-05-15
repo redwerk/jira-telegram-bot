@@ -139,7 +139,7 @@ class JTBApp:
             traceback.print_exc(file=sys.stdout)
         try:
             raise error
-        except (NetworkError, TimedOut, JiraReceivingDataException, TelegramError) as e:
+        except (NetworkError, TimedOut, JiraReceivingDataException) as e:
             logger.error(
                 f"User={update.effective_user.username} Message={update.effective_message.text} Error={e.message})"
             )
