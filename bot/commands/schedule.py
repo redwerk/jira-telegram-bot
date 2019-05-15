@@ -18,11 +18,7 @@ from .base import AbstractCommand
 class ScheduleCommand(AbstractCommand):
     """"/schedule <command> <periodicity> - create new schedule command"""
 
-    @staticmethod
-    @lru_cache(1)
-    def get_description():
-        filename = os.path.join("bot", "templates", "schedule_description.tpl")
-        return read_file(filename)
+    description = read_file(os.path.join("bot", "templates", "schedule_description.tpl"))
 
     @login_required
     def handler(self, bot, update, *args, **kwargs):
@@ -52,7 +48,7 @@ class ScheduleCommand(AbstractCommand):
     @classmethod
     def validate_context(cls, context):
         if len(context) < 1:
-            raise ContextValidationError(cls.get_description())
+            raise ContextValidationError(cls.description)
 
 
 class ScheduleCommandList(AbstractCommand):

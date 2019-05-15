@@ -38,6 +38,10 @@ class AbstractCommand(metaclass=ABCMeta):
         """
         pass
 
+    @classmethod
+    def resolve_arguments(cls, arguments, verbose=False):
+        pass
+
     @staticmethod
     def parse_arguments(args, parsers):
         """Parse command arguments

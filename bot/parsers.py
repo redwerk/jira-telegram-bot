@@ -43,7 +43,7 @@ def command_parser(callback):
     if command not in schedule_commands:
         raise ScheduleValidationError(f"Command '{command}' not registered")
 
-    schedule_commands[command].validate_context(context[:])
+    schedule_commands[command].resolve_arguments(context[:], verbose=True)
     return command, context
 
 

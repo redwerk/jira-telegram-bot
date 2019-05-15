@@ -75,7 +75,8 @@ class ListUnresolvedIssuesCommand(AbstractCommand):
     @login_required
     def handler(self, bot, update, *args, **kwargs):
         auth_data = kwargs.get('auth_data')
-        options = self.parse_arguments(kwargs.get('args'), self.get_argparsers())
+        verbose = kwargs.get('verbose')
+        options = self.resolve_arguments(kwargs.get('args'), verbose)
 
         try:
             if options.target == 'my':
@@ -93,6 +94,22 @@ class ListUnresolvedIssuesCommand(AbstractCommand):
         except AttributeError:
             self.app.send(bot, update, text=self.description)
 
+    @classmethod
+    def _check_jira(cls, options):
+        if options.target == 'my':
+            pass
+
+    @classmethod
+    def resolve_arguments(cls, arguments, verbose=True):
+        options = cls.parse_arguments(arguments, cls.get_argparsers())
+        if not options or not options.target:
+            if verbose:
+                cls.validate_context(arguments)
+            else:
+                raise ContextValidationError(cls.description)
+        cls._check_jira(options)
+        return options
+
     def command_callback(self):
         return CommandHandler('listunresolved', self.handler, pass_args=True)
 
@@ -104,8 +121,8 @@ class ListUnresolvedIssuesCommand(AbstractCommand):
         target = context.pop(0)
         # validate command options
         if target == 'my':
-            if len(context) > 1:
-                raise ContextValidationError("<i>my</i> not accept any arguments.")
+            if context:
+                raise ContextValidationError("<i>my</i> doesn't accept any arguments.")
         elif target == 'user':
             if len(context) < 1:
                 raise ContextValidationError("<i>USERNAME</i> is a required argument.")
