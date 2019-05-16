@@ -22,7 +22,8 @@ class ScheduleCommand(AbstractCommand):
 
     @login_required
     def handler(self, bot, update, *args, **kwargs):
-        ScheduleCommand.validate_context(kwargs["args"])
+        self.validate_context(kwargs["args"])
+        auth_data = kwargs.get('auth_data')
 
         cmd_name = " ".join(kwargs["args"])
         if not cmd_name.startswith("/"):
@@ -36,7 +37,7 @@ class ScheduleCommand(AbstractCommand):
             raise ScheduleValidationError("Entered value is not correct")
 
         data = m.groupdict(None)
-        command, context = command_parser(data.get("callback"))
+        command, context = command_parser(data.get("callback"), self.app, auth_data)
         interval = cron_parser(data.get("type"), data.get("opt") or "")
         # create schedule command
         ScheduleTask.create(update, cmd_name, tz, interval, command, context)
@@ -45,10 +46,9 @@ class ScheduleCommand(AbstractCommand):
     def command_callback(self):
         return CommandHandler('schedule', self.handler, pass_args=True)
 
-    @classmethod
-    def validate_context(cls, context):
+    def validate_context(self, context):
         if len(context) < 1:
-            raise ContextValidationError(cls.description)
+            raise ContextValidationError(self.description)
 
 
 class ScheduleCommandList(AbstractCommand):

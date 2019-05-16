@@ -127,7 +127,7 @@ class JiraBackend:
             jira_conn.project(project.upper())
         except jira.JIRAError as e:
             if e.status_code == status_codes.NOT_FOUND:
-                message = f"Project key {project.upper()} does not exist"
+                message = f"Project key '{project.upper()}' does not exist"
                 raise JiraInfoException(message)
             else:
                 message = e.text
@@ -141,7 +141,7 @@ class JiraBackend:
             jira_conn.issue(issue)
         except jira.JIRAError as e:
             if e.status_code == status_codes.NOT_FOUND:
-                message = f"Issue {issue} doesn't exist"
+                message = f"Issue '{issue}' doesn't exist"
                 raise JiraInfoException(message)
             else:
                 raise JiraReceivingDataException(f"checking existence of issue {issue}", e.text)

@@ -17,7 +17,7 @@ from .issue import (
     ProjectStatusIssuesCommand,
     UserStatusIssuesCommand)
 
-from .tracking import TimeTrackingDispatcher
+from .tracking import TimeTrackingCommand
 from .watch import WatchDispatcherCommand, CreateWebhookCommand, UnwatchDispatcherCommand, UnsubscribeAllUpdatesCommand
 
 from .schedule import ScheduleCommand, ScheduleCommandList, ScheduleCommandDelete
@@ -29,7 +29,7 @@ __all__ = (
     "ListStatusIssuesCommand",
     "UserStatusIssuesCommand",
     "ProjectStatusIssuesCommand",
-    "TimeTrackingDispatcher",
+    "TimeTrackingCommand",
     "WatchDispatcherCommand",
     "CreateWebhookCommand",
     "UnwatchDispatcherCommand",

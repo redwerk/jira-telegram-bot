@@ -77,6 +77,11 @@ class DateTimeValidationError(BaseJTBException):
     pass
 
 
+class DateParsingError(BaseJTBException):
+    """Errors in date parsing"""
+    pass
+
+
 class ScheduleValidationError(BaseJTBException):
     """Schedule value validation error"""
     pass
