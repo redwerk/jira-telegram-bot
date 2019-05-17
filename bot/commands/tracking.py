@@ -8,7 +8,7 @@ from telegram.ext import CommandHandler
 
 from .base import CommandArgumentParser
 
-from bot.exceptions import (ContextValidationError, DateTimeValidationError)
+from bot.exceptions import (ContextValidationError, DateTimeValidationError, DateParsingError)
 from bot.helpers import login_required, with_progress
 from bot.schedules import schedule_commands
 from lib import utils
@@ -32,7 +32,7 @@ US_TIMEZONES = [
 ]
 
 
-class TimeTrackingDispatcher(AbstractCommand):
+class TimeTrackingCommand(AbstractCommand):
     """
     /time <target> <name> [start_date] [end_date] - Shows spent time for users, issues and projects
     """
@@ -62,14 +62,21 @@ class TimeTrackingDispatcher(AbstractCommand):
 
         return [issue, user, project]
 
+    def _check_jira(self, options, auth_data):
+        if options.target == 'issue':
+            self.app.jira.is_issue_exists(issue=options.issue_key, auth_data=auth_data)
+        elif options.target == 'user':
+            self.app.jira.is_user_on_host(username=options.username, auth_data=auth_data)
+        elif options.target == 'project':
+            self.app.jira.is_project_exists(project=options.project_key, auth_data=auth_data)
+
     @login_required
     def handler(self, bot, update, *args, **kwargs):
         current_date = pendulum.now()
-        options = self.parse_arguments(kwargs.get('args'), self.get_argparsers())
+        arguments = kwargs.get('args')
+        auth_data = kwargs.get('auth_data')
+        options = self.resolve_arguments(arguments, auth_data, verbose=True)
         jira_timezone = self.app.jira.get_jira_tz(**kwargs)
-
-        if not options:
-            return self.app.send(bot, update, text=self.description)
 
         try:
             if options.start_date == 'today':
@@ -85,7 +92,7 @@ class TimeTrackingDispatcher(AbstractCommand):
                 options.end_date = pendulum.create(date.year, date.month, date.day, tz=jira_timezone)._end_of_day()
             else:
                 if not options.end_date:
-                    start_date = self.__get_normalize_date(options.start_date, self.app.jira.get_jira_tz(**kwargs))
+                    start_date = self.__get_normalize_date(options.start_date, jira_timezone)
                     end_date = self.__get_normalize_date(current_date.to_date_string(), jira_timezone)
 
                     options.start_date = pendulum.create(
@@ -119,22 +126,18 @@ class TimeTrackingDispatcher(AbstractCommand):
     def command_callback(self):
         return CommandHandler('time', self.handler, pass_args=True)
 
-    @classmethod
-    def validate_context(cls, context):
-        if len(context) < 3:  # target, name, start_date are required
-            raise ContextValidationError(cls.description)
+    def validate_context(self, context):
+        if not context:
+            raise ContextValidationError(self.description)
 
         target = context.pop(0)
         # validate command options
         if target == 'issue':
-            if len(context) < 2:
-                raise ContextValidationError("<i>ISSUE KEY</i> and <i>START DATE</i> are required arguments.")
+            raise ContextValidationError("<i>{issue_key}</i> and <i>{start_date}</i> are required arguments.")
         elif target == 'user':
-            if len(context) < 2:
-                raise ContextValidationError("<i>USERNAME</i> and <i>START DATE</i> are required arguments.")
+            raise ContextValidationError("<i>{username}</i> and <i>{start_date}</i> are required arguments.")
         elif target == 'project':
-            if len(context) < 2:
-                raise ContextValidationError("<i>KEY</i> and <i>START DATE</i> are required arguments.")
+            raise ContextValidationError("<i>{project_key}</i> and <i>{start_date}</i> are required arguments.")
         else:
             raise ContextValidationError(f"Argument {target} not allowed.")
 
@@ -187,7 +190,7 @@ class TimeTrackingDispatcher(AbstractCommand):
             date_fmt = self.__identify_of_date_format(date, timezone)
             return dateparser.parse(date, date_formats=[date_fmt], languages=['en', 'ru'])
         except TypeError:
-            raise TypeError(f"Invalid format date.")
+            raise DateParsingError("Invalid format date.")
 
 
 class IssueTimeTrackerCommand(AbstractCommand):
@@ -200,7 +203,6 @@ class IssueTimeTrackerCommand(AbstractCommand):
         end_date = kwargs.get('end_date')
         utils.validate_date_range(start_date, end_date)
 
-        self.app.jira.is_issue_exists(issue=issue, auth_data=auth_data)
         spent_time = self.app.jira.get_issue_worklogs(issue, start_date, end_date, auth_data=auth_data)
 
         is_united_states_timezone = self.app.jira.get_jira_tz(**kwargs) in US_TIMEZONES
@@ -221,7 +223,7 @@ class UserTimeTrackerCommand(AbstractCommand):
         end_date = kwargs.get('end_date')
 
         # check if the user exists on Jira host
-        self.app.jira.is_user_on_host(host=auth_data.jira_host, username=username, auth_data=auth_data)
+        self.app.jira.is_user_on_host(username=username, auth_data=auth_data)
         utils.validate_date_range(start_date, end_date)
 
         all_worklogs = self.app.jira.get_all_user_worklogs(
@@ -265,4 +267,4 @@ class ProjectTimeTrackerCommand(AbstractCommand):
         return self.app.send(bot, update, text=text, **kwargs)
 
 
-schedule_commands.register("time", TimeTrackingDispatcher)
+schedule_commands.register("time", TimeTrackingCommand)

@@ -29,7 +29,7 @@ class JTBApp:
         commands.ListStatusIssuesCommand,
         commands.UserStatusIssuesCommand,
         commands.ProjectStatusIssuesCommand,
-        commands.TimeTrackingDispatcher,
+        commands.TimeTrackingCommand,
         commands.FilterDispatcherCommand,
         commands.FilterIssuesCommand,
         commands.WatchDispatcherCommand,

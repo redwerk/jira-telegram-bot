@@ -73,8 +73,7 @@ class FilterIssuesCommand(AbstractCommand):
     def command_callback(self):
         return CallbackQueryHandler(self.handler, pattern=r'^filter_p:')
 
-    @classmethod
-    def validate_context(cls, context):
+    def validate_context(self, context):
         if len(context) < 1:
             raise ContextValidationError("<i>Filter Name</i> is a required argument.")
 

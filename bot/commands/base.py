@@ -2,7 +2,7 @@ from abc import ABCMeta, abstractmethod
 import argparse
 import logging
 
-from bot.exceptions import ArgumentParserError
+from bot.exceptions import ArgumentParserError, ContextValidationError
 
 
 logger = logging.getLogger('bot')
@@ -27,19 +27,29 @@ class AbstractCommand(metaclass=ABCMeta):
         pass
 
     def command_callback(self):
-        # Must be implemented if used as main command
         # TODO: Move all not main commands to new abstract class
         pass
 
-    @classmethod
-    def validate_context(cls, context):
+    def validate_context(self, context):
         """Validate context or raise ContextValidationError.
         This method must be implemented in your command class.
         """
         pass
 
+    def _check_jira(self, options, auth_data):
+        """
+        Check existence of objects in JIRA (user, status, project) or leave it untouched
+        :param options:
+        :param auth_data:
+        :return:
+        """
+        pass
+
     @staticmethod
-    def parse_arguments(args, parsers):
+    def get_argparsers():
+        return []
+
+    def parse_arguments(self, args):
         """Parse command arguments
 
         Arguments:
@@ -48,6 +58,7 @@ class AbstractCommand(metaclass=ABCMeta):
         Returns:
             Namedtuple or None
         """
+        parsers = self.get_argparsers()
         for parser in parsers:
             try:
                 result = parser.parse_args(args)
@@ -57,6 +68,16 @@ class AbstractCommand(metaclass=ABCMeta):
                 return result
 
         return None
+
+    def resolve_arguments(self, arguments, auth_data, verbose=False):
+        options = self.parse_arguments(arguments)
+        if not options or not options.target:
+            if verbose:
+                self.validate_context(arguments)
+            else:
+                raise ContextValidationError(self.description)
+        self._check_jira(options, auth_data)
+        return options
 
 
 class AbstractCommandFactory(metaclass=ABCMeta):

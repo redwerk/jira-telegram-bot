@@ -36,14 +36,14 @@ monthly_re = r'(?P<day>\d{1,2})\s?(?P<opt>.*)?'
 time_re = r'(?P<hour>\d{0,2})[:\-\\.\s]+(?P<minute>\d*)'
 
 
-def command_parser(callback):
+def command_parser(callback, app, auth_data):
     """Parse and validate accepts command"""
     from .schedules import schedule_commands
     command, *context = callback.split()
     if command not in schedule_commands:
         raise ScheduleValidationError(f"Command '{command}' not registered")
 
-    schedule_commands[command].validate_context(context[:])
+    schedule_commands[command](app).resolve_arguments(context[:], auth_data, verbose=True)
     return command, context
 
 
@@ -60,7 +60,6 @@ class SimpleCronParser:
             raise ScheduleValidationError(f"Incorrect periodicity value '{opt}'")
         return m.groupdict(None)
 
-    @staticmethod
     def match_time(self, opt):
         """Parse time periodicity.
 

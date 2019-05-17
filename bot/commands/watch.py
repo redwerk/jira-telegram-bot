@@ -35,17 +35,17 @@ class WatchDispatcherCommand(AbstractCommand):
 
         return [issue, project]
 
-    @login_required
-    def handler(self, bot, update, *args, **kwargs):
-        auth_data = kwargs.get('auth_data')
-        options = self.parse_arguments(kwargs.get('args'), self.get_argparsers())
-        if not options:
-            return self.app.send(bot, update, text=self.description)
-
+    def _check_jira(self, options, auth_data):
         if options.target == 'issue':
             self.app.jira.is_issue_exists(issue=options.key, auth_data=auth_data)
         elif options.target == 'project':
             self.app.jira.is_project_exists(project=options.key, auth_data=auth_data)
+
+    @login_required
+    def handler(self, bot, update, *args, **kwargs):
+        auth_data = kwargs.get('auth_data')
+        arguments = kwargs.get('args')
+        options = self.resolve_arguments(arguments, auth_data)
 
         jira_webhooks = self.app.jira.get_webhooks(auth_data.jira_host, *args, **kwargs)
         jira_webhook = None
