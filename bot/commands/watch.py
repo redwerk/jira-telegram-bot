@@ -47,14 +47,9 @@ class WatchDispatcherCommand(AbstractCommand):
         arguments = kwargs.get('args')
         options = self.resolve_arguments(arguments, auth_data)
 
-        jira_webhooks = self.app.jira.get_webhooks(auth_data.jira_host, *args, **kwargs)
-        jira_webhook = None
-        for hook in jira_webhooks:
-            if config('OAUTH_SERVICE_URL') in hook.get('url'):
-                jira_webhook = hook
-                break
+        host_webhook = self.app.db.get_webhook(host_url=auth_data.jira_host)
 
-        if not jira_webhook:
+        if not host_webhook:
             confirmation_buttons = [
                 InlineKeyboardButton(text='No', callback_data='create_webhook:{}'.format(self.negative_answer)),
                 InlineKeyboardButton(text='Yes', callback_data='create_webhook:{}'.format(self.positive_answer)),
@@ -67,10 +62,6 @@ class WatchDispatcherCommand(AbstractCommand):
                 '<b>NOTE:</b> You must have an Administrator permissions for your Jira'
             )
             return self.app.send(bot, update, text=text, buttons=buttons)
-
-        webhook_id_index = jira_webhook.get('url').split('/').index('webhook') + 1
-        webhook_id = jira_webhook.get('url').split('/')[webhook_id_index]
-        host_webhook = self.app.db.get_webhook(webhook_id=webhook_id)
 
         CreateSubscribeCommand(self.app).handler(
             bot, update, topic=options.target, name=options.key, webhook=host_webhook
