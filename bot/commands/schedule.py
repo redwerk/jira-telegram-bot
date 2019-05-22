@@ -1,6 +1,5 @@
 import re
 import os
-from functools import lru_cache
 
 from telegram.ext import CommandHandler, CallbackQueryHandler
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup

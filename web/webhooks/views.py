@@ -55,7 +55,7 @@ class IssueWebhookView(MethodView):
 
         jira_update = json.loads(request.data)
         chat_ids = filters_subscribers(subs, kwargs.get('project_key'), kwargs.get('issue_key'))
-        notify(jira_update, chat_ids, webhook.get('host_url'), **kwargs)
+        notify(jira_update, chat_ids, webhook.get('host_url'), db, **kwargs)
 
         return 'OK', 200
 
@@ -77,7 +77,7 @@ class ProjectWebhookView(MethodView):
 
         jira_update = json.loads(request.data)
         chat_ids = filters_subscribers(subs, kwargs.get('project_key'))
-        notify(jira_update, chat_ids, webhook.get('host_url'), **kwargs)
+        notify(jira_update, chat_ids, webhook.get('host_url'), db, **kwargs)
 
         return 'OK', 200
 

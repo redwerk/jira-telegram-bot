@@ -23,7 +23,7 @@ def broadcast(urls):
 
 class BaseNotify(metaclass=ABCMeta):
 
-    def __init__(self, update, chat_ids, host, **kwargs):
+    def __init__(self, update, chat_ids, host, db, **kwargs):
         """
         :param update: full update in dictionary format
         :param chat_ids: set of string chat ids for delivering notifications
@@ -35,6 +35,7 @@ class BaseNotify(metaclass=ABCMeta):
         self.host = host
         self.project = kwargs.get('project_key')
         self.issue = kwargs.get('issue_key')
+        self.db = db
 
     @abstractmethod
     def notify(self):
@@ -191,8 +192,8 @@ class IssueNotify(BaseNotify):
             elif self.update['issue_event_type_name'] == self.updated and field == self.assignee_action:
                 self.issue_reassigned(item, template)
             else:
-                template = read_template(template)
-                self.messages.append(template.substitute(**self.generic_data))
+                text = read_template(template)
+                self.messages.append(text.substitute(**self.generic_data))
 
         urls = self.prepare_messages(self.messages)
         broadcast(urls)
@@ -256,7 +257,7 @@ class ProjectNotify(BaseNotify):
     Processing updates for Jira projects
     Actions: a project may be created, updated and deleted
     """
-    message_template = 'Project <a href="{link}">{link_name}</a> was {action}'
+    message_template = os.path.join(TEMPLATES_DIR, 'issue_created.txt')
 
     def notify(self):
         data = {
@@ -264,8 +265,41 @@ class ProjectNotify(BaseNotify):
             'link': f"{self.host}/browse/{self.update['project']['key']}",
             'link_name': self.update['project']['key'].upper(),
         }
-        msg = self.message_template.format(**data)
-        urls = self.prepare_messages(msg)
+        text = read_template(self.message_template)
+        message = text.substitute(**data)
+        urls = self.prepare_messages(message)
+        broadcast(urls)
+
+
+class ProjectIssueNotify(BaseNotify):
+    message_template = {
+        'issue_created': os.path.join(TEMPLATES_DIR, 'issue_created.txt'),
+        'issue_deleted': os.path.join(TEMPLATES_DIR, 'issue_deleted.txt'),
+        'issue_deleted_unsubscribed': os.path.join(TEMPLATES_DIR, 'issue_deleted_unsubscribed.txt')
+    }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.messages = []
+
+    def notify(self):
+        issue = self.update['issue']['key']
+        _, action = self.update['webhookEvent'].split(":")
+        for chat_id in self.chat_ids:
+            if action == 'issue_deleted':
+                issue_subscribed = self.db.get_subscription(chat_id, issue)
+                if issue_subscribed:
+                    action = 'issue_deleted_unsubscribed'
+                    self.db.delete_subscription(chat_id, issue)
+            template = self.message_template[action]
+            text = read_template(template)
+            data = {
+                "issue_link": f"{self.host}/browse/{issue}",
+                "issue_name": issue
+            }
+            message = text.substitute(**data)
+            self.messages.append(message)
+        urls = self.prepare_messages(self.messages)
         broadcast(urls)
 
 
@@ -279,6 +313,8 @@ class NotifierFactory:
         'project_created': ProjectNotify,
         'project_updated': ProjectNotify,
         'project_deleted': ProjectNotify,
+        'jira:issue_created': ProjectIssueNotify,
+        'jira:issue_deleted': ProjectIssueNotify,
     }
 
     @classmethod
@@ -286,9 +322,9 @@ class NotifierFactory:
         return cls.events.get(event)
 
 
-def notify(update, chat_ids, host, **kwargs):
+def notify(update, chat_ids, host, db, **kwargs):
     """Send broadcast notification"""
     event = update.get('webhookEvent')
     notifier = NotifierFactory.get_notifier(event)
     if notifier:
-        notifier(update, chat_ids, host, **kwargs).notify()
+        notifier(update, chat_ids, host, db, **kwargs).notify()

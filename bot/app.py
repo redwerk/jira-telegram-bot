@@ -4,7 +4,7 @@ import sys
 import traceback
 
 from decouple import config
-from telegram.error import NetworkError, TelegramError, TimedOut
+from telegram.error import NetworkError, TimedOut
 from telegram.ext import Updater
 
 from lib import utils
