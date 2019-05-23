@@ -442,7 +442,7 @@ class Scheduler:
             try:
                 task = ScheduleTask.load(entry, self._bot)
                 job = task.get_job(self._app, self._bot)
-                self.queue.put(job, task.next_run)
+                self.queue._put(job, task.next_run)
             except Exception as err:
                 logging.exception(str(err))
             else:
