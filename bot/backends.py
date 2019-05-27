@@ -171,7 +171,7 @@ class JiraBackend:
         """
         jira_conn = kwargs.get('jira_conn')
         try:
-            jql = f'assignee = "{quote(username)}"'
+            jql = f'assignee = "{utils.escape_string(username)}"'
             if resolution:
                 jql += f' and resolution = {resolution}'
             jql += ' ORDER BY updated'
@@ -190,7 +190,7 @@ class JiraBackend:
         """
         jira_conn = kwargs.get('jira_conn')
         try:
-            jql = f'assignee = "{quote(username)}" and status = "{status}"'
+            jql = f'assignee = "{utils.escape_string(username)}" and status = "{status}"'
             if resolution:
                 jql += f' and resolution = {resolution}'
             jql += ' ORDER BY updated'
@@ -266,7 +266,7 @@ class JiraBackend:
         jira_end_date = end_date.strftime('%Y-%m-%d')
         try:
             jql = 'worklogAuthor = "{username}" and worklogDate >= {start_date} and worklogDate <= {end_date}'.format(
-                username=quote(username), start_date=jira_start_date, end_date=jira_end_date,
+                username=utils.escape_string(username), start_date=jira_start_date, end_date=jira_end_date,
             )
             issues = jira_conn.search_issues(
                 jql,
