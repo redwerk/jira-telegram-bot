@@ -1,6 +1,5 @@
 import re
 import os
-from functools import lru_cache
 
 from telegram.ext import CommandHandler, CallbackQueryHandler
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -18,15 +17,12 @@ from .base import AbstractCommand
 class ScheduleCommand(AbstractCommand):
     """"/schedule <command> <periodicity> - create new schedule command"""
 
-    @staticmethod
-    @lru_cache(1)
-    def get_description():
-        filename = os.path.join("bot", "templates", "schedule_description.tpl")
-        return read_file(filename)
+    description = read_file(os.path.join("bot", "templates", "schedule_description.tpl"))
 
     @login_required
     def handler(self, bot, update, *args, **kwargs):
-        ScheduleCommand.validate_context(kwargs["args"])
+        self.validate_context(kwargs["args"])
+        auth_data = kwargs.get('auth_data')
 
         cmd_name = " ".join(kwargs["args"])
         if not cmd_name.startswith("/"):
@@ -40,7 +36,7 @@ class ScheduleCommand(AbstractCommand):
             raise ScheduleValidationError("Entered value is not correct")
 
         data = m.groupdict(None)
-        command, context = command_parser(data.get("callback"))
+        command, context = command_parser(data.get("callback"), self.app, auth_data)
         interval = cron_parser(data.get("type"), data.get("opt") or "")
         # create schedule command
         ScheduleTask.create(update, cmd_name, tz, interval, command, context)
@@ -49,10 +45,9 @@ class ScheduleCommand(AbstractCommand):
     def command_callback(self):
         return CommandHandler('schedule', self.handler, pass_args=True)
 
-    @classmethod
-    def validate_context(cls, context):
+    def validate_context(self, context):
         if len(context) < 1:
-            raise ContextValidationError(cls.get_description())
+            raise ContextValidationError(self.description)
 
 
 class ScheduleCommandList(AbstractCommand):

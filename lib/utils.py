@@ -15,7 +15,7 @@ from bot.exceptions import DateTimeValidationError
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 HOSTNAME_RE = re.compile(r'^http[s]?://([^:/\s]+)?$')
-HTTP_PTOTOCOL = re.compile(r'^http[s]?://')
+HTTP_PROTOCOL = re.compile(r'^http[s]?://')
 EMAIL_ADDRESS = re.compile(r'([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)')
 
 
@@ -118,3 +118,20 @@ def read_template(filepath):
     with open(os.path.join(BASE_DIR, filepath)) as file:
         template = Template(file.read())
     return template
+
+
+def escape_string(string):
+    """
+    Dirty hack to correctly escaping " for JQL search
+    If anybody finds a better solution - you're welcome
+    :param string:
+    :return:
+    """
+    new_string = ""
+    for letter in string:
+        if letter == '\"':
+            new_letter = re.escape(letter)
+        else:
+            new_letter = letter
+        new_string += new_letter
+    return new_string

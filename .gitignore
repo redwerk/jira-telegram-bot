@@ -10,7 +10,7 @@ __pycache__/
 .Python
 
 # dotenv
-.env
+.env*
 
 # virtualenv
 .venv
@@ -27,3 +27,7 @@ tmp/
 *.pem
 *.cer
 .cache/
+
+# keys and logs
+keys
+logs

@@ -9,7 +9,7 @@ from bot.helpers import login_required
 from bot.inlinemenu import build_menu
 from lib import utils
 
-from .base import AbstractCommand
+from .base import AbstractCommand, CommandArgumentParser
 
 
 class WatchDispatcherCommand(AbstractCommand):
@@ -23,33 +23,33 @@ class WatchDispatcherCommand(AbstractCommand):
     negative_answer = 'No'
     description = utils.read_file(os.path.join('bot', 'templates', 'watch_description.tpl'))
 
+    @staticmethod
+    def get_argparsers():
+        issue = CommandArgumentParser(prog='issue', add_help=False)
+        issue.add_argument('target', type=str, choices=['issue'])
+        issue.add_argument('key', type=str)
+
+        project = CommandArgumentParser(prog='project', add_help=False)
+        project.add_argument('target', type=str, choices=['project'])
+        project.add_argument('key', type=str)
+
+        return [issue, project]
+
+    def _check_jira(self, options, auth_data):
+        if options.target == 'issue':
+            self.app.jira.is_issue_exists(issue=options.key, auth_data=auth_data)
+        elif options.target == 'project':
+            self.app.jira.is_project_exists(project=options.key, auth_data=auth_data)
+
     @login_required
     def handler(self, bot, update, *args, **kwargs):
         auth_data = kwargs.get('auth_data')
-        options = kwargs.get('args')
-        parameters_names = ('target', 'name')
-        params = dict(zip_longest(parameters_names, options))
+        arguments = kwargs.get('args')
+        options = self.resolve_arguments(arguments, auth_data)
 
-        if params['target'] not in self.targets or not params['name']:
-            return self.app.send(bot, update, text=self.description)
+        host_webhook = self.app.db.get_webhook(host_url=auth_data.jira_host)
 
-        if params['target'] == 'project':
-            self.app.jira.is_project_exists(
-                host=auth_data.jira_host, project=params['name'], auth_data=auth_data
-            )
-        elif params['target'] == 'issue':
-            self.app.jira.is_issue_exists(
-                host=auth_data.jira_host, issue=params['name'], auth_data=auth_data
-            )
-
-        jira_webhooks = self.app.jira.get_webhooks(auth_data.jira_host, *args, **kwargs)
-        jira_webhook = None
-        for hook in jira_webhooks:
-            if config('OAUTH_SERVICE_URL') in hook.get('url'):
-                jira_webhook = hook
-                break
-
-        if not jira_webhook:
+        if not host_webhook:
             confirmation_buttons = [
                 InlineKeyboardButton(text='No', callback_data='create_webhook:{}'.format(self.negative_answer)),
                 InlineKeyboardButton(text='Yes', callback_data='create_webhook:{}'.format(self.positive_answer)),
@@ -63,12 +63,8 @@ class WatchDispatcherCommand(AbstractCommand):
             )
             return self.app.send(bot, update, text=text, buttons=buttons)
 
-        webhook_id_index = jira_webhook.get('url').split('/').index('webhook') + 1
-        webhook_id = jira_webhook.get('url').split('/')[webhook_id_index]
-        host_webhook = self.app.db.get_webhook(webhook_id=webhook_id)
-
         CreateSubscribeCommand(self.app).handler(
-            bot, update, topic=params['target'], name=params['name'], webhook=host_webhook
+            bot, update, topic=options.target, name=options.key, webhook=host_webhook
         )
 
     def command_callback(self):
@@ -170,13 +166,9 @@ class UnwatchDispatcherCommand(AbstractCommand):
             return self.app.send(bot, update, text=self.description)
 
         if params['target'] == 'project':
-            self.app.jira.is_project_exists(
-                host=auth_data.jira_host, project=params['name'], auth_data=auth_data
-            )
+            self.app.jira.is_project_exists(project=params['name'], auth_data=auth_data)
         elif params['target'] == 'issue':
-            self.app.jira.is_issue_exists(
-                host=auth_data.jira_host, issue=params['name'], auth_data=auth_data
-            )
+            self.app.jira.is_issue_exists(issue=params['name'], auth_data=auth_data)
 
         kwargs.update({'topic': params['target'], 'name': params['name']})
         UnsubscribeOneItemCommand(self.app).handler(bot, update, **kwargs)
@@ -198,7 +190,7 @@ class UnsubscribeAllUpdatesCommand(AbstractCommand):
         status = self.app.db.delete_all_subscription(user.get('_id'))
 
         if status:
-            text = 'You were unsubscribed from all updates'
+            text = 'You are unsubscribed from all updates'
             return self.app.send(bot, update, text=text)
 
         text = "Can't unsubscribe you from all updates at this moment, please try again later"

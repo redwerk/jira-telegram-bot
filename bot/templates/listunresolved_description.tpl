@@ -1,9 +1,9 @@
 <b>Command description:</b>
-/listunresolved my - returns a list of user's unresolved issues
-/listunresolved user <i>username</i> - returns a list of selected user issues
-/listunresolved project <i>PROJECT-KEY</i> - returns a list of projects issues
+/listunresolved <i>my</i> - return a list of user unresolved issues
+/listunresolved <i>user {username}</i> - return a list of selected user issues
+/listunresolved <i>project {project-key}</i> - return a list of project issues
 
-NOTE:
-<i>my</i> option hasn't any required parameters
-<i>username</i> option has a required <i>username</i> parameter
-<i>project</i> option has a required <i>PROJECT-KEY</i> parameter
+<b>Note:</b>
+<i>my</i> option doesn’t have any required parameters
+<i>user</i> option has a required <i>{username}</i> parameter
+<i>project</i> option has a required <i>{project-key}</i> parameter

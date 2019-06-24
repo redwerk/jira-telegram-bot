@@ -24,15 +24,11 @@ class HelpCommand(AbstractCommand):
 
 class StartCommand(AbstractCommand):
     """/start - returns help description"""
-    message = (
-        'Hi, {}! Please, enter Jira host by typing \n'
-        '/connect jira.yourcompany.com username password OR\n'
-        '/oauth jira.yourcompany.com'
-    )
+    description = read_file(os.path.join('bot', 'templates', 'start_description.tpl'))
 
     def handler(self, bot, update, *args, **kwargs):
         first_name = update.message.from_user.first_name
-        message = self.message.format(first_name)
+        message = self.description.format(first_name)
 
         telegram_id = update.message.from_user.id
         user_exists = self.app.db.is_user_exists(telegram_id)

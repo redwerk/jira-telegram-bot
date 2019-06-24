@@ -1,7 +1,7 @@
 The host is already added to the database, but it is not activated.
 To activate the host, add the following information to the
 <a href="http://telegra.ph/Setting-up-authorization-via-OAuth-for-JiraBot-11-29">Application links</a>.
-<b>NOTE:</b> you must have administrator permissions
+<b>NOTE:</b> you must have admin rights
 
 <b>Application URL:</b> $application_url
 <b>Application Name:</b> $application_name
@@ -12,4 +12,4 @@ To activate the host, add the following information to the
 <b>Consumer Name:</b> $application_name
 <b>Public Key:</b> $public_key
 
-After creating Application link in JIRA, follow the link to confirm authorization in next message.
+After creating Application link in JIRA, click the link to confirm authorization in the next message.

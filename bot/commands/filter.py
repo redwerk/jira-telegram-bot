@@ -27,7 +27,7 @@ class FilterDispatcherCommand(AbstractCommand):
                 kwargs.update({'filter_name': filter_name, 'filter_id': filters.get(filter_name)})
                 return FilterIssuesCommand(self.app).handler(bot, update, *args, **kwargs)
             else:
-                text = 'This filter is not in your favorites'
+                text = "Filter {} is not in your favorites".format(filter_name)
                 return self.app.send(bot, update, text=text)
         elif filters:
             for name in filters.keys():
@@ -37,7 +37,7 @@ class FilterDispatcherCommand(AbstractCommand):
 
             buttons = InlineKeyboardMarkup(build_menu(filter_buttons, n_cols=2))
             if buttons:
-                text = 'Pick up one of the filters:'
+                text = "Pick up one of the filters:"
                 return self.app.send(bot, update, text=text, buttons=buttons)
 
         self.app.send(bot, update, text="You don't have any favourite filters")
@@ -73,8 +73,7 @@ class FilterIssuesCommand(AbstractCommand):
     def command_callback(self):
         return CallbackQueryHandler(self.handler, pattern=r'^filter_p:')
 
-    @classmethod
-    def validate_context(cls, context):
+    def validate_context(self, context):
         if len(context) < 1:
             raise ContextValidationError("<i>Filter Name</i> is a required argument.")
 

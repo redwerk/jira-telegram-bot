@@ -18,7 +18,7 @@ class BaseMessage(metaclass=ABCMeta):
         update (telegram.Update): Update instance
     Keyword arguments:
         title (str): Title of the message (the text is bold)
-        text (str): Simple text in message (withour editing)
+        text (str): Simple text in message (without editing)
         buttons: any buttons to show in chat
         items (list): list of strings with any data
         key (str): key for cached data

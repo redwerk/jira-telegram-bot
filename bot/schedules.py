@@ -31,7 +31,7 @@ def adjust(func):
 
 
 def error_wrapper(func):
-    """Error hendle wrapper for schedule commands running in jobqueue"""
+    """Error handle wrapper for schedule commands running in jobqueue"""
     @wraps(func)
     def wrapper(instance, bot, update, *args, **kwargs):
         try:
@@ -44,7 +44,8 @@ def error_wrapper(func):
 
 
 class ScheduleCommands(metaclass=Singleton):
-    """List for allowed schedule commands, used `commands` instance
+    """
+    List for allowed schedule commands, used `commands` instance
     for registration new command as `schedule_commands.register(<command cls>)`
     and get registered commands as `schedule_commands.values()`.
     """
@@ -55,15 +56,15 @@ class ScheduleCommands(metaclass=Singleton):
             raise TypeError("The command class must be of type `AbstractCommand`")
 
         if not isinstance(command, str):
-            raise TypeError("Command name must be of sting type")
+            raise TypeError("Command name must be of string type")
 
         if not command.startswith('/'):
             command = '/' + command
 
         if command in self.__commands:
-            raise ValueError(f"Command {command} alreday registered")
+            raise ValueError(f"Command {command} already registered")
 
-        # monkey patching for command error hendler
+        # monkey patching for command error handler
         cls.handler = error_wrapper(cls.handler)
         self.__commands[command] = cls
 
@@ -100,7 +101,7 @@ schedule_commands = ScheduleCommands()
 
 
 class ScheduleTaskSerializer:
-    """Serializer class for schedule tesk object.
+    """Serializer class for schedule task object.
 
     This serializer class can serialize and deserialize
     telegram and some specific python objects.
@@ -418,7 +419,7 @@ class Scheduler:
         self._app = app
         self._bot = bot
         if not isinstance(sync_every, int) or sync_every < 0:
-            raise ValueError(f"Sync value {sync_every} is incorect.")
+            raise ValueError(f"Sync value {sync_every} is incorrect.")
         self._sync_every = sync_every
         self.queue = queue
 
@@ -441,7 +442,7 @@ class Scheduler:
             try:
                 task = ScheduleTask.load(entry, self._bot)
                 job = task.get_job(self._app, self._bot)
-                self.queue.put(job, task.next_run)
+                self.queue._put(job, task.next_run)
             except Exception as err:
                 logging.exception(str(err))
             else:

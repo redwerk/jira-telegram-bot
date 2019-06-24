@@ -4,7 +4,7 @@ import sys
 import traceback
 
 from decouple import config
-from telegram.error import NetworkError, TelegramError, TimedOut
+from telegram.error import NetworkError, TimedOut
 from telegram.ext import Updater
 
 from lib import utils
@@ -14,7 +14,7 @@ import bot.commands as commands
 from .backends import JiraBackend
 from .messages import MessageFactory
 from .schedules import Scheduler
-from .exceptions import BaseJTBException, BotAuthError, SendMessageHandlerError
+from .exceptions import BaseJTBException, BotAuthError, SendMessageHandlerError, JiraReceivingDataException
 
 
 logger = logging.getLogger('bot')
@@ -29,7 +29,7 @@ class JTBApp:
         commands.ListStatusIssuesCommand,
         commands.UserStatusIssuesCommand,
         commands.ProjectStatusIssuesCommand,
-        commands.TimeTrackingDispatcher,
+        commands.TimeTrackingCommand,
         commands.FilterDispatcherCommand,
         commands.FilterIssuesCommand,
         commands.WatchDispatcherCommand,
@@ -62,7 +62,8 @@ class JTBApp:
 
         self.updater.dispatcher.add_error_handler(self.error_callback)
 
-    def send(self, bot, update, **kwargs):
+    @staticmethod
+    def send(bot, update, **kwargs):
         message_handler = MessageFactory.get_message_handler(update)
         if not message_handler:
             raise SendMessageHandlerError('Unable to get the handler')
@@ -138,9 +139,15 @@ class JTBApp:
             traceback.print_exc(file=sys.stdout)
         try:
             raise error
+        except (NetworkError, TimedOut, JiraReceivingDataException) as e:
+            logger.error(
+                f"User={update.effective_user.username} Message={update.effective_message.text} Error={e.message})"
+            )
+            self.send(bot, update, text="Something went wrong. Check your request or network.")
+            self.send(bot, update, text=self.commands[0].description)
         except BaseJTBException as e:
             self.send(bot, update, text=e.message)
-        except (NetworkError, TimedOut):
-            pass
-        except TelegramError as err:
-            logger.error(err)
+        except Exception as e:
+            logger.critical(
+                f"User={update.effective_user.username} Message={update.effective_message.text} Exception={e})"
+            )

@@ -1,13 +1,74 @@
 version: '3'
 services:
-  telegram-bot:
-    build: .
+  nginx:
+    image: nginx:latest
     volumes:
         - .:/code
+        - ./config/nginx:/etc/nginx/conf.d
     depends_on:
-        - mongo
+        - webhooks
+  telegram-bot:
+    build:
+      context: .
+    volumes:
+      - .:/code
+    depends_on:
+      - mongo
+      - redis
+      - celery
+      - postfix
+    restart: always
+    command: python3 run.py bot
+  webhooks:
+    build:
+      context: .
+    volumes:
+      - .:/code
+    depends_on:
+      - mongo
+      - redis
+      - celery
+      - telegram-bot
+      - postfix
+    links:
+        - redis
+    restart: always
+    # command: python3 run.py web
+    command: bash -c "pip3 install gunicorn && gunicorn --access-logfile logs/gunicorn.log -b 0.0.0.0:5000 run:app"
   mongo:
     image: "mongo:latest"
-    command: mongod
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${DB_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${DB_PASS}
+      MONGO_INITDB_DATABASE: ${DB_NAME}
     volumes:
-        - './tmp/data:/data/mongo'
+       - ./config/mongo:/docker-entrypoint-initdb.d
+       - mongo_data:/data/db
+    restart: always
+  celery:
+    build:
+      context: .
+    depends_on:
+      - mongo
+      - redis
+    links:
+      - redis
+    environment:
+      C_FORCE_ROOT: "true"
+    volumes:
+      - .:/code
+    command: celery -A web.app.celery worker -l info -P eventlet -c 30
+    restart: always
+  redis:
+    image: 'redis:latest'
+    volumes:
+      - redis_data:/data
+      - .:/code
+  postfix:
+    image: 'boky/postfix'
+    environment:
+      HOSTNAME: ${LOGGER_EMAIL_HOSTNAME}
+      ALLOWED_SENDER_DOMAINS: ${LOGGER_EMAIL_HOSTNAME}
+volumes:
+  mongo_data:
+  redis_data:

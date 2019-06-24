@@ -164,10 +164,12 @@ class OAuthLoginCommand(AbstractCommand):
 
         self.app.send(bot, update, text=text)
 
-    def generate_auth_link(self, telegram_id, host_url):
+    @staticmethod
+    def generate_auth_link(telegram_id, host_url):
         return '{}/auth/authorize/{}/?host={}'.format(config('OAUTH_SERVICE_URL'), telegram_id, host_url)
 
-    def get_app_links_data(self, jira_host):
+    @staticmethod
+    def get_app_links_data(jira_host):
         data = {
             'consumer_key': jira_host.get('consumer_key'),
             'public_key': utils.read_rsa_key(config('PUBLIC_KEY_PATH')),
@@ -236,13 +238,13 @@ class BasicLoginCommand(AbstractCommand):
             # if not passed all the parameters
             text = 'You have not specified all the parameters for authorization. ' \
                    'Try again using the following instructions:\n' \
-                   '/connect *host* *username* *password*'
+                   '/connect <i>{your.jira.host} {username} {password}</i>'
             return self.app.send(bot, update, text=text)
 
         # getting the URL to the Jira app
         host_url = OAuthLoginCommand(self.app).check_hosturl(host)
         if not host_url:
-            text = 'This is not a Jira application. Please try again'
+            text = 'Invalid Jira host name. Please try again'
             return self.app.send(bot, update, text=text)
 
         self.app.jira.check_authorization(

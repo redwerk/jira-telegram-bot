@@ -1,17 +1,17 @@
 import argparse
 
 from logger import * # noqa
+from bot.app import JTBApp
+from web.app import app
 
 
 def run_bot():
-    from bot.app import JTBApp
-    app = JTBApp()
-    app.start()
+    telegram_bot = JTBApp()
+    telegram_bot.start()
 
 
 def run_web():
-    from web.app import app
-    app.run()
+    app.run(host='0.0.0.0')
 
 
 if __name__ == '__main__':

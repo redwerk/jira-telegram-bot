@@ -17,9 +17,9 @@ class JiraLoginError(BaseJTBException):
     login_error = {
         401: 'Invalid credentials or token was rejected.\nYou can try the following actions:\n'
              '1. If you logged in already, please try to use /disconnect command and log in again.\n'
-             '2. Update a previously created Application link ( /disconnect, /oauth)',
+             '2. Update a previously created Application link (/disconnect, /oauth)',
         403: 'Login is denied due to a CAPTCHA requirement, or any other '
-             'reason. Please, login (relogin) into Jira via browser '
+             'reason. Please, login (re-login) into Jira via browser '
              'and try again.',
         409: 'Login is denied due to an unverified email. '
              'The email must be verified by logging in to JIRA through a '
@@ -50,13 +50,15 @@ class JiraConnectionError(BaseJTBException):
         self.message = "Can't connect to Jira host, please check the host status:\n{}".format(host)
 
 
-class JiraReceivingDataError(BaseJTBException):
-    """Any errors during receiving data from Jira API"""
-    pass
+class JiraReceivingDataException(BaseJTBException):
+    """Any unpredictable errors during receiving data from Jira API"""
+    def __init__(self, occurrence, message):
+        super(TelegramError, self).__init__()
+        self.message = f"Unpredictable error occurred during {occurrence} - {message}"
 
 
-class JiraEmptyData(BaseJTBException):
-    """Signal that the response did not return any data to display to the user"""
+class JiraInfoException(BaseJTBException):
+    """Any predictable informational error during receiving data from JIRA API"""
     pass
 
 
@@ -72,6 +74,11 @@ class SendMessageHandlerError(BaseJTBException):
 
 class DateTimeValidationError(BaseJTBException):
     """Errors in date validation"""
+    pass
+
+
+class DateParsingError(BaseJTBException):
+    """Errors in date parsing"""
     pass
 
 
