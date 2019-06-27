@@ -9,8 +9,7 @@
 
 
 ### Local deployment
-1. Git wiki [link](https://git.redwerk.com/redwerk/jira-telegram-bot/wikis/home)
-2. Instructions [link](docs/instruction.md)
+1. Instructions [link](docs/instruction.md)
 3. Docs [link](docs)
 
 ### Running project tests

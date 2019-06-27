@@ -75,6 +75,10 @@ via localtunnel
 jtb_test.localtunnel.me
 ```
 
+#### Additional configuration
+- [Setting up authorization via OAuth for JiraBot](https://telegra.ph/Setting-up-authorization-via-OAuth-for-JiraBot-11-29)
+- [Creating the Webhook for JiraBot in Jira](https://telegra.ph/Creating-the-Webhook-for-JiraBot-in-Jira-12-22)
+
 
 #### Running [Local]
 Bash
