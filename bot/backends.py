@@ -65,7 +65,7 @@ class JiraBackend:
         Used to get the connection object.
         If the connection object is not needed - add the base_check flag (the object will be destroyed)
         :param auth_method: basic or oauth
-        :param jira_host: https://jira.test.redwerk.com
+        :param jira_host: https://jira.somecompany.com
         :param credentials: different for each methods
         :param base_check: to destroy the object
         :return: Jira connection object

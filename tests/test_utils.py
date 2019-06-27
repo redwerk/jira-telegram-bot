@@ -28,9 +28,8 @@ def test_split_by_pages():
 
 def test_validates_hostname():
     hosts = (
-        ('https://jira.redwerk.com', True),
-        ('https://jira.test.redwerk.com', True),
-        ('https://jira.test.redwerk.com/', False),
+        ('https://google.com', True),
+        ('https://google.com/', False),
         ('test', False),
         ('www.test.com', False),
         ('http//test.com', False),

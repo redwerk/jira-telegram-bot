@@ -1,4 +1,4 @@
-### jira_users collection
+#### jira_users collection
 ```text
 // Creating a new user
 {
@@ -18,12 +18,13 @@
   }
 }
 ```
-// User was authorized via username/password
+#### User was authorized via username/password
+```
 {
   "_id": ObjectId("59bfbe69a47e654c39355f9d"),
   "telegram_id": 208810129,
-  "host_url": "https://jira.redwerk.com",
-  "username": "iperesunko",
+  "host_url": "https://jira.somecompany.com",
+  "username": "username",
   "auth_method": "basic",
   "auth": {
     "oauth": {
@@ -36,13 +37,15 @@
     }
   }
 }
+```
 
-// User was authorized via OAuth
+#### User was authorized via OAuth
+```
 {
   "_id": ObjectId("59bfbe69a47e654c39355f9d"),
   "telegram_id": 208810129,
-  "host_url": "https://jira.redwerk.com",
-  "username": "iperesunko",
+  "host_url": "https://jira.somecompany.com",
+  "username": "username",
   "auth_method": "oauth",
   "auth": {
     "oauth": {
@@ -54,8 +57,9 @@
     }
   }
 }
-
-// When executed a command /disconnect
+```
+#### When executed a command /disconnect
+```
 {
   "_id": ObjectId("59bfbe69a47e654c39355f9d"),
   "telegram_id": 208810129,
@@ -74,36 +78,36 @@
 }
 ```
 
-### jira_hosts collection
+#### jira_hosts collection
 ```json
 {
-  "url": "https://jira.redwerk.com",
+  "url": "https://jira.somecompany.com",
   "is_confirmed": true,
   "consumer_key": "OAuthKey",
 }
 ```
 
 
-### cache collection
+#### cache collection
 ```json
 {
   "_id": ObjectId("5967855ee138233323e1ff61"),
   "createdAt": ISODate("2017-07-13T14:36:14.473Z"),
   "content": [
     [
-      "<a href=\"https://jira.test.redwerk.com/browse/JTB-11\">JTB-11</a> Test 12",
-      "<a href=\"https://jira.test.redwerk.com/browse/JTB-10\">JTB-10</a> Test 10",
-      "<a href=\"https://jira.test.redwerk.com/browse/JTB-9\">JTB-9</a> Test 9",
-      "<a href=\"https://jira.test.redwerk.com/browse/JTB-8\">JTB-8</a> Test 8",
-      "<a href=\"https://jira.test.redwerk.com/browse/JTB-7\">JTB-7</a> Test 7",
-      "<a href=\"https://jira.test.redwerk.com/browse/JTB-6\">JTB-6</a> Test 6",
-      "<a href=\"https://jira.test.redwerk.com/browse/JTB-5\">JTB-5</a> Test 5",
-      "<a href=\"https://jira.test.redwerk.com/browse/JTB-4\">JTB-4</a> Test 4",
-      "<a href=\"https://jira.test.redwerk.com/browse/JTB-3\">JTB-3</a> Test 4",
-      "<a href=\"https://jira.test.redwerk.com/browse/JTB-2\">JTB-2</a> Календарь листается только в пределах текущего года"
+      "<a href=\"https://jira.somecompany.com/browse/JTB-11\">JTB-11</a> Test 12",
+      "<a href=\"https://jira.somecompany.com/browse/JTB-10\">JTB-10</a> Test 10",
+      "<a href=\"https://jira.somecompany.com/browse/JTB-9\">JTB-9</a> Test 9",
+      "<a href=\"https://jira.somecompany.com/browse/JTB-8\">JTB-8</a> Test 8",
+      "<a href=\"https://jira.somecompany.com/browse/JTB-7\">JTB-7</a> Test 7",
+      "<a href=\"https://jira.somecompany.com/browse/JTB-6\">JTB-6</a> Test 6",
+      "<a href=\"https://jira.somecompany.com/browse/JTB-5\">JTB-5</a> Test 5",
+      "<a href=\"https://jira.somecompany.com/browse/JTB-4\">JTB-4</a> Test 4",
+      "<a href=\"https://jira.somecompany.com/browse/JTB-3\">JTB-3</a> Test 4",
+      "<a href=\"https://jira.somecompany.com/browse/JTB-2\">JTB-2</a> Календарь листается только в пределах текущего года"
     ],
     [
-      "<a href=\"https://jira.test.redwerk.com/browse/JTB-1\">JTB-1</a> Вывод данных в 3 сообщения"
+      "<a href=\"https://jira.somecompany.com/browse/JTB-1\">JTB-1</a> Вывод данных в 3 сообщения"
     ]
   ],
   "key": "208810129:JTB:Backlog",
@@ -111,16 +115,16 @@
 }
 ```
 
-### webhooks collection
+#### webhooks collection
 ```json
 {
   "_id": ObjectId("5a437e5ff595b26337c08ddf"),
-  "host_url": "https://jira.test.redwerk.com",
+  "host_url": "https://jira.somecompany.com",
   "is_confirmed": false
 }
 ```
 
-### subscriptions collection
+#### subscriptions collection
 ```json
 {
   "_id": ObjectId("5a437f5af595b2646b46a3c2"),
