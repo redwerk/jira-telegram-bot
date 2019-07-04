@@ -189,7 +189,7 @@ class IssueNotify(BaseNotify):
                 self.issue_resolution(item, template)
             elif self.update['issue_event_type_name'] == self.updated and field == self.attachment_action:
                 self.file_attachment(item, template)
-            elif self.update['issue_event_type_name'] == self.updated and field == self.assignee_action:
+            elif self.update['issue_event_type_name'] in (self.updated, self.generic) and field == self.assignee_action:
                 self.issue_reassigned(item, template)
             else:
                 text = read_template(template)
