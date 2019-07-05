@@ -7,7 +7,7 @@ from bot.exceptions import ContextValidationError
 from bot.helpers import get_query_scope, login_required
 from bot.inlinemenu import build_menu
 from bot.schedules import schedule_commands
-from lib.utils import read_file
+from lib.utils import ConcatAction, read_file
 
 from .base import AbstractCommand, CommandArgumentParser
 
@@ -160,17 +160,17 @@ class ListStatusIssuesCommand(AbstractCommand):
     def get_argparsers():
         my = CommandArgumentParser(prog="my", add_help=False)
         my.add_argument('target', type=str, choices=['my'], nargs='?')
-        my.add_argument('status', type=str, nargs="?")
+        my.add_argument('status', type=str, nargs="*", action=ConcatAction)
 
         user = CommandArgumentParser(prog="user", add_help=False)
         user.add_argument('target', type=str, choices=['user'], nargs='?')
         user.add_argument('username', type=str)
-        user.add_argument('status', type=str, nargs="?")
+        user.add_argument('status', type=str, nargs="*", action=ConcatAction)
 
         project = CommandArgumentParser(prog="project", add_help=False)
         project.add_argument('target', type=str, choices=['project'], nargs='?')
         project.add_argument('project_key', type=str)
-        project.add_argument('status', type=str, nargs="?")
+        project.add_argument('status', type=str, nargs="*", action=ConcatAction)
 
         return [my, user, project]
 
@@ -202,9 +202,9 @@ class ListStatusIssuesCommand(AbstractCommand):
                 UserStatusIssuesCommand(self.app).handler(bot, update, *args, **kwargs)
             else:
                 UserStatusIssuesMenu(self.app).handler(bot, update, username=options.username, *args, **kwargs)
-        elif options.target == 'project' and options.project:
+        elif options.target == 'project' and options.project_key:
             if options.status:
-                kwargs.update({'project': options.project, 'status': options.status})
+                kwargs.update({'project': options.project_key, 'status': options.status})
                 ProjectStatusIssuesCommand(self.app).handler(bot, update, *args, **kwargs)
             else:
                 ProjectStatusIssuesMenu(self.app).handler(bot, update, project=options.project_key, *args, **kwargs)

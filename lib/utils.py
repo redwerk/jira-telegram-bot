@@ -1,3 +1,4 @@
+import argparse
 import os
 import logging
 import re
@@ -135,3 +136,12 @@ def escape_string(string):
             new_letter = letter
         new_string += new_letter
     return new_string
+
+
+class ConcatAction(argparse.Action):
+    """
+    Concatenates arguments in argparse
+    """
+    def __call__(self, parser, namespace, values, option_string=None):
+        values = " ".join(values)
+        setattr(namespace, self.dest, values)

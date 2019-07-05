@@ -151,13 +151,13 @@ class JiraBackend:
         """Checking the existence of the status on the Jira host"""
         jira_conn = kwargs.get('jira_conn')
         try:
-            jira_conn.status(status.capitalize())
-        except jira.JIRAError as e:
-            if e.status_code == status_codes.NOT_FOUND:
+            all_statuses = jira_conn.statuses()
+            avaliable_statuses = [status.name.lower() for status in all_statuses]
+            if status.lower() not in avaliable_statuses:
                 message = f"Value '{status}' does not exist."
                 raise JiraInfoException(message)
-            else:
-                raise JiraReceivingDataException(f"checking existence of status {status}", e.text)
+        except jira.JIRAError as e:
+            raise JiraReceivingDataException(f"checking existence of status {status}", e.text)
 
     @jira_connect
     def get_issues(self, username, resolution=None, *args, **kwargs):
