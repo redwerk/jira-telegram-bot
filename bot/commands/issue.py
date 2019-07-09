@@ -54,8 +54,12 @@ class ListUnresolvedIssuesCommand(AbstractCommand):
     """
     /listunresolved <target> [name] - shows users or projects unresolved issues
     """
+    example_description = read_file(os.path.join('bot', 'templates', 'examples', 'listunresolved_example.tpl'))
     targets = ('my', 'user', 'project')
-    description = read_file(os.path.join('bot', 'templates', 'listunresolved_description.tpl'))
+
+    @property
+    def description(self):
+        return read_file(os.path.join('bot', 'templates', 'listunresolved_description.tpl'))
 
     @staticmethod
     def get_argparsers():
@@ -154,7 +158,12 @@ class ListStatusIssuesCommand(AbstractCommand):
     """
     /liststatus <target> [name] - shows users or projects issues by a selected status
     """
-    description = read_file(os.path.join('bot', 'templates', 'liststatus_description.tpl'))
+
+    example_description = read_file(os.path.join('bot', 'templates', 'examples', 'liststatus_example.tpl'))
+
+    @property
+    def description(self):
+        return read_file(os.path.join('bot', 'templates', 'liststatus_description.tpl'))
 
     @staticmethod
     def get_argparsers():

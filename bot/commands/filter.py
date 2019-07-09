@@ -1,3 +1,5 @@
+import os
+
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackQueryHandler, CommandHandler
 
@@ -5,12 +7,15 @@ from bot.helpers import login_required, get_query_scope
 from bot.exceptions import ContextValidationError
 from bot.inlinemenu import build_menu
 from bot.schedules import schedule_commands
+from lib.utils import read_file
 
 from .base import AbstractCommand
 
 
 class FilterDispatcherCommand(AbstractCommand):
     """/filter - returns a list of favorite filters"""
+
+    example_description = read_file(os.path.join('bot', 'templates', 'examples', 'filter_example.tpl'))
 
     @login_required
     def handler(self, bot, update, *args, **kwargs):

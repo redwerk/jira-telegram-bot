@@ -10,7 +10,10 @@ from .base import AbstractCommand
 
 class HelpCommand(AbstractCommand):
     """/help - returns help description"""
-    description = read_file(os.path.join('bot', 'templates', 'help_description.tpl'))
+
+    @property
+    def description(self):
+        return read_file(os.path.join('bot', 'templates', 'help_description.tpl'))
 
     def handler(self, bot, update, *args, **kwargs):
         bot.send_message(
@@ -24,7 +27,10 @@ class HelpCommand(AbstractCommand):
 
 class StartCommand(AbstractCommand):
     """/start - returns help description"""
-    description = read_file(os.path.join('bot', 'templates', 'start_description.tpl'))
+
+    @property
+    def description(self):
+        return read_file(os.path.join('bot', 'templates', 'start_description.tpl'))
 
     def handler(self, bot, update, *args, **kwargs):
         first_name = update.message.from_user.first_name

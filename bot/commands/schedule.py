@@ -5,7 +5,7 @@ from telegram.ext import CommandHandler, CallbackQueryHandler
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 from bot.helpers import login_required
-from bot.schedules import ScheduleTask
+from bot.schedules import ScheduleTask, schedule_commands
 from bot.exceptions import ScheduleValidationError, ContextValidationError
 from bot.inlinemenu import build_menu
 from bot.parsers import cron_parser, command_parser, command_re
@@ -17,7 +17,13 @@ from .base import AbstractCommand
 class ScheduleCommand(AbstractCommand):
     """"/schedule <command> <periodicity> - create new schedule command"""
 
-    description = read_file(os.path.join("bot", "templates", "schedule_description.tpl"))
+    @property
+    def description(self):
+        schedule_description = read_file(os.path.join("bot", "templates", "schedule_description.tpl"))
+        example_description = "<b>Commands:</b>\n"
+        example_description += "--------\n".join(["{}\n".format(command.example_description)\
+                                                  for command in schedule_commands])
+        return "{}\n{}".format(schedule_description, example_description)
 
     @login_required
     def handler(self, bot, update, *args, **kwargs):

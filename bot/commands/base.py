@@ -26,6 +26,10 @@ class AbstractCommand(metaclass=ABCMeta):
     def handler(self, *args, **kwargs):
         pass
 
+    @property
+    def description(self):
+        return None
+
     def command_callback(self):
         # TODO: Move all not main commands to new abstract class
         pass
