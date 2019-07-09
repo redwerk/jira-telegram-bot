@@ -9,6 +9,7 @@ from telegram import Update
 from telegram.ext import Job
 from pytz import timezone
 
+from bot.exceptions import ScheduleValidationError
 from lib.db import create_connection
 from .commands.base import AbstractCommand
 from .helpers import Singleton
@@ -400,6 +401,10 @@ class ScheduleTask:
         instance.__increase_next_run()
         # prepare task to save in MongoDB
         serialized_data = ScheduleTaskSerializer.serialize(instance.to_dict())
+        # check if this command is already present
+        query_command = cls.__collection.find({'name': name, 'user_id': user_id})
+        if query_command.count():
+            raise ScheduleValidationError("This /schedule command has already been created")
         # save task and return result
         return cls.__collection.insert_one(serialized_data)
 
