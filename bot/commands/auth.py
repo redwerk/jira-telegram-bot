@@ -80,7 +80,10 @@ class DisconnectCommand(AbstractCommand):
 
 
 class OAuthLoginCommand(AbstractCommand):
-    description = utils.read_file(os.path.join('bot', 'templates', 'oauth_description.tpl'))
+
+    @property
+    def description(self):
+        return utils.read_file(os.path.join('bot', 'templates', 'oauth_description.tpl'))
 
     def handler(self, bot, update, *args, **kwargs):
         """
@@ -202,7 +205,10 @@ class OAuthLoginCommand(AbstractCommand):
 
 class BasicLoginCommand(AbstractCommand):
     """/connect <host> <username> <password> - Login into Jira via username and password"""
-    description = utils.read_file(os.path.join('bot', 'templates', 'connect_description.tpl'))
+
+    @property
+    def description(self):
+        return utils.read_file(os.path.join('bot', 'templates', 'connect_description.tpl'))
 
     def handler(self, bot, update, *args, **kwargs):
         chat_id = update.message.chat_id

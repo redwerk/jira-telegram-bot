@@ -55,6 +55,9 @@ class ScheduleCommands(metaclass=Singleton):
         if not issubclass(cls, AbstractCommand):
             raise TypeError("The command class must be of type `AbstractCommand`")
 
+        if not hasattr(cls, 'example_description'):
+            raise TypeError("The command class must have example_description")
+
         if not isinstance(command, str):
             raise TypeError("Command name must be of string type")
 

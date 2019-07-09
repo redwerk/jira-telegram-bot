@@ -36,9 +36,13 @@ class TimeTrackingCommand(AbstractCommand):
     """
     /time <target> <name> [start_date] [end_date] - Shows spent time for users, issues and projects
     """
+    example_description = utils.read_file(os.path.join('bot', 'templates', 'examples', 'time_example.tpl'))
     targets = ('user', 'issue', 'project')
     available_days = ('today', 'yesterday')
-    description = utils.read_file(os.path.join('bot', 'templates', 'time_description.tpl'))
+
+    @property
+    def description(self):
+        return utils.read_file(os.path.join('bot', 'templates', 'time_description.tpl'))
 
     @staticmethod
     def get_argparsers():

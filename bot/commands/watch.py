@@ -21,7 +21,10 @@ class WatchDispatcherCommand(AbstractCommand):
     targets = ('project', 'issue')
     positive_answer = 'Yes'
     negative_answer = 'No'
-    description = utils.read_file(os.path.join('bot', 'templates', 'watch_description.tpl'))
+
+    @property
+    def description(self):
+        return utils.read_file(os.path.join('bot', 'templates', 'watch_description.tpl'))
 
     @staticmethod
     def get_argparsers():
@@ -138,7 +141,10 @@ class UnwatchDispatcherCommand(AbstractCommand):
     /unwatch - Unsubscribe from all updates
     """
     targets = ('project', 'issue')
-    description = utils.read_file(os.path.join('bot', 'templates', 'unwatch_description.tpl'))
+
+    @property
+    def description(self):
+        return utils.read_file(os.path.join('bot', 'templates', 'unwatch_description.tpl'))
 
     @login_required
     def handler(self, bot, update, *args, **kwargs):
