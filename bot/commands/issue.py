@@ -4,7 +4,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackQueryHandler, CommandHandler
 
 from bot.exceptions import ContextValidationError
-from bot.helpers import get_query_scope, login_required
+from bot.helpers import get_query_scope, login_required, with_progress
 from bot.inlinemenu import build_menu
 from bot.schedules import schedule_commands
 from lib.utils import ConcatAction, read_file
@@ -76,6 +76,7 @@ class ListUnresolvedIssuesCommand(AbstractCommand):
 
         return [my, user, project]
 
+    @with_progress()
     @login_required
     def handler(self, bot, update, *args, **kwargs):
         auth_data = kwargs.get('auth_data')
