@@ -1,4 +1,4 @@
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton
 
 from .inlinemenu import build_menu
 
@@ -50,13 +50,6 @@ def get_pagination_keyboard(current, max_page, str_key):
                 callback_data=str_key.format(current - 1)
             )
         )
-
-    inline_buttons.append(
-        InlineKeyboardButton(
-            '· {} ·'.format(current),
-            callback_data=str_key.format(current)
-        )
-    )
 
     if current < max_page - 1:
         inline_buttons.append(

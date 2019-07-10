@@ -144,7 +144,7 @@ class JTBApp:
                 f"User={update.effective_user.username} Message={update.effective_message.text} Error={e.message})"
             )
             self.send(bot, update, text="Something went wrong. Check your request or network.")
-            self.send(bot, update, text=self.commands[0].description)
+            self.send(bot, update, text=self.commands[0](self).description)
         except BaseJTBException as e:
             self.send(bot, update, text=e.message)
         except Exception as e:
