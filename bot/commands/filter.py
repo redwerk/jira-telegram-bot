@@ -45,7 +45,7 @@ class FilterDispatcherCommand(AbstractCommand):
                 text = "Pick up one of the filters:"
                 return self.app.send(bot, update, text=text, buttons=buttons)
 
-        self.app.send(bot, update, text="You don't have any favourite filters")
+        self.app.send(bot, update, text="You don't have any favourite filters. Add some filters in your Jira first")
 
     def command_callback(self):
         return CommandHandler('filter', self.handler, pass_args=True)
