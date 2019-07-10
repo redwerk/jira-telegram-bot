@@ -71,12 +71,15 @@ class WorklogNotify(BaseNotify):
             'link_name': self.issue.upper(),
         }
 
-        if self.update['issue_event_type_name'] == self.work_logged:
-            self.worklog_logged()
-        elif self.update['issue_event_type_name'] == self.work_updated:
-            self.worklog_updated()
-        elif self.update['issue_event_type_name'] == self.work_deleted:
-            self.worklog_deleted()
+        try:
+            if self.update['issue_event_type_name'] == self.work_logged:
+                self.worklog_logged()
+            elif self.update['issue_event_type_name'] == self.work_updated:
+                self.worklog_updated()
+            elif self.update['issue_event_type_name'] == self.work_deleted:
+                self.worklog_deleted()
+        except TypeError:   # worklog update, not related to hours spent
+            return
 
         try:
             msg = self.message_template.format(**self.data)
@@ -96,8 +99,8 @@ class WorklogNotify(BaseNotify):
         self.data.update(additional_data)
 
     def worklog_updated(self):
-        start_time = int(self.update['changelog']['items'][-2]['from'])
-        end_time = int(self.update['changelog']['items'][-2]['to'])
+        start_time = int(self.update['changelog']['items'][-1]['to'])
+        end_time = int(self.update['changelog']['items'][-1]['from'])
         additional_data = {
             'action': 'updated',
             'time': round(calculate_tracking_time(end_time - start_time), 2),
