@@ -1,4 +1,5 @@
 import os
+import re
 from abc import ABCMeta, abstractmethod
 
 from decouple import config
@@ -9,7 +10,7 @@ from ..app import logger
 
 
 TEMPLATES_DIR = os.path.join('web', 'webhooks', 'templates')
-BOT_API = 'https://api.telegram.org/bot{}/sendMessage?chat_id={}&text={}&parse_mode=HTML'
+BOT_API = 'https://api.telegram.org/bot{}/sendMessage?chat_id={}&text={}&parse_mode={}'
 
 
 def broadcast(urls):
@@ -20,8 +21,9 @@ def broadcast(urls):
     for url in urls:
         send_message.delay(url)
 
-
 class BaseNotify(metaclass=ABCMeta):
+
+    parse_mode = 'HTML'
 
     def __init__(self, update, chat_ids, host, db, **kwargs):
         """
@@ -49,7 +51,7 @@ class BaseNotify(metaclass=ABCMeta):
 
         for chat_id in self.chat_ids:
             for m in messages:
-                urls.append(BOT_API.format(config('BOT_TOKEN'), chat_id, m))
+                urls.append(BOT_API.format(config('BOT_TOKEN'), chat_id, m, self.parse_mode))
         return urls
 
 
@@ -122,7 +124,45 @@ class CommentNotify(BaseNotify):
     Processing updates for Jira comments
     Actions: a comment may be created, updated and deleted
     """
-    message_template = 'User <b>{username}</b> {action} comment in <a href="{link}">{link_name}</a>'
+    parse_mode = 'Markdown'
+
+    message_template = 'User *{username}* {action} comment in [{link_name}]({link}):\n\nComment:```{comment}```{links}'
+
+    def comment_prepare(self, comment):
+        # regexp replace
+        search_list_re = [re.compile(r'{color:?[^}]*}', re.DOTALL)]
+        replace_list_re = ['']
+        for i in range(len(search_list_re)):
+            find_strings = set(re.findall(search_list_re[i], comment))
+            if not find_strings:
+                continue
+            for find_string in find_strings:
+                comment = comment.replace(find_string, replace_list_re[i])
+        # simple replace
+        search_list = [u'\xa0', '`', '&', '#', '+', '\r\n']
+        replace_list = [' ', "'", '-', '-', '*', '\n']
+        for i in range(len(search_list)):
+            if search_list[i] in comment:
+                comment = comment.replace(search_list[i], replace_list[i])
+        return comment
+
+    def get_comment_links(self, comment):
+        links = ''
+        link_pattern = re.compile('\[[^\|]*\|?[^\]]*\]', re.DOTALL)
+        raw_links = re.findall(link_pattern, comment)
+        if raw_links:
+            links += '\n\nLinks from comment:'
+            for raw_link in raw_links:
+                raw_link = raw_link.lstrip('[').rstrip(']')
+                try:
+                    raw_link_index = raw_link.rindex('|')
+                    a_title = raw_link[:raw_link_index].strip()
+                    a_link = raw_link[raw_link_index+1:].strip()
+                    links += f'\n[{a_title}]({a_link})'
+                except:
+                    a_link = raw_link.strip()
+                    links += f'\n[{a_link}]({a_link})'
+        return links
 
     def notify(self):
         data = {
@@ -130,6 +170,8 @@ class CommentNotify(BaseNotify):
             'action': self.update.get('webhookEvent').replace('comment_', ''),
             'link': f'{self.host}/browse/{self.issue.upper()}',
             'link_name': self.issue.upper(),
+            'comment': self.comment_prepare(self.update['comment']['body']),
+            'links': self.get_comment_links(self.update['comment']['body'])
         }
         msg = self.message_template.format(**data)
         urls = self.prepare_messages(msg)
