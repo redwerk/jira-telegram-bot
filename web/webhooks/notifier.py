@@ -8,7 +8,6 @@ from lib.utils import calculate_tracking_time, read_template
 from .tasks import send_message
 from ..app import logger
 
-
 TEMPLATES_DIR = os.path.join('web', 'webhooks', 'templates')
 BOT_API = 'https://api.telegram.org/bot{}/sendMessage?chat_id={}&text={}&parse_mode={}'
 
@@ -21,8 +20,8 @@ def broadcast(urls):
     for url in urls:
         send_message.delay(url)
 
-class BaseNotify(metaclass=ABCMeta):
 
+class BaseNotify(metaclass=ABCMeta):
     parse_mode = 'HTML'
 
     def __init__(self, update, chat_ids, host, db, **kwargs):
@@ -80,7 +79,7 @@ class WorklogNotify(BaseNotify):
                 self.worklog_updated()
             elif self.update['issue_event_type_name'] == self.work_deleted:
                 self.worklog_deleted()
-        except TypeError:   # worklog update, not related to hours spent
+        except TypeError:  # worklog update, not related to hours spent
             return
 
         try:
@@ -128,25 +127,36 @@ class CommentNotify(BaseNotify):
 
     message_template = 'User *{username}* {action} comment in [{link_name}]({link}):\n\nComment:```{comment}```{links}'
 
-    def comment_prepare(self, comment):
+    def _comment_prepare(self, comment):
         # regexp replace
-        search_list_re = [re.compile(r'{color:?[^}]*}', re.DOTALL)]
-        replace_list_re = ['']
-        for i in range(len(search_list_re)):
-            find_strings = set(re.findall(search_list_re[i], comment))
+        regexp_replace_items = {
+            r'{color:?[^}]*}': ' ',
+            r'{code:?[^}]*}': ' ',
+            r'{panel:?[^}]*}': ' ',
+            r'{noformat[^}]*}': ' ',
+            r'{quote[^}]*}': ' ',
+        }
+        for search_pattern, replace_pattern in regexp_replace_items:
+            find_strings = set(re.findall(re.compile(search_pattern, re.DOTALL), comment))
             if not find_strings:
                 continue
             for find_string in find_strings:
-                comment = comment.replace(find_string, replace_list_re[i])
+                comment = comment.replace(find_string, replace_pattern)
         # simple replace
-        search_list = [u'\xa0', '`', '&', '#', '+', '\r\n']
-        replace_list = [' ', "'", '-', '-', '*', '\n']
-        for i in range(len(search_list)):
-            if search_list[i] in comment:
-                comment = comment.replace(search_list[i], replace_list[i])
+        simple_replace_items = {
+            u'\xa0': ' ',
+            '`': "'",
+            '&': '-',
+            '#': '-',
+            '+': '*',
+            '\r\n': '\n'
+        }
+        for search_item, replace_item in simple_replace_items:
+            if search_item in comment:
+                comment = comment.replace(search_item, replace_item)
         return comment
 
-    def get_comment_links(self, comment):
+    def _get_comment_links(self, comment):
         links = ''
         link_pattern = re.compile('\[[^\|]*\|?[^\]]*\]', re.DOTALL)
         raw_links = re.findall(link_pattern, comment)
@@ -157,9 +167,9 @@ class CommentNotify(BaseNotify):
                 try:
                     raw_link_index = raw_link.rindex('|')
                     a_title = raw_link[:raw_link_index].strip()
-                    a_link = raw_link[raw_link_index+1:].strip()
+                    a_link = raw_link[raw_link_index + 1:].strip()
                     links += f'\n[{a_title}]({a_link})'
-                except:
+                except ValueError:
                     a_link = raw_link.strip()
                     links += f'\n[{a_link}]({a_link})'
         return links
@@ -170,8 +180,8 @@ class CommentNotify(BaseNotify):
             'action': self.update.get('webhookEvent').replace('comment_', ''),
             'link': f'{self.host}/browse/{self.issue.upper()}',
             'link_name': self.issue.upper(),
-            'comment': self.comment_prepare(self.update['comment']['body']),
-            'links': self.get_comment_links(self.update['comment']['body'])
+            'comment': self._comment_prepare(self.update['comment']['body']),
+            'links': self._get_comment_links(self.update['comment']['body'])
         }
         msg = self.message_template.format(**data)
         urls = self.prepare_messages(msg)
