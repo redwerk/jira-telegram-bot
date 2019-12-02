@@ -128,22 +128,20 @@ class CommentNotify(BaseNotify):
     message_template = 'User *{username}* {action} comment in [{link_name}]({link}):\n\nComment:```{comment}```{links}'
 
     def _comment_prepare(self, comment):
-        # regexp replace
-        regexp_replace_items = {
+        regexp_replace = {
             r'{color:?[^}]*}': ' ',
             r'{code:?[^}]*}': ' ',
             r'{panel:?[^}]*}': ' ',
             r'{noformat[^}]*}': ' ',
             r'{quote[^}]*}': ' ',
         }
-        for search_pattern, replace_pattern in regexp_replace_items:
+        for search_pattern, replace_pattern in regexp_replace.items():
             find_strings = set(re.findall(re.compile(search_pattern, re.DOTALL), comment))
             if not find_strings:
                 continue
             for find_string in find_strings:
                 comment = comment.replace(find_string, replace_pattern)
-        # simple replace
-        simple_replace_items = {
+        simple_replace = {
             u'\xa0': ' ',
             '`': "'",
             '&': '-',
@@ -151,7 +149,7 @@ class CommentNotify(BaseNotify):
             '+': '*',
             '\r\n': '\n'
         }
-        for search_item, replace_item in simple_replace_items:
+        for search_item, replace_item in simple_replace.items():
             if search_item in comment:
                 comment = comment.replace(search_item, replace_item)
         return comment
