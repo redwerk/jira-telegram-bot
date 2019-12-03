@@ -6,6 +6,7 @@ import traceback
 from decouple import config
 from telegram.error import NetworkError, TimedOut
 from telegram.ext import Updater
+from telegram import Update as TelegramUpdate
 
 from lib import utils
 from lib.db import MongoBackend
@@ -140,11 +141,12 @@ class JTBApp:
         try:
             raise error
         except (NetworkError, TimedOut, JiraReceivingDataException) as e:
-            logger.error(
-                f"User={update.effective_user.username} Message={update.effective_message.text} Error={e.message})"
-            )
-            self.send(bot, update, text="Something went wrong. Check your request or network.")
-            self.send(bot, update, text=self.commands[0](self).description)
+            if isinstance(update, TelegramUpdate):
+                logger.error(f"User={update.effective_user.username} Message={update.effective_message.text} Error={e.message})")
+                self.send(bot, update, text="Something went wrong. Check your request or network.")
+                self.send(bot, update, text=self.commands[0](self).description)
+            else:
+                logger.error(f"Error={e.message})")
         except BaseJTBException as e:
             self.send(bot, update, text=e.message)
         except Exception as e:
