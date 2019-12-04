@@ -1,5 +1,6 @@
 from functools import wraps
 import logging
+import threading
 
 
 def login_required(func):
@@ -22,6 +23,13 @@ def login_required(func):
         except AttributeError:
             # update came from CallbackQueryHandler (after press button on inline keyboard)
             telegram_id = update.callback_query.from_user.id
+
+        # do not proceed any actions from job queue  - if user disconnected
+        ct = threading.current_thread()
+        if ct.name == 'job_queue':
+            if not instance.app.db.is_user_connected(telegram_id):
+                logging.info('login_required decorator: User disconnected')
+                return
 
         if not instance.app.db.is_user_exists(telegram_id):
             bot.send_message(

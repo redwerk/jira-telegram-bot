@@ -102,6 +102,10 @@ class MongoBackend:
         collection = self._get_collection('user')
         return collection.count({"telegram_id": telegram_id}) > 0
 
+    def is_user_connected(self, telegram_id):
+        collection = self._get_collection('user')
+        return collection.count({"telegram_id": telegram_id, "auth_method": {"$ne":None}}) > 0
+
     def get_user_data(self, user_id):
         collection = self._get_collection('user')
         user = collection.find_one({'telegram_id': user_id})
