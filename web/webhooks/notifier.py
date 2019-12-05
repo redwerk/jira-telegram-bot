@@ -156,20 +156,15 @@ class CommentNotify(BaseNotify):
 
     def _get_comment_links(self, comment):
         links = ''
-        link_pattern = re.compile('\[[^\|]*\|?[^\]]*\]', re.DOTALL)
+        link_pattern = '\[([^\|]*)\|?([^\]]*)\]'
         raw_links = re.findall(link_pattern, comment)
         if raw_links:
             links += '\n\nLinks from comment:'
             for raw_link in raw_links:
-                raw_link = raw_link.lstrip('[').rstrip(']')
-                try:
-                    raw_link_index = raw_link.rindex('|')
-                    a_title = raw_link[:raw_link_index].strip()
-                    a_link = raw_link[raw_link_index + 1:].strip()
-                    links += f'\n[{a_title}]({a_link})'
-                except ValueError:
-                    a_link = raw_link.strip()
-                    links += f'\n[{a_link}]({a_link})'
+                if raw_link[1]:
+                    links += f'\n[{raw_link[0]}]({raw_link[1]})'
+                else:
+                    links += f'\n[{raw_link[0]}]({raw_link[0]})'
         return links
 
     def notify(self):
