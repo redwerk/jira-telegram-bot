@@ -7,6 +7,7 @@ from decouple import config
 from lib.utils import calculate_tracking_time, read_template
 from .tasks import send_message
 from ..app import logger
+from .helpers import connect_required
 
 TEMPLATES_DIR = os.path.join('web', 'webhooks', 'templates')
 BOT_API = 'https://api.telegram.org/bot{}/sendMessage?chat_id={}&text={}&parse_mode={}'
@@ -24,6 +25,7 @@ def broadcast(urls):
 class BaseNotify(metaclass=ABCMeta):
     parse_mode = 'HTML'
 
+    @connect_required
     def __init__(self, update, chat_ids, host, db, **kwargs):
         """
         :param update: full update in dictionary format
