@@ -76,8 +76,8 @@ class ListUnresolvedIssuesCommand(AbstractCommand):
 
         return [my, user, project]
 
-    @with_progress()
     @login_required
+    @with_progress()
     def handler(self, bot, update, *args, **kwargs):
         auth_data = kwargs.get('auth_data')
         arguments = kwargs.get('args')
