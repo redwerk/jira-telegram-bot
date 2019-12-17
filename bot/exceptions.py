@@ -17,7 +17,9 @@ class JiraLoginError(BaseJTBException):
     login_error = {
         401: 'Invalid credentials or token was rejected.\nYou can try the following actions:\n'
              '1. If you logged in already, please try to use /disconnect command and log in again.\n'
-             '2. Update a previously created Application link (/disconnect, /oauth)',
+             '2. Update a previously created Application link (/disconnect, /oauth).\n'
+             '3. If you are connecting with email as a login, please try to use username instead.\n'
+             '4. Try to connect using /oauth',
         403: 'Login is denied due to a CAPTCHA requirement, or any other '
              'reason. Please, login (re-login) into Jira via browser '
              'and try again.',
