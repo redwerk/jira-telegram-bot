@@ -18,9 +18,18 @@ from .issue import (
     UserStatusIssuesCommand)
 
 from .tracking import TimeTrackingCommand
-from .watch import WatchDispatcherCommand, CreateWebhookCommand, UnwatchDispatcherCommand, UnsubscribeAllUpdatesCommand
 
-from .schedule import ScheduleCommand, ScheduleCommandList, ScheduleCommandDelete
+from .watch import (
+    WatchDispatcherCommand,
+    CreateWebhookCommand,
+    UnwatchDispatcherCommand,
+    UnsubscribeAllUpdatesCommand)
+
+from .schedule import (
+    ScheduleCommand,
+    ScheduleCommandListShow,
+    ScheduleCommandList,
+    ScheduleCommandDelete)
 
 __all__ = (
     "HelpCommand",
@@ -43,6 +52,7 @@ __all__ = (
     "FilterDispatcherCommand",
     "FilterIssuesCommand",
     "ScheduleCommand",
+    "ScheduleCommandListShow",
     "ScheduleCommandList",
     "ScheduleCommandDelete"
 )

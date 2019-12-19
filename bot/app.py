@@ -43,6 +43,7 @@ class JTBApp:
         commands.DisconnectCommand,
         commands.ContentPaginatorCommand,
         commands.ScheduleCommand,
+        commands.ScheduleCommandListShow,
         commands.ScheduleCommandList,
         commands.ScheduleCommandDelete
     ]

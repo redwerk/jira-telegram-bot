@@ -4,6 +4,7 @@
 /filter - show issues by favourite filters
 /time - show time spent on issue, user or project
 /schedule - create a new schedule command
+/schedulelist - show schedule commands list
 /unschedule - remove a command from schedule list
 /watch - subscribe to updates on projects and issues
 /unwatch - unsubscribe from updates on projects and issues
@@ -12,4 +13,4 @@
 /disconnect - delete user credentials from DB
 /help - show the list of available commands
 
-v. 2019-04-24
+v. 2019-12-17

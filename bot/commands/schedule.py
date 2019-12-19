@@ -95,3 +95,23 @@ class ScheduleCommandDelete(AbstractCommand):
 
     def command_callback(self):
         return CallbackQueryHandler(self.handler, pattern=r'^unschedule:')
+
+
+class ScheduleCommandListShow(AbstractCommand):
+    """/schedulelist - show schedule commands list"""
+
+    @login_required
+    def handler(self, bot, update, *args, **kwargs):
+        user_id = update.effective_user.id
+        entries = self.app.db.get_schedule_commands(user_id)
+        if entries.count():
+            text = 'List of all scheduled commands:\n'
+            for entry in entries:
+                text += f'<pre>{entry["name"]}</pre>\n'
+        else:
+            text = "No schedule commands were found"
+
+        self.app.send(bot, update, text=text)
+
+    def command_callback(self):
+        return CommandHandler('schedulelist', self.handler)
