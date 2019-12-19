@@ -10,6 +10,7 @@ from lib import utils
 
 from bot.exceptions import BotAuthError
 from bot.inlinemenu import build_menu
+from bot.commands.info import HelpCommand
 from .base import AbstractCommand
 
 
@@ -270,7 +271,10 @@ class BasicLoginCommand(AbstractCommand):
         status = self.app.db.update_user(chat_id, basic_auth)
         if status:
             text = 'You were successfully authorized in {}'.format(host_url)
-            return self.app.send(bot, update, text=text)
+            self.app.send(bot, update, text=text)
+            # NOTE: JTB-294 - Show /help after successful connection to Jira
+            help = HelpCommand(self.app)
+            return help.handler(bot, update, *args, **kwargs)
         else:
             text = 'Failed to save data to database, please try again later'
             return self.app.send(bot, update, text=text)
