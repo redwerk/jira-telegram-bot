@@ -16,7 +16,7 @@ flake8==3.3.0
 Flask==1.0.3
 Flask-OAuthlib==0.9.5
 future==0.16.0
-eventlet==0.21.0
+eventlet==0.31.0
 gevent==1.2.2
 greenlet==0.4.12
 gunicorn==19.7.1
